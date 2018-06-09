@@ -10,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
+#include <bitset>
 
 using namespace std;
 
@@ -27,6 +28,45 @@ public:
     for (auto & arr : input){ cout << "  "; print_all_elem<Type>(arr); }
     cout << "]" << endl;
   }
+
+  /**
+   * 15.1 Reverse Integer
+   * Reverse digits of an integer.
+   * - Example1: x = 123, return 321
+   *   Example2: x = -123, return -321
+   * Have you thought about this?
+   * - Here are some good questions to ask before coding. Bonus points for you
+   *   if you have already thought through this! If the integer’s last digit is
+   *   0, what should the output be? ie, cases such as 10, 100. Did you notice
+   *   that the reversed integer might overflow? Assume the input is a 32-bit
+   *   integer, then the reverse of 1000000003 overflows. How should you handle
+   *   such cases? Throw an exception? Good, but what if throwing an exception
+   *   is not an option? You would then have to re-design the function
+   *   (ie, add an extra parameter).
+   */
+  static int reverse_integer(long input) {
+    long long flipped_num = 0;
+    long long postive_max_abs_limit = INT_MAX;
+    long long negtive_max_abs_limit = INT_MAX + 1;
+    // 1003 -> 3, 3 * 10 + 0, 30 * 10 + 0, 300 * 10 + 1
+    for (int digit = 0; (input / (int)pow(10, digit)) != 0; digit++) {
+      flipped_num = flipped_num * 10 + ((input / (int)pow(10, digit)) % 10);
+    }
+    flipped_num = abs(flipped_num);
+    bool is_negative = (input < 0);
+    if (((true == is_negative) && (flipped_num > negtive_max_abs_limit)) ||
+        ((false == is_negative) && (flipped_num > postive_max_abs_limit))) {
+      flipped_num = 0;
+    } else {
+      flipped_num = (true == is_negative) ? -1 * flipped_num : flipped_num;
+    }
+    // positive-int: 0111 1111 1111 1111 1111 1111 1111 1111 -> 2^31 - 1
+    // negative-int: 1000 0000 0000 0000 0000 0000 0000 0000 -> -2......
+    // negative-int: 1111 1111 1111 1111 1111 1111 1111 1111 -> -1
+    // negative-int: 1111 1111 1111 1111 1111 1111 1111 1110 -> -2
+    return flipped_num;
+  }
+
   /**
    * 15.14 Text Justification
    * Given an array of words and a length L, format the text such that each
@@ -91,6 +131,15 @@ public:
     }
     return justified_text;
   }
+  /**
+   * 15.15 Max Points on a Line
+   * Given n points on a 2D plane, find the maximum number of points that lie on
+   * the same straight line.
+   */
+  class Point{ };
+  static int max_points_per_line(const vector<Point> & points_arr) {
+    return 0;
+  }
 };
 
 int main(void) {
@@ -109,5 +158,49 @@ int main(void) {
   ChoresUtil::print_all_elem<string>(
     ChoresUtil::justify_text(input_text, max_len)
   );
+  int x = pow(2, 30);
+  // 0111 1111 1111 1111 1111 1111 1111 1111
+  cout << INT_MAX << endl;
+  // 0111 1111 1111 1111 1111 1111 1111 1111
+  cout << x - 1 << endl;
+  // 1000 0000 0000 0000 0000 0000 0000 0000
+  cout << x << endl;
+  // 1000 0000 0000 0000 0000 0000 0000 0001
+  cout << x + 1 << endl;
+  // 1000 0000 0000 0000 0000 0000 0000 0010
+  cout << x + 2 << endl;
+  // 0000 0000 0000 0000 0000 0000 0000 0000
+  cout << x * 2 << endl;
+  // 0000 0000 0000 0000 0000 0000 0000 0000
+  cout << (x << 1) << endl;
+  // 0100 0000 0000 0000 0000 0000 0000 0000
+  cout << (x >> 1) << endl;
+  cout << int(pow(2, 30)) << endl;
+  bitset<sizeof(int) * CHAR_BIT> y(x);
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : raw : " << y << endl;
+  y = (x << 1);
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : l-s : " << y << endl;
+  y = (x >> 1);
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : r-s : " << y << endl;
+  y = (int)-1;
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : n-1 : " << y << endl;
+  y = (int)-2;
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : n-2 : " << y << endl;
+  y = (int)0;
+  cout << "int-byte-size: " << sizeof(int) * CHAR_BIT << " : n-0 : " << y << endl;
+  cout << sizeof(int) * CHAR_BIT << endl;
+  cout << sizeof(long) * CHAR_BIT << endl;
+
+  cout << (-1 % 10) << endl;
+  cout << "==>> 1003: " << ChoresUtil::reverse_integer(1003) << endl;
+  cout << "==>> -1003: " << ChoresUtil::reverse_integer(-1003) << endl;
+  cout << "==>> 10: " << ChoresUtil::reverse_integer(10) << endl;
+  cout << "==>> 0: " << ChoresUtil::reverse_integer(0) << endl;
+  cout << "==>> 1: " << ChoresUtil::reverse_integer(1) << endl;
+  cout << "==>> -10: " << ChoresUtil::reverse_integer(-10) << endl;
+  cout << "==>> 1000000003: " << ChoresUtil::reverse_integer(1000000003) << endl;
+  cout << "==>> -1000000003: " << ChoresUtil::reverse_integer(-1000000003) << endl;
+  cout << "==>> int-max: " << ChoresUtil::reverse_integer(INT_MAX) << endl;
+  cout << "==>> int-min: " << ChoresUtil::reverse_integer((-1 * long(INT_MAX) + 1)) << endl;
   return 0;
 }
