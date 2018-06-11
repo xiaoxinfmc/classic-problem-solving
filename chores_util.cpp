@@ -267,6 +267,40 @@ public:
    * L: ["foo", "bar"]
    * You should return the indices: [0, 9].(order does not matter).
    */
+  static vector<int> find_all_tokens(const string text, vector<string> words) {
+    vector<int> matching_pos_arr;
+    int window_size = words.front().size();
+    int appeared_tokens_cnt = 0, total_tokens_cnt = words.size();
+
+    unordered_map<string, int> dict_lookup;
+    for (auto & token : words) {
+      if (dict_lookup.end() == dict_lookup.find(token)) {
+        dict_lookup[token] = 1;
+      } else {
+        dict_lookup[token] += 1;
+      }
+    }
+
+    int curr_idx = 0; string curr_token = "";
+    for (int i = 0; i < text.size(); i++) {
+      if ((text.size() - i) < window_size) { break; }
+      curr_token = text.substr(i, window_size);
+      if (dict_lookup.end() != dict_lookup.find(curr_token)) {
+        appeared_tokens_cnt = 0;
+        unordered_map<string, int> curr_dict = dict_lookup;
+        for (curr_idx = i; curr_idx < text.size() - window_size + 1; curr_idx += window_size) {
+          curr_token = text.substr(curr_idx, window_size);
+          if ((curr_dict.end() != curr_dict.find(curr_token)) &&
+              (curr_dict[curr_token] > 0)) {
+            curr_dict[curr_token] -= 1; appeared_tokens_cnt += 1;
+          } else { break; }
+        }
+        if (appeared_tokens_cnt == total_tokens_cnt) { matching_pos_arr.push_back(i); }
+      }
+    }
+
+    return matching_pos_arr;
+  }
 
   /**
    * 15.14 Text Justification
@@ -483,6 +517,15 @@ int main(void) {
   cout << "-654154154151454545415415454 * -63516561563156316545145146514654 = 41549622603955309777243716069997997007620439937711509062916" << endl;
   cout << "-654154154151454545415415454 * -63516561563156316545145146514654 = "
        << ChoresUtil::multiply_big_number("-654154154151454545415415454", "-63516561563156316545145146514654") << endl;
+
+  cout << "S: barfoothefoobarman | L: [ foo, bar ] | [ 0, 9 ]" << endl;
+  ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("barfoothefoobarman", vector<string>({ "foo", "bar" })));
+  cout << "S: catbatatecatatebat | L: [ cat, ate, bat ] | [ 0, 3, 9 ]" << endl;
+  ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("catbatatecatatebat", vector<string>({ "cat", "ate", "bat" })));
+  cout << "S: abcdababcd | L: [ ab, ab, cd ] | [ 0 2 4 ]" << endl;
+  ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("abcdababcd", vector<string>({ "ab", "ab", "cd" })));
+  cout << "S: abcdababcd | L: [ ab, ab ] | [ 4 ]" << endl;
+  ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("abcdababcd", vector<string>({ "ab", "ab" })));
   return 0;
 }
 
