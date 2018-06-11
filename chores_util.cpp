@@ -137,6 +137,138 @@ public:
   }
 
   /**
+   * 15.5 Minimum Window Substring
+   * Given a string S and a string T , find the minimum window in S which will
+   * contain all the characters in T in complexity O(n).
+   * For example, S = "ADOBECODEBANC", T = "ABC" Minimum window is "BANC".
+   * Note:
+   * - If there is no such windowin S that covers all characters in T,return the
+   *   emtpy string. If there are multiple such windows, you are guaranteed that
+   *   there will always be only one unique minimum window in S.
+   */
+  static string find_min_window(const string text, const string pattern) {
+    int char_buffer_size = (int)'z' - (int)'a' + 1;
+    int matched_char_cnt = 0, uniq_char_cnt = 0;
+    unsigned char char_lookup[char_buffer_size];
+    memset(char_lookup, 0, sizeof(char_lookup));
+    for (int i = 0; i < pattern.size(); i++) {
+      char_lookup[(int)pattern[i] - 'a'] = 1;
+    }
+    for (int i = 0; i < char_buffer_size; i++) {
+      if (1 == char_lookup[i]) { uniq_char_cnt++; }
+    }
+
+    int curr_start_pos = 0, curr_end_pos = 0,
+        min_start_pos = 0, min_end_pos = INT_MAX;
+    for (; curr_end_pos < text.size(); curr_end_pos++) {
+      if (1 == char_lookup[text[curr_end_pos] - 'a']) {
+        if (0 == matched_char_cnt){ curr_start_pos = curr_end_pos; }
+        char_lookup[text[curr_end_pos] - 'a'] = 2;
+        matched_char_cnt += 1;
+      }
+      if (matched_char_cnt == uniq_char_cnt) {
+        int uniq_char_matched = 0;
+        for (int x = curr_end_pos; x >= curr_start_pos; x--){
+          if (2 == char_lookup[text[x] - 'a']) {
+            char_lookup[text[x] - 'a'] = 3;
+            uniq_char_matched += 1;
+          }
+          if (uniq_char_matched == uniq_char_cnt) {
+            curr_start_pos = x;
+            break;
+          }
+        }
+        if (min_end_pos - min_start_pos > curr_end_pos - curr_start_pos) {
+          min_start_pos = curr_start_pos; min_end_pos = curr_end_pos;
+        }
+        for (int i = 0; i < char_buffer_size; i++) {
+          if (3 == char_lookup[i]) { char_lookup[i] = 1; }
+        }
+        curr_start_pos = curr_end_pos + 1;
+        matched_char_cnt = 0;
+      }
+    }
+    string window_str = "";
+    if (INT_MAX != min_end_pos) {
+      window_str = text.substr(min_start_pos, (min_end_pos - min_start_pos + 1));
+    }
+    return window_str;
+  }
+
+  /**
+   * 15.6 Multiply Large Numbers represented as Strings
+   * Given two numbers as strings. The numbers may be very large (may not fit
+   * in long long int), the task is to find sum of these two numbers.
+   * Examples:
+   * Input : num1 = 4154
+   *         num2 = 51454
+   * Output : 213779916
+   * Input :  num1 =      654154154151454545415415454
+   *          num2 = 63516561563156316545145146514654
+   * Output : 41549622603955309777243716069997997007620439937711509062916
+   *     91
+   *    912
+   *  ------
+   *    182 -> (len-l-num + 1)    |
+   *    91          .             |--> len-r-num
+   *  819           .             |
+   *  ------
+   *  82992 -> (len-l-num + len-r-num)
+   */
+  static string multiply_big_number(const string lnum, const string rnum) {
+    bool is_negative = (('-' == lnum[0] && '-' != rnum[0]) ||
+                        ('-' != lnum[0] && '-' == rnum[0]));
+    string l_num = lnum, r_num = rnum;
+    if ('-' == lnum[0]) { l_num = l_num.substr(1); }
+    if ('-' == rnum[0]) { r_num = r_num.substr(1); }
+    vector<char> digits_arr(l_num.size() + r_num.size(), 0);
+    int start_digit_idx = digits_arr.size() - 1;
+    int curr_digit_idx = 0, curr_multiple = 0;
+    for (int mult_idx = r_num.size() - 1; mult_idx >= 0; mult_idx--) {
+      for (int numb_idx = l_num.size() - 1; numb_idx >= 0; numb_idx--) {
+        curr_digit_idx = start_digit_idx - (l_num.size() - numb_idx - 1);
+        curr_multiple = (get_digit_value(r_num[mult_idx]) *
+                         get_digit_value(l_num[numb_idx]));
+        check_and_add_up_values(digits_arr, curr_multiple, curr_digit_idx);
+      }
+      start_digit_idx--;
+    }
+    for (int i = 0; i < digits_arr.size(); i++) {
+      digits_arr[i] = get_char_value(digits_arr[i]);
+    }
+    string result = ('0' == digits_arr[0]) ? string(digits_arr.begin() + 1, digits_arr.end()) :
+                                             string(digits_arr.begin(), digits_arr.end());
+    if (true == is_negative) { result = "-" + result; }
+    return result;
+  }
+
+  static void check_and_add_up_values(vector<char> & existing_digits,
+                                      int value, int start_digit_idx) {
+    int curr_value = value;
+    for (int i = start_digit_idx; i >= 0; i--) {
+      curr_value = (existing_digits[i] + curr_value);
+      existing_digits[i] = curr_value % 10;
+      curr_value = curr_value / 10;
+      if (0 == curr_value) { break; }
+    }
+  }
+
+  static int get_digit_value(char digit) { return ((int)digit - (int)'0'); }
+
+  static char get_char_value(int digit) { return (char)(digit + (int)'0'); }
+
+  /**
+   * 15.7 Substring with Concatenation of All Words
+   * You are given a string, S, and a list of words, L, that are all of the same
+   * length. Find all starting indices of substring(s) in S that is a concat of
+   * each word in L exactly once and without any intervening characters.
+   * For example, given:
+   * S: "barfoothefoobarman"
+   * L: ["foo", "bar"]
+   * You should return the indices: [0, 9].(order does not matter).
+   */
+
+  /**
    * 15.14 Text Justification
    * Given an array of words and a length L, format the text such that each
    * line has exactly L characters and is fully (left and right) justified.
@@ -318,5 +450,42 @@ int main(void) {
       vector<prob_intv>({ prob_intv(1, 2), prob_intv(3, 5), prob_intv(8, 10), prob_intv(12, 16) }), prob_intv(9, 17)
     )
   );
+
+  cout << "For example, S = ADOBECODEBANC, T = ABC Minimum window is BANC." << endl;
+  cout << ChoresUtil::find_min_window("adobecodebanc", "abc") << endl;
+  cout << ChoresUtil::find_min_window("adobecbaebanc", "abc") << endl;
+
+  /**
+   * Input : num1 = 4154
+   *         num2 = 51454
+   * Output : 213779916
+   * Input :  num1 =      654154154151454545415415454
+   *          num2 = 63516561563156316545145146514654
+   * Output : 41549622603955309777243716069997997007620439937711509062916
+   */
+  cout << ChoresUtil::multiply_big_number("0", "1") << endl;
+  cout << ChoresUtil::multiply_big_number("1", "0") << endl;
+  cout << ChoresUtil::multiply_big_number("1", "1") << endl;
+  cout << ChoresUtil::multiply_big_number("912", "1") << endl;
+  cout << ChoresUtil::multiply_big_number("1", "912") << endl;
+  cout << ChoresUtil::multiply_big_number("91", "912") << endl;
+  cout << ChoresUtil::multiply_big_number("912", "91") << endl;
+  cout << "4154 * 51454 = 213739916 | " << ChoresUtil::multiply_big_number("4154", "51454") << endl;
+  cout << "654154154151454545415415454 * 63516561563156316545145146514654 = 41549622603955309777243716069997997007620439937711509062916" << endl;
+  cout << "654154154151454545415415454 * 63516561563156316545145146514654 = "
+       << ChoresUtil::multiply_big_number("654154154151454545415415454", "63516561563156316545145146514654") << endl;
+  cout << "-654154154151454545415415454 * 63516561563156316545145146514654 = -41549622603955309777243716069997997007620439937711509062916" << endl;
+  cout << "-654154154151454545415415454 * 63516561563156316545145146514654 = "
+       << ChoresUtil::multiply_big_number("-654154154151454545415415454", "63516561563156316545145146514654") << endl;
+  cout << "654154154151454545415415454 * -63516561563156316545145146514654 = -41549622603955309777243716069997997007620439937711509062916" << endl;
+  cout << "654154154151454545415415454 * -63516561563156316545145146514654 = "
+       << ChoresUtil::multiply_big_number("654154154151454545415415454", "-63516561563156316545145146514654") << endl;
+  cout << "-654154154151454545415415454 * -63516561563156316545145146514654 = 41549622603955309777243716069997997007620439937711509062916" << endl;
+  cout << "-654154154151454545415415454 * -63516561563156316545145146514654 = "
+       << ChoresUtil::multiply_big_number("-654154154151454545415415454", "-63516561563156316545145146514654") << endl;
   return 0;
 }
+
+// cout << curr_digit_idx << " <> " << r_num << " | " << mult_idx << " <> " << l_num << " | " << numb_idx << " <> " << r_num[mult_idx] << " * " << l_num[numb_idx] << " curr_mult : " << curr_multiple << endl;
+// cout << "\tcurr-idx: " << start_digit_idx << " value: " << (int)existing_digits[i] << " carry: " << curr_value << endl;
+// for (auto & x : existing_digits) { cout << (int)x << " "; } cout << endl;
