@@ -17,7 +17,7 @@ using namespace std;
 class ChoresUtil{
 public:
   template <class Type>
-  static void print_all_elem(const vector<Type>& input) {
+  static void print_all_elem(const vector<Type> & input) {
     cout << "[ ";
     for (auto & arr : input) { cout << arr << " "; }
     cout << "]" << endl;
@@ -303,6 +303,66 @@ public:
   }
 
   /**
+   * 15.8 Pascal’s Triangle
+   * Given numRows, generate the first numRows of Pascal's triangle.
+   * For example, given numRows = 5, Return
+   * [    [1],           => r from 0 ~ 4, c from 0 ~ r, m[r][c] = m[r-1][c-1] + m[r-1][c]
+   *     [1,1],             if c == 0 || c == r - 1 => m[r-1][c]
+   *    [1,2,1],
+   *   [1,3,3,1],
+   *  [1,4,6,4,1] m[4][2] = m[3][1] + m[3][2]
+   * ]
+   */
+  static vector<vector<int>> get_pascal_triangle(int n) {
+    vector<vector<int>> triangle;
+    for (int r = 0; r < n; r++) {
+      triangle.push_back(vector<int>(r + 1, 0));
+      for (int c = 0; c <= r; c++) {
+        if (0 == c || r == c) { triangle[r][c] = 1; }
+        else { triangle[r][c] = triangle[r - 1][c - 1] + triangle[r - 1][c]; }
+      }
+    }
+    return triangle;
+  }
+
+  /**
+   * 15.10 Spiral Matrix
+   * Given a matrix of mxn elements (m rows, n columns), return all elements of
+   * the matrix in spiral order.  For example, Given the following matrix:
+   * [ [ 1, 2, 3 ],    (0, 0)         -> (0, 1)         ... (0, n - 1)     n #        i => 0
+   *   [ 4, 5, 6 ],    (1, n - 1),    -> (2, n - 1)     ... (m - 1, n -1)  m - 1 #
+   *   [ 7, 8, 9 ] ]   (m - 1, n - 2) -> (m - 1, n - 3) ... (m - 1, 0)     n - 1 #
+   *                   (m - 2, 0),    -> (m - 3, 0)     ... (1, 0)         m - 2 #
+   *
+   *                   (1, 1),        -> (1, 2)         ... (1, n -2)      n - 2 #    i => 1
+   * You should return [1,2,3,6,9,8,7,4,5].
+   */
+  static vector<int> matrix_spiral_walk(vector<vector<int>> matrix) {
+    int max_loop_cnt = (int)(ceil(matrix.size() / 2.0));
+    int row_cnt = matrix.size(), column_cnt = matrix.front().size();
+    vector<int> spiral_walk(row_cnt * column_cnt, 0);
+    for (int curr_idx = 0, loop_cnt = 0; loop_cnt < max_loop_cnt; loop_cnt++) {
+      for (int c = loop_cnt ; c < column_cnt - loop_cnt; c++) {
+        spiral_walk[curr_idx] = matrix[loop_cnt][c]; curr_idx++;
+      }
+      if (column_cnt - loop_cnt - 1 >= 0) {
+        for (int r = loop_cnt + 1; r < row_cnt - loop_cnt - 1; r++) {
+          spiral_walk[curr_idx] = matrix[r][column_cnt - loop_cnt - 1]; curr_idx++;
+        }
+      }
+      if (row_cnt - loop_cnt - 1 > loop_cnt) {
+        for (int c = column_cnt - loop_cnt - 1; c >= loop_cnt; c--) {
+          spiral_walk[curr_idx] = matrix[row_cnt - loop_cnt - 1][c]; curr_idx++;
+        }
+      }
+      for (int r = row_cnt - loop_cnt - 2; r >= loop_cnt + 1; r--) {
+        spiral_walk[curr_idx] = matrix[r][loop_cnt]; curr_idx++;
+      }
+    }
+    return spiral_walk;
+  }
+
+  /**
    * 15.14 Text Justification
    * Given an array of words and a length L, format the text such that each
    * line has exactly L characters and is fully (left and right) justified.
@@ -526,9 +586,24 @@ int main(void) {
   ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("abcdababcd", vector<string>({ "ab", "ab", "cd" })));
   cout << "S: abcdababcd | L: [ ab, ab ] | [ 4 ]" << endl;
   ChoresUtil::print_all_elem<int>(ChoresUtil::find_all_tokens("abcdababcd", vector<string>({ "ab", "ab" })));
+
+  ChoresUtil::print_all_elem_vec<int>(ChoresUtil::get_pascal_triangle(5));
+
+  vector<vector<int>> test_0({ vector<int>({ 1, 2, 3 }) });
+  ChoresUtil::print_all_elem<int>(ChoresUtil::matrix_spiral_walk(test_0));
+  vector<vector<int>> test_1({ vector<int>({ 1 }),
+                               vector<int>({ 2 }),
+                               vector<int>({ 3 }) });
+  ChoresUtil::print_all_elem<int>(ChoresUtil::matrix_spiral_walk(test_1));
+  // [1,2,3,6,9,8,7,4,5]
+  vector<vector<int>> test_2({ vector<int>({ 1, 2, 3 }),
+                               vector<int>({ 4, 5, 6 }),
+                               vector<int>({ 7, 8, 9 }) });
+  ChoresUtil::print_all_elem<int>(ChoresUtil::matrix_spiral_walk(test_2));
+  vector<vector<int>> test_3({ vector<int>({ 1, 2, 3 }),
+                               vector<int>({ 4, 5, 6 }),
+                               vector<int>({ 7, 8, 9 }),
+                               vector<int>({ 10, 11, 12 }) });
+  ChoresUtil::print_all_elem<int>(ChoresUtil::matrix_spiral_walk(test_3));
   return 0;
 }
-
-// cout << curr_digit_idx << " <> " << r_num << " | " << mult_idx << " <> " << l_num << " | " << numb_idx << " <> " << r_num[mult_idx] << " * " << l_num[numb_idx] << " curr_mult : " << curr_multiple << endl;
-// cout << "\tcurr-idx: " << start_digit_idx << " value: " << (int)existing_digits[i] << " carry: " << curr_value << endl;
-// for (auto & x : existing_digits) { cout << (int)x << " "; } cout << endl;
