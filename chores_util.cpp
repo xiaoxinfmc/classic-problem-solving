@@ -435,6 +435,52 @@ public:
   static int max_points_per_line(const vector<Point> & points_arr) {
     return 0;
   }
+
+  /**
+   * 2.1.12 Next Permutation
+   * Implement next permutation, which rearranges numbers into the
+   * lexicographically next greater permutation of numbers. If such arrangement
+   * is not possible, it must rearrange it as the lowest possible order (ie,
+   * sorted in ascending order). The replacement must be in-place, do not
+   * allocate extra memory. Here are some examples. Inputs are in the left-hand
+   * column and its corresponding outputs are in the right-hand column.
+   * 1,2,3 => 1,3,2
+   * 3,2,1 => 1,2,3
+   * 1,1,5 => 1,5,1
+   *
+   * swap digits from LSB, 123 -> 132
+   * 6 8 7 4 3 2 => from 2 -> 8, 6 breaks the ascending & 7 is the closest one
+   *   ^            6 <-> 7, => 7 8 6 4 3 2 => 7 2 3 4 6 8
+   *                              1 2 3 4 5 (size -> 6) => (6 - 1) / 2
+   */
+  static string get_next_sequence(string input) {
+    string digits = input;
+    int curr_pos = digits.size() - 1, swap_pos = curr_pos; char temp;
+    while (curr_pos >= 0) {
+      if (curr_pos > 0 && digits[curr_pos] > digits[curr_pos - 1]){ break; }
+      curr_pos--;
+    }
+    curr_pos--;
+    if (curr_pos >= 0) {
+      for (swap_pos = curr_pos; swap_pos < digits.size(); swap_pos++) {
+        if (digits[curr_pos] > digits[swap_pos]) { break; }
+      }
+      swap_pos--;
+      if (swap_pos < digits.size()) {
+        temp = digits[curr_pos];
+        digits[curr_pos] = digits[swap_pos];
+        digits[swap_pos] = temp;
+      }
+    }
+    if (curr_pos - swap_pos > 1) {
+      for (int i = 0; i < (digits.size() - curr_pos - 1) / 2; i++) {
+        temp = digits[curr_pos + i];
+        digits[curr_pos + i] = digits[digits.size() - i - 1];
+        digits[digits.size() - i - 1] = temp;
+      }
+    }
+    return digits;
+  }
 };
 
 int main(void) {
@@ -605,5 +651,17 @@ int main(void) {
                                vector<int>({ 7, 8, 9 }),
                                vector<int>({ 10, 11, 12 }) });
   ChoresUtil::print_all_elem<int>(ChoresUtil::matrix_spiral_walk(test_3));
+  /**
+   * 1,2,3 => 1,3,2
+   * 3,2,1 => 1,2,3
+   * 1,1,5 => 1,5,1
+   * 6 8 7 4 3 2 => 7 2 3 4 6 8
+   */
+  cout << "1 <=> 1 <=> " << ChoresUtil::get_next_sequence("1") << endl;
+  cout << "123 <=> 132 <=> " << ChoresUtil::get_next_sequence("123") << endl;
+  cout << "321 <=> 123 <=> " << ChoresUtil::get_next_sequence("321") << endl;
+  cout << "115 <=> 151 <=> " << ChoresUtil::get_next_sequence("115") << endl;
+  cout << "687432 <=> 723468 <=> " << ChoresUtil::get_next_sequence("687432") << endl;
+
   return 0;
 }
