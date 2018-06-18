@@ -426,6 +426,7 @@ public:
     }
     return justified_text;
   }
+
   /**
    * 15.15 Max Points on a Line
    * Given n points on a 2D plane, find the maximum number of points that lie on
@@ -480,6 +481,95 @@ public:
       }
     }
     return digits;
+  }
+
+  /**
+   * 2.1.3 Search in Rotated Sorted Array
+   * Suppose a sorted array is rotated at some pivot unknown to you beforehand
+   * (i.e., 0 1 2 4 5 6 7 might become 4 5 6 7 0 1 2).
+   * You are given a target value to search. If found in the array return its
+   * index otherwise return -1 You may assume no duplicate exists in the array
+   * --> up --> down, if last elem > first elem, then no rotation.
+   * 2 4 5 6 7 0 1 => search for max, (0 + 6) / 2 -> 3, (6 > 0 & 2 < 6) => 7 0 1
+   * 0 1 2 3 4 5  6  7 8 9 => 7 0 1 => 0, & 7 > 1 & 7 > 0 => (7, 0)
+   * 2 3 4 5 6 7 -4 -3 0 1 => search 0, 6  -> pivot, 2 < 6 & 2 > 1 => 7 0 1 -3 -4
+   *                       => search 0, -3 -> pivot, 7 > -4 & -4 < 0 => 0 1
+   */
+  static int search_rotated_sorted_arr(vector<int> nums, int target) {
+    int left_pos = 0, right_pos = nums.size() - 1, target_pos = 0;
+    while (left_pos <= right_pos) {
+      target_pos = (left_pos + right_pos) / 2;
+      if (nums[target_pos] == target) { break; }
+      if (left_pos < target_pos) {
+        if (((nums[left_pos] < nums[target_pos]) && (nums[left_pos] <= target) && (target <= nums[target_pos])) || // no rotation for left part
+            ((nums[left_pos] > nums[target_pos]) && (nums[left_pos] >= target) && (target <= nums[target_pos]))) {
+          right_pos = target_pos - 1; continue;
+        }
+      }
+      if (right_pos > target_pos) {
+        if (((nums[target_pos] < nums[right_pos]) && (nums[target_pos] <= target) && (target <= nums[right_pos])) || // no rotation for left part
+            ((nums[target_pos] > nums[right_pos]) && (nums[target_pos] >= target) && (target <= nums[right_pos]))) {
+          left_pos = target_pos + 1; continue;
+        }
+      }
+      return -1;
+    }
+    return target_pos;
+  }
+
+  /**
+   * 2.1.5 Median of Two Sorted Arrays
+   * There are two sorted arrays A and B of size m and n respectively. Find
+   * the median of the two sorted arrays. The overall run time complexity
+   * should be O(log(m + n)).           v
+   * [ 1, 2, 7, 8, 9 ] => [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] median is 5 (id => 4)
+   * [ 3, 4, 5, 6 ]       5 # in total, first half [ 1, 2 ], from A or B
+   * A => [ 1, 2 ], B => [ 3, 4 ] => B covers more as B [1] > A[1]
+   * All half of A will be included before B[1] merged => not including 5.
+   * => A[k / 2 - 1] == B[k / 2 - 1] => either one is good
+   *    A[k / 2 - 1] < B[k / 2 - 1] => A[start_pos ... k / 2 - 1] => can skip
+   *    A[k / 2 - 1] > B[k / 2 - 1] => B[start_pos ... k / 2 - 1] => can skip
+   */
+  static double find_median_elem(vector<int> l_sorted_arr,
+                                 vector<int> r_sorted_arr) {
+    int l_arr_size = l_sorted_arr.size(), r_arr_size = r_sorted_arr.size();
+    if (0 == (l_arr_size + r_arr_size) % 2) {
+      return (
+        (find_kth_elem(l_sorted_arr.begin(), l_arr_size,
+                       r_sorted_arr.begin(), r_arr_size,
+                       (l_arr_size + r_arr_size) / 2) +
+         find_kth_elem(l_sorted_arr.begin(), l_arr_size,
+                       r_sorted_arr.begin(), r_arr_size,
+                       (l_arr_size + r_arr_size) / 2 + 1)) / 2.0
+      );
+    } else {
+      return find_kth_elem(l_sorted_arr.begin(), l_arr_size,
+                           r_sorted_arr.begin(), r_arr_size,
+                           (l_arr_size + r_arr_size) / 2 + 1);
+    }
+  }
+
+  static int find_kth_elem(vector<int>::const_iterator l_arr_itr, int l_elem_remained,
+                           vector<int>::const_iterator r_arr_itr, int r_elem_remained,
+                           int elem_to_merge) {
+    // always make the case that l_arr have lq elem to merge
+    if (l_elem_remained > r_elem_remained) {
+      return find_kth_elem(r_arr_itr, r_elem_remained, l_arr_itr, l_elem_remained, elem_to_merge);
+    }
+    // return from r if l over
+    if (0 == l_elem_remained) { return * (r_arr_itr + elem_to_merge - 1); }
+    // return min
+    if (1 == elem_to_merge) { return min(* l_arr_itr, * r_arr_itr); }
+    int l_delta = min(elem_to_merge / 2, l_elem_remained),
+        r_delta = elem_to_merge - l_delta;
+    if (* (l_arr_itr + l_delta - 1) < * (r_arr_itr + r_delta - 1)) {
+      return find_kth_elem(l_arr_itr + l_delta, l_elem_remained - l_delta,
+                           r_arr_itr, r_elem_remained, elem_to_merge - l_delta);
+    } else if (* (l_arr_itr + l_delta - 1) > * (r_arr_itr + r_delta - 1)) {
+      return find_kth_elem(l_arr_itr, l_elem_remained, r_arr_itr + r_delta,
+                           r_elem_remained - r_delta, elem_to_merge - r_delta);
+    }
+    return INT_MAX;
   }
 };
 
@@ -662,6 +752,61 @@ int main(void) {
   cout << "321 <=> 123 <=> " << ChoresUtil::get_next_sequence("321") << endl;
   cout << "115 <=> 151 <=> " << ChoresUtil::get_next_sequence("115") << endl;
   cout << "687432 <=> 723468 <=> " << ChoresUtil::get_next_sequence("687432") << endl;
+  /* 2 3 4 5 6 7 -4 -3 0 1 => search 0, 6  -> pivot, 2 < 6 & 2 > 1 => 7 0 1 -3 -4
+   *                       => search 0, -3 -> pivot, 7 > -4 & -4 < 0 => 0 1
+   */
+  cout << "2 3 4 5 6 7 -4 -3 0 1 <=> 0 | 8 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 3, 4, 5, 6, 7, -4, -3, 0, 1 }), 0
+          )
+       << endl;
+  cout << "2 3 4 5 6 7 -4 -3 0 1 <=> 1 | 9 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 3, 4, 5, 6, 7, -4, -3, 0, 1 }), 1
+          )
+       << endl;
+  cout << "2 3 4 5 6 7 -4 -3 0 1 <=> 2 | 0 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 3, 4, 5, 6, 7, -4, -3, 0, 1 }), 2
+          )
+       << endl;
+  cout << "-4 -3 0 1 2 3 4 5 6 7 <=> 2 | 4 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ -4, -3, 0, 1, 2, 3, 4, 5, 6, 7 }), 2
+          )
+       << endl;
+
+  cout << "2 3 4 5 6 7 -4 -3 0 0 0 0 1 <=> 0 | 8 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 3, 4, 5, 6, 7, -4, -3, 0, 0, 0, 0, 1 }), 0
+          )
+       << endl;
+  cout << "2 3 4 5 6 7 -4 -3 0 1 1 1 1 <=> 1 | 9 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 3, 4, 5, 6, 7, -4, -3, 0, 1, 1, 1, 1 }), 1
+          )
+       << endl;
+  cout << "2 2 2 2 3 4 5 6 7 -4 -3 0 1 <=> 2 | 0 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ 2, 2, 2, 2, 3, 4, 5, 6, 7, -4, -3, 0, 1 }), 2
+          )
+       << endl;
+  cout << "-4 -3 0 1 2 2 2 2 3 4 5 6 7 <=> 2 | 4 <=> "
+       << ChoresUtil::search_rotated_sorted_arr(
+            vector<int>({ -4, -3, 0, 1, 2, 2, 2, 2, 3, 4, 5, 6, 7 }), 2
+          )
+       << endl;
+  cout << "{2, 3, 6, 7, 9} & {1, 4, 8, 10} <=> 6 <=> "
+       << ChoresUtil::find_median_elem(vector<int>({ 2, 3, 6, 7, 9 }),
+                                       vector<int>({ 1, 4, 8, 10 }))
+       << endl;
+  cout << "{1, 4, 8, 10} & {2, 3, 6, 7, 9} <=> 6 <=> "
+       << ChoresUtil::find_median_elem(vector<int>({ 1, 4, 8, 10 }),
+                                       vector<int>({ 2, 3, 6, 7, 9 }))
+       << endl;
+  cout << "{1} & {2} <=> 1.5 <=> "
+       << ChoresUtil::find_median_elem(vector<int>({ 1 }), vector<int>({ 2 }))
+       << endl;
 
   return 0;
 }
