@@ -14,6 +14,8 @@
 
 using namespace std;
 
+const static int V = 9;
+
 class ChoresUtil{
 public:
   template <class Type>
@@ -549,9 +551,9 @@ public:
     }
   }
 
-  static int find_kth_elem(vector<int>::const_iterator l_arr_itr, int l_elem_remained,
-                           vector<int>::const_iterator r_arr_itr, int r_elem_remained,
-                           int elem_to_merge) {
+  static int find_kth_ele(vector<int>::const_iterator l_arr_itr, int l_elem_remained,
+                          vector<int>::const_iterator r_arr_itr, int r_elem_remained,
+                          int elem_to_merge) {
     // always make the case that l_arr have lq elem to merge
     if (l_elem_remained > r_elem_remained) {
       return find_kth_elem(r_arr_itr, r_elem_remained, l_arr_itr, l_elem_remained, elem_to_merge);
@@ -570,6 +572,129 @@ public:
                            r_elem_remained - r_delta, elem_to_merge - r_delta);
     }
     return INT_MAX;
+  }
+
+  /*      v                              v |
+   * ==>> 1 2 7  9 11 15             x x x x x x x (x will come before s -> skip xxx)
+   * ==>> 3 4 8 10 14 17 19          s s s s s s s (x will cannot be median if x < s)
+   *                                     ^ |
+   */
+  static int find_kth_elem(vector<int>::const_iterator l_arr_itr, int l_elem_left,
+                           vector<int>::const_iterator r_arr_itr, int r_elem_left,
+                           int elems_to_merge) {
+    // if l_arr_itr has more elem left, then switch it with r_arr_itr.
+    if (l_elem_left > r_elem_left) {
+      return find_kth_elem(
+        r_arr_itr, r_elem_left, l_arr_itr, l_elem_left, elems_to_merge
+      );
+    }
+    // if l_arr_itr all fetched, then return things from r_arr_itr
+    if (0 == l_elem_left) { return * (r_arr_itr + elems_to_merge - 1); }
+    // if only 1 elem to fetch, then return the min of them
+    if (1 == elems_to_merge) { return min(* l_arr_itr, * r_arr_itr); }
+
+    int l_elems_to_merge = min(elems_to_merge / 2, l_elem_left);
+    int r_elems_to_merge = elems_to_merge - l_elems_to_merge;
+
+    if (* (l_arr_itr + l_elems_to_merge - 1) < * (r_arr_itr + r_elems_to_merge - 1)) {
+      return find_kth_elem(l_arr_itr + l_elems_to_merge,
+                           l_elem_left - l_elems_to_merge,
+                           r_arr_itr, r_elem_left,
+                           elems_to_merge - l_elems_to_merge);
+    } else {
+      return find_kth_elem(l_arr_itr, l_elem_left,
+                           r_arr_itr + r_elems_to_merge,
+                           r_elem_left - r_elems_to_merge,
+                           elems_to_merge - r_elems_to_merge);
+    }
+  }
+
+  /*
+   * int ghmet[V][V] = {{0, 4, 0, 0, 0, 0, 0, 8, 0},
+   *                    {4, 0, 8, 0, 0, 0, 0, 11, 0},
+   *                    {0, 8, 0, 7, 0, 4, 0, 0, 2},
+   *                    {0, 0, 7, 0, 9, 14, 0, 0, 0},
+   *                    {0, 0, 0, 9, 0, 10, 0, 0, 0},
+   *                    {0, 0, 4, 14, 10, 0, 2, 0, 0},
+   *                    {0, 0, 0, 0, 0, 2, 0, 1, 6},
+   *                    {8, 11, 0, 0, 0, 0, 1, 0, 7},
+   *                    {0, 0, 2, 0, 0, 0, 6, 7, 0}
+   *                   };
+   *calc_optimal_schedule(0, ghmet);
+      dist[source] ← 0                                    // Initialization
+
+      create vertex set Q
+
+      for each vertex v in Graph:
+         if v ≠ source
+            dist[v] ← INFINITY                          // Unknown distance from source to v
+         prev[v] ← UNDEFINED                             // Predecessor of v
+         Q.add_with_priority(v, dist[v])
+
+
+      while Q is not empty:                          // The main loop
+         u ← Q.extract_min()                         // Remove and return best vertex
+         for each neighbor v of u:              // only v that is still in Q
+             alt ← dist[u] + length(u, v) 
+             if alt < dist[v]
+                 dist[v] ← alt
+                 prev[v] ← u
+                 Q.decrease_priority(v, alt)
+
+     return dist, prev
+   */
+  class Job {
+  public:
+    Job(int id, int priority, bool visited = false) :
+      job_id(id), job_priority(priority), is_visited(visited)  {}
+    virtual ~Job() {}
+    int job_id, job_priority;
+    bool is_visited = false;
+    friend bool operator< (const Job & ljob, const Job & rjob) {
+      return ljob.job_priority * -1 < rjob.job_priority * -1;
+    }
+    friend bool operator== (const Job & ljob, const Job & rjob) {
+      return ljob.job_priority == rjob.job_priority;
+    }
+    friend ostream & operator<< (ostream & os, const Job & job) {
+      os << "[ " << job.job_id << ", " << job.job_priority << ", " << job.is_visited << " ]";
+      return os;
+    }
+  };
+
+  static vector<Job> calc_optimal_schedule(int job_graph[V][V], int start_id) {
+    int total_vertex_cnt = sizeof(job_graph[0]) / sizeof(job_graph[0][0]);
+    vector<Job> vertex_dist_queue(total_vertex_cnt, Job(-1, INT_MAX));
+    for (int i = 0; i < total_vertex_cnt; i++) {
+      vertex_dist_queue[i].job_id = i;
+      if (i == start_id) { vertex_dist_queue[i].job_priority = 0; }
+    }
+    vector<Job> vertex_visit_heap;
+    vertex_visit_heap.push_back(vertex_dist_queue[start_id]);
+    make_heap(vertex_visit_heap.begin(), vertex_visit_heap.end());
+
+    while (false == vertex_visit_heap.empty()) {
+      Job pending_job = vertex_dist_queue[vertex_visit_heap.front().job_id];
+      pop_heap(vertex_visit_heap.begin(), vertex_visit_heap.end());
+      vertex_visit_heap.pop_back();
+
+      if (true == pending_job.is_visited) { continue; }
+
+      for (int i = 0; i < total_vertex_cnt; i++) {
+        if (job_graph[pending_job.job_id][i] <= 0) { continue; }
+        int curr_job_priority = (
+          job_graph[pending_job.job_id][i] + pending_job.job_priority
+        );
+        if (curr_job_priority < vertex_dist_queue[i].job_priority) {
+          vertex_dist_queue[i].job_priority = curr_job_priority;
+          vertex_visit_heap.push_back(vertex_dist_queue[i]);
+          push_heap(vertex_visit_heap.begin(), vertex_visit_heap.end());
+        }
+      }
+      vertex_dist_queue[pending_job.job_id].is_visited = true;
+    }
+
+    return vertex_dist_queue;
   }
 };
 
@@ -807,6 +932,23 @@ int main(void) {
   cout << "{1} & {2} <=> 1.5 <=> "
        << ChoresUtil::find_median_elem(vector<int>({ 1 }), vector<int>({ 2 }))
        << endl;
+  /* V D 0 0 1 4 2 12 3 19 4 21 5 11 6 9 7 8 8 14 */
+  int ghmet[V][V] = {{0, 4, 0, 0, 0, 0, 0, 8, 0},
+                     {4, 0, 8, 0, 0, 0, 0, 11, 0},
+                     {0, 8, 0, 7, 0, 4, 0, 0, 2},
+                     {0, 0, 7, 0, 9, 14, 0, 0, 0},
+                     {0, 0, 0, 9, 0, 10, 0, 0, 0},
+                     {0, 0, 4, 14, 10, 0, 2, 0, 0},
+                     {0, 0, 0, 0, 0, 2, 0, 1, 6},
+                     {8, 11, 0, 0, 0, 0, 1, 0, 7},
+                     {0, 0, 2, 0, 0, 0, 6, 7, 0}
+                    };
+  ChoresUtil::print_all_elem<ChoresUtil::Job>(vector<ChoresUtil::Job>({
+    ChoresUtil::Job(0, 0, true), ChoresUtil::Job(1, 4, true), ChoresUtil::Job(2, 12, true),
+    ChoresUtil::Job(3, 19, true), ChoresUtil::Job(4, 21, true), ChoresUtil::Job(5, 11, true),
+    ChoresUtil::Job(6, 9, true), ChoresUtil::Job(7, 8, true), ChoresUtil::Job(8, 14, true)
+  }));
+  ChoresUtil::print_all_elem<ChoresUtil::Job>(ChoresUtil::calc_optimal_schedule(ghmet, 0));
 
   return 0;
 }
