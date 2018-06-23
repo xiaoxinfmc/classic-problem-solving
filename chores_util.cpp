@@ -696,6 +696,103 @@ public:
 
     return vertex_dist_queue;
   }
+
+  /*
+   * shp: pick unvisited vertex nearest to starting point each time.
+   * mst: pick unvisited vertex nearest to curr spanning tree each time.
+   *
+   * Let us create the following graph
+          2    3
+      (0)--(1)--(2)
+       |   / \   |
+      6| 8/   \5 |7
+       | /     \ |
+      (3)-------(4)
+            9
+     int graph[V][V] = {{0, 2, 0, 6, 0},
+                        {2, 0, 3, 8, 5},
+                        {0, 3, 0, 0, 7},
+                        {6, 8, 0, 0, 9},
+                        {0, 5, 7, 9, 0},
+                       };
+     static vector<mst_vertex> generate_mst(int vertex_graph[V][V]) {
+     Edge   Weight
+     0 - 1    2
+     1 - 2    3
+     0 - 3    6
+     1 - 4    5
+  */
+  class mst_vertex {
+  public:
+    mst_vertex(int vid, int vpriority, int vfrom) {
+      id = vid; priority = vpriority; id_from = vfrom;
+    }
+    virtual ~mst_vertex(){}
+    // default stl heap is max heap, by inverting the < we got min heap.
+    friend bool operator< (const mst_vertex & lv, const mst_vertex & rv) {
+      return (lv.priority * -1 < rv.priority * -1);
+    }
+    friend bool operator== (const mst_vertex & lv, const mst_vertex & rv) {
+      return (lv.priority == rv.priority);
+    }
+    friend ostream & operator<< (ostream & os, const mst_vertex & v) {
+      os << "< " << v.id << ", " << v.priority << ", " << v.id_from << " >"; return os;
+    }
+    int id, priority, id_from;
+  };
+
+  class mst_edge {
+  public:
+    mst_edge(int f, int t, int w) : from(f), to(t), weight(w) {}
+    virtual ~mst_edge() {}
+    friend ostream & operator<< (ostream & os, const mst_edge & e) {
+      os << "(" << e.from << " -> " << e.to << " : " << e.weight << ")"; return os;
+    }
+    friend bool operator< (const mst_edge & le, const mst_edge & re) {
+      return (le.weight * -1 < re.weight);
+    }
+    friend bool operator== (const mst_edge & le, const mst_edge & re) {
+      return (le.weight == re.weight);
+    }
+    int from, to, weight;
+  };
+
+  static vector<mst_edge> generate_mst(int vertex_graph[V][V]) {
+    vector<mst_edge> mst_edges;
+    vector<mst_vertex> mst_vertex_heap;
+
+    int total_vertices_cnt = sizeof(vertex_graph[0])/sizeof(vertex_graph[0][0]);
+    vector<bool> is_vertex_visited_lookup(total_vertices_cnt, false);
+
+    // start from vertex 0
+    mst_vertex_heap.push_back(mst_vertex(0, 0, -1));
+
+    while (false == mst_vertex_heap.empty()) {
+
+      mst_vertex pending_vertex = mst_vertex_heap.front();
+      pop_heap(mst_vertex_heap.begin(), mst_vertex_heap.end());
+      mst_vertex_heap.pop_back();
+
+      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
+      if (-1 != pending_vertex.id_from) {
+        mst_edges.push_back(
+          mst_edge(pending_vertex.id_from, pending_vertex.id,
+                   vertex_graph[pending_vertex.id_from][pending_vertex.id]
+          )
+        );
+      }
+      for (int i = 0; i < total_vertices_cnt; i++) {
+        if (vertex_graph[pending_vertex.id][i] <= 0) { continue; }
+        mst_vertex_heap.push_back(
+          mst_vertex(i, vertex_graph[pending_vertex.id][i], pending_vertex.id)
+        );
+        push_heap(mst_vertex_heap.begin(), mst_vertex_heap.end());
+      }
+
+      is_vertex_visited_lookup[pending_vertex.id] = true;
+    }
+    return mst_edges;
+  }
 };
 
 int main(void) {
@@ -950,5 +1047,16 @@ int main(void) {
   }));
   ChoresUtil::print_all_elem<ChoresUtil::Job>(ChoresUtil::calc_optimal_schedule(ghmet, 0));
 
+  int mst_graph[V][V] = {{0, 2, 0, 6, 0},
+                         {2, 0, 3, 8, 5},
+                         {0, 3, 0, 0, 7},
+                         {6, 8, 0, 0, 9},
+                         {0, 5, 7, 9, 0},
+                        };
+  ChoresUtil::print_all_elem<ChoresUtil::mst_edge>(vector<ChoresUtil::mst_edge>({
+    ChoresUtil::mst_edge(0, 1, 2), ChoresUtil::mst_edge(1, 2, 3),
+    ChoresUtil::mst_edge(0, 3, 6), ChoresUtil::mst_edge(1, 4, 5),
+  }));
+  ChoresUtil::print_all_elem<ChoresUtil::mst_edge>(ChoresUtil::generate_mst(mst_graph));
   return 0;
 }
