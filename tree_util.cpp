@@ -188,15 +188,102 @@ namespace tree_util {
     _find_bst_inorder_succ(root_ptr, dest_ptr, & succ_node, & prev_node);
     return succ_node;
   }
+
+  static bool _is_input_valid(const vector<int> & preorder,
+                              int pre_min, int pre_max,
+                              const vector<int> & inorder,
+                              int in_min, int in_max) {
+    return (
+      (pre_max >= pre_min) && (pre_min >= 0) && (pre_max < preorder.size()) &&
+      (in_max >= in_min) && (in_min >= 0) && (in_max < inorder.size()) &&
+      ((pre_max - pre_min) == (in_max - in_min))
+    );
+  }
+  /*
+   *                  4
+   *                /   \
+   *               3     6
+   *              / \   / \
+   *             1   2 5   7
+   *                 { pivot | left-subtree | right-subtree }
+   * int[] peorder = { 4, 3, 1, 2, | 6, 5, 7 }
+   *                 { left-subtree | pivot | right-subtree }
+   * int[] inorder = { 1, 2, 3, 4, | 5, 6, 7 }
+   * build_bst_via_pre_in(n) = n + build_bst_via_pre_in(n/2) +
+   *                               build_bst_via_pre_in(n/2)
+   * - assume all values are uniq & input orders are valid.
+   * - find pivot & left-subt & right-subt took O(n)
+   * - T(n) -> nlogn
+   */
+  static binary_tree_node * build_bst_via_pre_and_in(const vector<int> & preorder,
+                                                     int pre_min, int pre_max,
+                                                     const vector<int> & inorder,
+                                                     int in_min, int in_max){
+    binary_tree_node * root_ptr = NULL;
+    if (false == _is_input_valid(preorder, pre_min, pre_max,
+                                 inorder, in_min, in_max)) { return root_ptr; }
+    root_ptr = new binary_tree_node(preorder[pre_min]);
+    if (in_max == in_min) { return root_ptr; }
+    int preorder_pivot = pre_min, inorder_pivot = in_min;
+    while (inorder[inorder_pivot] != preorder[pre_min]) {
+      preorder_pivot++; inorder_pivot++;
+    }
+    root_ptr->left_ptr = build_bst_via_pre_and_in(
+      preorder, pre_min + 1, preorder_pivot, inorder, in_min, inorder_pivot - 1
+    );
+    root_ptr->right_ptr = build_bst_via_pre_and_in(
+      preorder, preorder_pivot + 1, pre_max, inorder, inorder_pivot + 1, in_max
+    );
+    return root_ptr;
+  }
+  /*
+   *                  4
+   *                /   \
+   *               3     6
+   *              / \   / \
+   *             1   2 5   7
+   *                 { left-subtree | right-subtree | pivot }
+   * int[] ptorder = { 1, 2, 3, 5, 7, 6, 4 }
+   *                 { left-subtree | pivot | right-subtree }
+   * int[] inorder = { 1, 2, 3, 4, 5, 6, 7 }
+   */
+  static binary_tree_node * build_bst_via_post_and_in(const vector<int> & postorder,
+                                                      int post_min, int post_max,
+                                                      const vector<int> & inorder,
+                                                      int in_min, int in_max){
+    binary_tree_node * root_ptr = NULL;
+    if (false == _is_input_valid(postorder, post_min, post_max,
+                                 inorder, in_min, in_max)) { return root_ptr; }
+    root_ptr = new binary_tree_node(postorder[post_max]);
+    if (in_max == in_min) { return root_ptr; }
+
+    int postorder_pivot = post_min, inorder_pivot = in_min;
+    while (inorder[inorder_pivot] != postorder[post_max]) {
+      postorder_pivot++; inorder_pivot++;
+    }
+    root_ptr->left_ptr = build_bst_via_post_and_in(
+      postorder, post_min, postorder_pivot - 1, inorder, in_min, inorder_pivot - 1
+    );
+    root_ptr->right_ptr = build_bst_via_post_and_in(
+      postorder, postorder_pivot, post_max - 1, inorder, inorder_pivot + 1, in_max
+    );
+    return root_ptr;
+  }
 };
 
 int main(void) {
   using tree_util::binary_tree_node;
   using tree_util::print_all_elem;
   using tree_util::bfs_bst_print;
-  using tree_util::bfs_bst_connect;
   using tree_util::bfs_bst_print_by_neighbor;
   using tree_util::lvr_bst_print;
+  using tree_util::lrv_bst_print;
+  using tree_util::vlr_bst_print;
+
+  using tree_util::bfs_bst_connect;
+  using tree_util::bst_in_column_order;
+  using tree_util::build_bst_via_pre_and_in;
+  using tree_util::build_bst_via_post_and_in;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -217,6 +304,7 @@ int main(void) {
   bfs_bst_print(&a);
   bfs_bst_connect(&a);
   bfs_bst_print_by_neighbor(&a);
+
   /**
    *       6a
    *      /   \
@@ -235,6 +323,33 @@ int main(void) {
   cout << c << " : " << bst_inorder_succ(&a, &c) << endl;
   cout << i << " : " << bst_inorder_succ(&a, &i) << endl;
   cout << h << " : " << bst_inorder_succ(&a, &h) << endl;
+
+
+  vector<int> inorder({ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 });
+  vector<int> preorder({ 6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11 });
+  vector<int> postorder({ 3, 2, 1, 5, 4, 7, 9, 11, 10, 8, 6 });
+
+  cout << endl << "4. build_bst_via_pre_and_in" << endl;
+  cout << "in-order: 1 2 3 4 5 6 7 8 9 10 11" << endl
+       << "pe-order: 6 4 1 2 3 5 8 7 10 9 11" << endl;
+  cout << "in-order: "; lvr_bst_print(&a); cout << endl;
+  cout << "pe-order: "; vlr_bst_print(&a); cout << endl;
+  binary_tree_node * ei_root = build_bst_via_pre_and_in(
+    preorder, 0, preorder.size() - 1, inorder, 0, inorder.size() - 1
+  );
+  cout << "in-order: "; lvr_bst_print(ei_root); cout << endl;
+  cout << "pe-order: "; vlr_bst_print(ei_root); cout << endl;
+
+  cout << endl << "5. build_bst_via_post_and_in" << endl;
+  cout << "in-order: 1 2 3 4 5 6 7 8 9 10 11" << endl
+       << "pt-order: 3 2 1 5 4 7 9 11 10 8 6" << endl;
+  cout << "in-order: "; lvr_bst_print(&a); cout << endl;
+  cout << "pt-order: "; lrv_bst_print(&a); cout << endl;
+  binary_tree_node * pi_root = build_bst_via_post_and_in(
+    postorder, 0, postorder.size() - 1, inorder, 0, inorder.size() - 1
+  );
+  cout << "in-order: "; lvr_bst_print(pi_root); cout << endl;
+  cout << "pt-order: "; lrv_bst_print(pi_root); cout << endl;
 
   return 0;
 }
