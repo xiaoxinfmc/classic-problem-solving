@@ -168,6 +168,26 @@ namespace tree_util {
       node_ptr_buffer.pop_front();
     }
   }
+
+  static void _find_bst_inorder_succ(binary_tree_node * root_ptr,
+                                     binary_tree_node * dest_ptr,
+                                     binary_tree_node * succ_ptr,
+                                     binary_tree_node * prev_ptr) {
+    if (NULL == root_ptr) { return; }
+    _find_bst_inorder_succ(root_ptr->left_ptr, dest_ptr, succ_ptr, prev_ptr);
+    if (root_ptr == dest_ptr) { * prev_ptr = * root_ptr; }
+    if (-1 != prev_ptr->value && -1 == succ_ptr->value && root_ptr != dest_ptr){
+      * succ_ptr = * root_ptr; return;
+    }
+    _find_bst_inorder_succ(root_ptr->right_ptr, dest_ptr, succ_ptr, prev_ptr);
+  }
+
+  static binary_tree_node bst_inorder_succ(binary_tree_node * root_ptr,
+                                           binary_tree_node * dest_ptr) {
+    binary_tree_node succ_node(-1), prev_node(-1);
+    _find_bst_inorder_succ(root_ptr, dest_ptr, & succ_node, & prev_node);
+    return succ_node;
+  }
 };
 
 int main(void) {
@@ -176,6 +196,7 @@ int main(void) {
   using tree_util::bfs_bst_print;
   using tree_util::bfs_bst_connect;
   using tree_util::bfs_bst_print_by_neighbor;
+  using tree_util::lvr_bst_print;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -186,16 +207,34 @@ int main(void) {
   d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
   g.left_ptr = &i;  g.right_ptr = &h;
 
-  cout << "1. bst_in_column_order:" << endl;
+  cout << endl << "1. bst_in_column_order:" << endl;
   cout << "[ (1, -2, 2, 0) (4, -1, 1, 0) (2, -1, 3, 1) (6, 0, 0, 0) "
        << "(5, 0, 2, 1) (7, 0, 2, 0) (3, 0, 4, 1) (8, 1, 1, 1) (9, 1, 3, 0) "
        << "(10, 2, 2, 1) (11, 3, 3, 1) ]" << endl;
   print_all_elem<binary_tree_node>(bst_in_column_order(&a));
 
-  cout << "2. bfs_bst_connect:" << endl;
+  cout << endl << "2. bfs_bst_connect:" << endl;
   bfs_bst_print(&a);
   bfs_bst_connect(&a);
   bfs_bst_print_by_neighbor(&a);
+  /**
+   *       6a
+   *      /   \
+   *    4b     c8
+   *    / \   / \
+   *  1d  5e f7  g10
+   *    \       / \
+   *    2t     i9   h11
+   *      \
+   *      3k
+   */
+  cout << endl << "3. bst_inorder_succ:" << endl;
+  lvr_bst_print(&a); cout << endl;
+  cout << k << " : " << bst_inorder_succ(&a, &k) << endl;
+  cout << b << " : " << bst_inorder_succ(&a, &b) << endl;
+  cout << c << " : " << bst_inorder_succ(&a, &c) << endl;
+  cout << i << " : " << bst_inorder_succ(&a, &i) << endl;
+  cout << h << " : " << bst_inorder_succ(&a, &h) << endl;
 
   return 0;
 }
