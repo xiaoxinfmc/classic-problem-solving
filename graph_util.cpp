@@ -216,6 +216,76 @@ namespace graph_util {
 
     return mst_edeges;
   }
+
+  /*
+   * Check whether the original sequence org can be uniquely reconstructed from
+   * the sequences in seqs. The org sequence is a permutation of the integers
+   * from 1 to n, with 1 ≤ n ≤ 10^4. Reconstruction means building a shortest
+   * common supersequence of the sequences in seqs (i.e., a shortest sequence
+   * so that all sequences in seqs are subsequences of it). Determine whether
+   * there is only one sequence that can be reconstructed from seqs and it is
+   * the org sequence.
+   *
+   * Example 1:
+   * Input: * org: [1,2,3], seqs: [[1,2],[1,3]]
+   * Output: false
+   * Explanation: [1,2,3] is not the only one sequence that can be reconstructed,
+   *              because [1,3,2] is a valid sequence that can be reconstructed.
+   * Example 2:
+   * Input: org: [1,2,3], seqs: [[1,2]]
+   * Output: false
+   * Explanation: The reconstructed sequence can only be [1,2].
+   *
+   * Example 3:
+   * Input: org: [1,2,3], seqs: [[1,2],[1,3],[2,3]]
+   * Output: true
+   * Explanation: The sequences [1,2], [1,3], and [2,3] can uniquely reconstruct
+   *              the original sequence [1,2,3].
+   * 1 > 2
+   * v   v
+   * 3 < +
+   * Example 4:
+   * Input: org: [4,1,5,2,6,3], seqs: [[5,2,6,3],[4,1,5,2]]
+   * Output: true
+   * map a => all links need to be confirmed
+   *     b => all value => curr-index to check conflicts. 5 & 2 => 2 < 3 => good
+   *
+   * 4 - 1
+   *     |
+   *     5 - 2 - 6 - 3
+   * [ 10,000, 10,000 ] => 10,000-10,000
+   * [      4,      3 ] =>      4-00,003
+   * only 1 sequence can be constructed => seqs covers all links & no conflicts.
+   */
+  static bool is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
+    unordered_map<int, int> links_to_confirm_map, value_to_index_map;
+
+    for (int i = 0; i < origin_seq.size(); i++) {
+      if (i < origin_seq.size() - 1) {
+        links_to_confirm_map[origin_seq[i]] = origin_seq[i + 1];
+      }
+      value_to_index_map[origin_seq[i]] = i;
+    }
+
+    for (auto & seq_to_chk : seqs) {
+      for (int i = 0; i < seq_to_chk.size(); i++) {
+        if (i == seq_to_chk.size() - 1) {
+          if (value_to_index_map.find(seq_to_chk[i]) ==
+              value_to_index_map.end()) { return false; }
+          continue;
+        }
+        if (value_to_index_map[seq_to_chk[i]] >=
+            value_to_index_map[seq_to_chk[i + 1]]) { return false; }
+        if (links_to_confirm_map.find(seq_to_chk[i]) !=
+            links_to_confirm_map.end()) {
+          if (links_to_confirm_map[seq_to_chk[i]] == seq_to_chk[i + 1]) {
+            links_to_confirm_map.erase(seq_to_chk[i]);
+          }
+        }
+      }
+    }
+    return links_to_confirm_map.empty();
+  }
 };
 
 int main(void) {
@@ -288,6 +358,38 @@ int main(void) {
   graph_util::print_all_elem<graph_edge>(
     graph_util::calc_minimum_spanning_tree(mst_graph_metrix)
   );
+
+  cout << "4. can sequence be uniquely re-constructed:" << endl;
+  vector<int> av({ 1, 2, 3 }); vector<int> av1({ 1, 2 });
+  vector<int> av2({ 1, 3 });   vector<int> av3({ 2, 3 });
+  vector<vector<int>> avv1; avv1.push_back(av1);
+                            avv1.push_back(av2);
+  vector<vector<int>> avv2; avv2.push_back(av1);
+  vector<vector<int>> avv3; avv3.push_back(av1);
+                            avv3.push_back(av2);
+                            avv3.push_back(av3);
+  vector<int> bv({ 4, 1, 5, 2, 6, 3 });
+  vector<int> bv1({ 5, 2, 6, 3 });
+  vector<int> bv2({ 4, 1, 5, 2 });
+  vector<vector<int>> bvv; bvv.push_back(bv1);
+                           bvv.push_back(bv2);
+
+  graph_util::print_all_elem<int>(av);
+  graph_util::print_all_elem_vec<int>(avv1);
+  cout << false << endl;
+  assert(false == graph_util::is_sequence_unique(av, avv1));
+  graph_util::print_all_elem<int>(av);
+  graph_util::print_all_elem_vec<int>(avv2);
+  cout << false << endl;
+  assert(false == graph_util::is_sequence_unique(av, avv2));
+  graph_util::print_all_elem<int>(av);
+  graph_util::print_all_elem_vec<int>(avv3);
+  cout << true << endl;
+  assert(true == graph_util::is_sequence_unique(av, avv3));
+  graph_util::print_all_elem<int>(bv);
+  graph_util::print_all_elem_vec<int>(bvv);
+  cout << true << endl;
+  assert(true == graph_util::is_sequence_unique(bv, bvv));
 
   return 0;
 }
