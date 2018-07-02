@@ -160,11 +160,79 @@ public:
    * s1 and s2. For example, Given: s1 = "aabcc", s2 = "dbbca",
    * When s3 = "aadbbcbcac", return true.
    * When s3 = "aadbbbaccc", return false.
+   * - input -> T1 T2 check if P is a interleave of T1 & T2
+   *   P[0..i + j + 1] is a interleave of T1[0..i] & T2[0..j] then
+   *   P[0..i + j] must be a interleave of T1[0..i - 1] & T2[0..j] OR
+   *                                       T1[0..i] & T2[0..j + 1]
+   *   P(i, j) {
+   *   - true if (((T1[i] == P[i + j]) && P(i - 1, j)) ||
+   *              ((T2[j] == P[i + j]) && P(i, j - 1)))
    */
+  static string get_check_signature(int pos_l, int pos_r, int pos_s) {
+    return to_string(pos_l) + "$" + to_string(pos_r) + "$" + to_string(pos_s);
+  }
+
   static bool is_input_via_interleave(const string & base_l,
                                       const string & base_r,
-                                      const string & str_chk) {
-    return false;
+                                      const string & str_chk,
+                                      unordered_map<string, bool> & lookup,
+                                      int pos_l = 0,
+                                      int pos_r = 0,
+                                      int pos_s = 0) {
+
+    if ((base_l.size() - pos_l) + (base_r.size() - pos_r) !=
+        (str_chk.size() - pos_s)) { return false; }
+    if (str_chk.size() == pos_s) { return true; }
+    if ((str_chk[pos_s] != base_l[pos_l]) &&
+        (str_chk[pos_s] != base_r[pos_r])) { return false; }
+    string signature = get_check_signature(pos_l, pos_r, pos_s);
+    if (lookup.end() != lookup.find(signature)) { return lookup[signature]; }
+    // return true if all chars str_chk been checked already.
+    bool is_interleave = (
+      ((str_chk[pos_s] == base_l[pos_l]) &&
+       (is_input_via_interleave(base_l, base_r, str_chk, lookup,
+                                pos_l + 1, pos_r, pos_s + 1))) ||
+      ((str_chk[pos_s] == base_r[pos_r]) &&
+       (is_input_via_interleave(base_l, base_r, str_chk, lookup,
+                                pos_l, pos_r + 1, pos_s + 1)))
+    );
+    lookup[signature] = is_interleave;
+    return is_interleave;
+  }
+
+  static bool _check_input_via_interleave(const string & base_l,
+                                          const string & base_r,
+                                          const string & str_chk) {
+    unordered_map<string, bool> lookup;
+    return is_input_via_interleave(base_l, base_r, str_chk, lookup, 0, 0, 0);
+  }
+  /**
+   *   P(i, j) { T1[0..i] & T2[0..j] could form P[0..i + j + 1]
+   *   - true if (((T1[i] == P[i + j]) && P(i - 1, j)) ||
+   *              ((T2[j] == P[i + j]) && P(i, j - 1)))
+   */
+  static bool check_input_via_interleave(const string & base_l,
+                                         const string & base_r,
+                                         const string & str_chk) {
+    // vector, cnt & value
+    vector<vector<bool>> lookup(base_l.size(), vector<bool>(base_r.size(), false));
+    for (int i = 0; i < base_l.size(); i++) {
+      for (int j = 0; j < base_r.size(); j++) {
+        if (i == 0 && j == 0) {
+          lookup[i][j] = (base_l[i] == str_chk[i] && base_r[j] == str_chk[j + 1]);
+        } else if (i == 0) {
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1])) ||
+                          ((base_r[j] == str_chk[i + j + 1]) && lookup[i][j - 1]));
+        } else if (j == 0) {
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1]) && lookup[i - 1][j]) ||
+                          ((base_r[j] == str_chk[i + j + 1])));
+        } else {
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1]) && lookup[i - 1][j]) ||
+                          ((base_r[j] == str_chk[i + j + 1]) && lookup[i][j - 1]));
+        }
+      }
+    }
+    return lookup.back().back();
   }
 };
 
@@ -187,8 +255,8 @@ int main(void) {
   assert(false == dp_util::is_input_via_scramble("great", "rtage"));
 
   cout << "3. dp_util::is_input_via_interleave" << endl;
-  assert(true == dp_util::is_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
-  assert(false == dp_util::is_input_via_interleave("aabcc", "dbbca", "aadbbbaccc"));
+  assert(true == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
+  assert(false == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbbaccc"));
 
   return 0;
 }
