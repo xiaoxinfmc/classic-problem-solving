@@ -304,21 +304,39 @@ public:
    * if w.size = 1 ==>> good if w[0] in dict
    * 0 1 2 3 => 0..3   0 <= i <= 3   0 <= j <= i
    * if w.size = i + 1, ==>> good if w[0..j - 1] breakable && w[j..i] in dict
+   *
+   * w[0..n] is breakable if w[0..j] is breakable && dict has token w[j + 1..n]
+   * enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
    */
   static bool is_word_breakable(const unordered_set<string> dict,
+                                const string word) {
+    if (true == word.empty()) { return true; }
+    vector<bool> break_lookup(word.size(), STRATEGY_UNDEF);
+    for (int i = 0; i < word.size(); i++) {
+      break_lookup[i] = (dict.end() != dict.find(word.substr(0, i + 1)));
+      if (true == break_lookup[i]) { continue; }
+      for (int j = i; j > 0; j--) {
+        if (true == break_lookup[i]) { break; }
+        break_lookup[i] = (dict.end() != dict.find(word.substr(j, (i - j + 1))) &&
+                           true == break_lookup[j - 1]);
+      }
+    }
+    return break_lookup.back();
+  }
+
+  static bool _is_word_breakable(const unordered_set<string> dict,
                                 const string word) {
     if (true == word.empty()) { return true; }
     vector<vector<int>> break_lookup(
       word.size(), vector<int>(word.size(), STRATEGY_UNDEF)
     );
-    return check_word_breakable(dict, word, 0, word.size() - 1, break_lookup);
+    return _check_word_breakable(dict, word, 0, word.size() - 1, break_lookup);
   }
 
-  // enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
-  static bool check_word_breakable(const unordered_set<string> & dict,
-                                   const string & word,
-                                   int start_pos, int end_pos,
-                                   vector<vector<int>> & break_lookup) {
+  static bool _check_word_breakable(const unordered_set<string> & dict,
+                                    const string & word,
+                                    int start_pos, int end_pos,
+                                    vector<vector<int>> & break_lookup) {
     if (STRATEGY_UNDEF != break_lookup[start_pos][end_pos]) {
       return (STRATEGY_SUCCESS == break_lookup[start_pos][end_pos]);
     }
@@ -328,8 +346,8 @@ public:
     } else {
       for (int i = start_pos; i < end_pos; i++) {
         is_word_breakable = (
-          check_word_breakable(dict, word, start_pos, i, break_lookup) &&
-          check_word_breakable(dict, word, i + 1, end_pos, break_lookup)
+          _check_word_breakable(dict, word, start_pos, i, break_lookup) &&
+          _check_word_breakable(dict, word, i + 1, end_pos, break_lookup)
         );
         if (true == is_word_breakable) { break; }
       }
