@@ -305,8 +305,39 @@ public:
    * 0 1 2 3 => 0..3   0 <= i <= 3   0 <= j <= i
    * if w.size = i + 1, ==>> good if w[0..j - 1] breakable && w[j..i] in dict
    */
-  static bool is_word_breakable(const unordered_set<string> & dict,
-                                const string & word) {
+  static bool is_word_breakable(const unordered_set<string> dict,
+                                const string word) {
+    if (true == word.empty()) { return true; }
+    vector<vector<int>> break_lookup(
+      word.size(), vector<int>(word.size(), STRATEGY_UNDEF)
+    );
+    return check_word_breakable(dict, word, 0, word.size() - 1, break_lookup);
+  }
+
+  // enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
+  static bool check_word_breakable(const unordered_set<string> & dict,
+                                   const string & word,
+                                   int start_pos, int end_pos,
+                                   vector<vector<int>> & break_lookup) {
+    if (STRATEGY_UNDEF != break_lookup[start_pos][end_pos]) {
+      return (STRATEGY_SUCCESS == break_lookup[start_pos][end_pos]);
+    }
+    bool is_word_breakable = false;
+    if (dict.find(word.substr(start_pos, end_pos - start_pos + 1)) != dict.end()) {
+      is_word_breakable = true;
+    } else {
+      for (int i = start_pos; i < end_pos; i++) {
+        is_word_breakable = (
+          check_word_breakable(dict, word, start_pos, i, break_lookup) &&
+          check_word_breakable(dict, word, i + 1, end_pos, break_lookup)
+        );
+        if (true == is_word_breakable) { break; }
+      }
+    }
+    break_lookup[start_pos][end_pos] = (
+      (true == is_word_breakable) ? STRATEGY_SUCCESS : STRATEGY_FAIL
+    );
+    return is_word_breakable;
   }
 };
 
