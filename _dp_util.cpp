@@ -234,6 +234,80 @@ public:
     }
     return lookup.back().back();
   }
+
+  /**
+   * Given a triangle, find the maximum path sum from top to bottom. Each step you
+   * may move to adjacent numbers on the row below.
+   * For example, given the following triangle
+   * [
+   *     [2], ---- 0 i
+   *    [3,4], --- 1
+   *   [6,5,7], -- 2, i => (k, k || k + 1)
+   *  [4,1,8,3]  - 3 (0, 1, 2, 3, j)
+   * ]
+   * The maximum path sum from top to bottom is 11 (i.e., 2 + 3 + 5 + 1 = 11).
+   * Note: Bonus point if you are able to do this using only O(n) extra space,
+   *       where n is the total number of rows in the triangle.
+   * max_sum(i, k) = { m[0, 0], i == 0;
+   *                   max{ max_sum(i - 1, k - 1) + m[i, k],
+   *                        max_sum(i - 1, k)     + m[i, k] }
+   * - i => current row id of input of vectors.
+   * - k => current index @ end of the path on row i.
+   */
+  static int calc_max_sum_triangle(const vector<vector<int>> input_matrix){
+    if (input_matrix.empty()) { return INT_MAX; }
+    vector<int> prev_sum_buf(input_matrix.back().size(), INT_MAX);
+    vector<int> curr_sum_buf(input_matrix.back().size(), INT_MAX);
+    vector<int> & curr_sum_buf_ref = curr_sum_buf,
+                & prev_sum_buf_ref = prev_sum_buf,
+                & temp_sum_buf_ref = prev_sum_buf;
+
+    prev_sum_buf[0] = input_matrix[0][0];
+    for (size_t row_id = 1; row_id < input_matrix.size(); row_id++) {
+      for (size_t col_id = 0; col_id < input_matrix[row_id].size(); col_id++) {
+        if (0 == col_id) {
+          curr_sum_buf[col_id] = input_matrix[row_id][col_id] + prev_sum_buf[col_id];
+        } else if (input_matrix[row_id].size() - 1 == col_id) {
+          curr_sum_buf[col_id]=input_matrix[row_id][col_id]+prev_sum_buf[col_id - 1];
+        } else {
+          curr_sum_buf[col_id] = max(
+            input_matrix[row_id][col_id] + prev_sum_buf[col_id],
+            input_matrix[row_id][col_id] + prev_sum_buf[col_id - 1]
+          );
+        }
+      }
+      temp_sum_buf_ref = curr_sum_buf_ref;
+      curr_sum_buf_ref = prev_sum_buf_ref;
+      prev_sum_buf_ref = temp_sum_buf_ref;
+    }
+
+    return find_max_elem(prev_sum_buf_ref);
+  }
+
+  static int find_max_elem(const vector<int> & int_vec) {
+    int max_val = int_vec.front();
+    for (auto & val : int_vec) { if (val > max_val ) { max_val = val; } }
+    return max_val;
+  }
+
+  /**
+   * 13.12 Word Break
+   * Given a string s and a dictionary of words dict, determine if s can be
+   * segmented into a space-separated sequence of one or more dictionary words.
+   * For example, given s = "leetcode", dict = ["leet", "code"].
+   * Return true because "leetcode" can be segmented as "leet code".
+   *
+   * for w[0..n], assume w[0..n - 1] is breakable, then good if w[n] in dict
+   * w[0..n] can be break up if exist j, where w[0..j] is breakable and
+   * w[j + 1..n] form a token found in a dict. => calc. w[0..n]
+   *
+   * if w.size = 1 ==>> good if w[0] in dict
+   * 0 1 2 3 => 0..3   0 <= i <= 3   0 <= j <= i
+   * if w.size = i + 1, ==>> good if w[0..j - 1] breakable && w[j..i] in dict
+   */
+  static bool is_word_breakable(const unordered_set<string> & dict,
+                                const string & word) {
+  }
 };
 
 int main(void) {
@@ -256,7 +330,27 @@ int main(void) {
 
   cout << "3. dp_util::is_input_via_interleave" << endl;
   assert(true == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
-  assert(false == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbbaccc"));
+  assert(false == dp_util::check_input_via_interleave("aabcc","dbbca","aadbbbaccc"));
 
+  cout << "4. dp_util::calc_max_sum_triangle" << endl;
+  cout << "21 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 2 }), vector<int>({ 3, 4 }), vector<int>({ 6, 5, 7 }),
+      vector<int>({ 4, 1, 8, 3 }) })) << endl;
+  cout << "23 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 3 }), vector<int>({ 7, 4 }), vector<int>({ 2, 4, 6 }),
+      vector<int>({ 8, 5, 9, 3 }) })) << endl;
+  cout << "19 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 8 }), vector<int>({ -4, 4 }), vector<int>({ 2, 2, 6 }),
+      vector<int>({ 1, 1, 1, 1 }) })) << endl;
+
+  cout << "5. dp_util::is_word_breakable" << endl;
+  unordered_set<string> dict = { "mobile","samsung","sam","sung","man","mango",
+                                 "icecream","and","go","i","like","ice","cream" };
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "iiiiiiii") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikesamsung") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikelikeimangoiii") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "samsungandmango") << endl;
+  cout << "0 <=> " << dp_util::is_word_breakable(dict, "samsungandmangok") << endl;
   return 0;
 }
