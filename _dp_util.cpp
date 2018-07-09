@@ -357,6 +357,43 @@ public:
     );
     return is_word_breakable;
   }
+
+  /**
+   * 13.11 Distinct Subsequences
+   * Given a string S and a string T, count the number of distinct subsequences
+   * of T in S. A subsequence of a string is a new string which is formed from
+   * the original string by deleting some (can be none) of the characters
+   * without disturbing the relative positions of the remaining characters.
+   * (ie, "ACE" is a subsequence of "ABCDE" while "AEC" is not).
+   * Here is an example: S = "rabbbit", T = "rabbit" Return 3.
+   * - S[0..i..m] & T[0..j..n], F(i, j) => # of dist subseq by S[0..i] & T[0..j]
+   *   for F[i, j], i >= j (i < j, all value will be 0 as token is longer)
+   *     if S[i] == T[j] => F[n - 1, m - 1] + F[n - 1, m]
+   *     else            => F[n - 1, m]
+   *   rabbbit
+   *   rabbit
+   */
+  static int count_distinct_subseq(const string text, const string seq) {
+    int text_len = text.size(), seq_len = seq.size();
+    if ((true == seq.empty()) || (true == text.empty()) ||
+        (seq_len > text_len)) { return 0; }
+    vector<vector<int>> seq_cnt_lookup(text_len, vector<int>(seq_len, 0));
+    for (int i = 0; i < text_len; i++) {
+      for (int j = 0; ((j <= i) && (j < seq.size())); j++) {
+        if (0 == j && 0 == i) {
+          seq_cnt_lookup[i][j] = (text[i] == seq[j]) ? 1 : 0;
+        } else if (0 == j) {
+          seq_cnt_lookup[i][j] = ((text[i] == seq[j]) ?
+            (1 + seq_cnt_lookup[i - 1][j]) : (seq_cnt_lookup[i - 1][j]));
+        } else {
+          seq_cnt_lookup[i][j] = ((text[i] == seq[j]) ?
+            (seq_cnt_lookup[i - 1][j - 1] + seq_cnt_lookup[i - 1][j]) :
+            (seq_cnt_lookup[i - 1][j]));
+        }
+      }
+    }
+    return seq_cnt_lookup[text_len - 1][seq_len - 1];
+  }
 };
 
 int main(void) {
@@ -401,5 +438,11 @@ int main(void) {
   cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikelikeimangoiii") << endl;
   cout << "1 <=> " << dp_util::is_word_breakable(dict, "samsungandmango") << endl;
   cout << "0 <=> " << dp_util::is_word_breakable(dict, "samsungandmangok") << endl;
+
+  cout << "6. dp_util::count_distinct_subseq" << endl;
+  cout << "6 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "ge") << endl;
+  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "xe") << endl;
+  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "") << endl;
+  cout << "3 <=> " << dp_util::count_distinct_subseq("rabbbit", "rabbit") << endl;
   return 0;
 }
