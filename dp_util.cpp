@@ -394,6 +394,53 @@ public:
     }
     return seq_cnt_lookup[text_len - 1][seq_len - 1];
   }
+
+  /**
+   * 13.10 Decode Ways
+   * A message containing letters from A-Z is being encoded to numbers
+   * using the following mapping: 'A' -> 1 'B' -> 2 ... 'Z' -> 26
+   * Given an encoded message containing digits, determine the total number
+   * of ways to decode it. For example, Given encoded message "12", it could
+   * be decoded as AB(1 2) or L(12). The number of ways decoding "12" is 2.
+   * - T[n] => # of ways to decode input str[0..n]
+   *   Assume we already know T[n - 1] & T[n - 2], then
+   *   if token[n-1..n] is valid, T[n] = T[n - 2];
+   *   if token[n..n] is valid, T[n] += T[n - 1];
+   *   return 0 if none of them is good
+   */
+  static int get_decoding_count(const string & number_str) {
+    vector<int> decode_cnt_lookup(number_str.size(), 0);
+    int input_len = number_str.size();
+    if (0 == input_len) { return 0; }
+    if (1 == input_len) {
+      return (true == is_single_char_valid(number_str, 0) ? 1 : 0);
+    }
+    decode_cnt_lookup[0] = (true == is_single_char_valid(number_str, 0) ? 1 : 0);
+    if (0 == decode_cnt_lookup[0]) { return 0; }
+    decode_cnt_lookup[1] = ((true == is_single_char_valid(number_str, 1)) ? 1 : 0) +
+                           ((true == is_double_char_valid(number_str, 0)) ? 1 : 0);
+    for (int i = 2; i < input_len; i++) {
+      if (true == is_single_char_valid(number_str, i)) {
+        decode_cnt_lookup[i] = decode_cnt_lookup[i - 1];
+      }
+      if (true == is_double_char_valid(number_str, i - 1)) {
+        decode_cnt_lookup[i] += decode_cnt_lookup[i - 2];
+      }
+      if (0 == decode_cnt_lookup[i]) { return 0; }
+    }
+    return decode_cnt_lookup.back();
+  }
+  static bool is_single_char_valid(const string & number_str, int start_pos) {
+    return (number_str[start_pos] >= '1' && number_str[start_pos] <= '9');
+  }
+  static bool is_double_char_valid(const string & number_str, int start_pos) {
+    return (
+      (number_str[start_pos] == '1' && number_str[start_pos + 1] >= '0'
+                                    && number_str[start_pos + 1] <= '9') ||
+      (number_str[start_pos] == '2' && number_str[start_pos + 1] >= '0'
+                                    && number_str[start_pos + 1] <= '6'));
+  }
+
 };
 
 int main(void) {
@@ -444,5 +491,18 @@ int main(void) {
   cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "xe") << endl;
   cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "") << endl;
   cout << "3 <=> " << dp_util::count_distinct_subseq("rabbbit", "rabbit") << endl;
+
+  cout << "7. dp_util::get_decoding_count" << endl;
+  cout << "4 <=> " << dp_util::get_decoding_count(string("1923")) << endl;
+  cout << "1 <=> " << dp_util::get_decoding_count(string("1")) << endl;
+  cout << "2 <=> " << dp_util::get_decoding_count(string("12")) << endl;
+  cout << "4 <=> " << dp_util::get_decoding_count(string("1072512")) << endl;
+  cout << "1 <=> " << dp_util::get_decoding_count(string("10")) << endl;
+  cout << "0 <=> " << dp_util::get_decoding_count(string("100")) << endl;
+  cout << "0 <=> " << dp_util::get_decoding_count(string("0")) << endl;
+  cout << "0 <=> " << dp_util::get_decoding_count(string("010")) << endl;
+  cout << "1 <=> " << dp_util::get_decoding_count(string("110")) << endl;
+  cout << "3 <=> " << dp_util::get_decoding_count(string("111")) << endl;
+  cout << "3 <=> " << dp_util::get_decoding_count(string("1234")) << endl;
   return 0;
 }
