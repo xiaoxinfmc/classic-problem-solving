@@ -9,9 +9,8 @@
 
 using namespace std;
 
-class DPUtil{
+class dp_util{
 public:
-  enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
   /**
    * 13.3 Palindrome Partitioning II
    * - Given a string s, partition s such that every substring of the partition
@@ -20,117 +19,100 @@ public:
    * - For example, given s = "aab",
    *   Return 1 since the palindrome partitioning ["aa","b"] could be produced
    *   using 1 cut.
-   * - min_palin_cnt(i, j) {
-   *     j - i > 2, min {
-   *       i <= k <= j | min_palin_cnt(i, k) + min_palin_cnt(k + 1, j)
-   *     }
-   *     j - i == 2, if (s[i] == s[j]) { min_palin_cnt[i][j] = 0; }
-   *                 else if (s[j - 1] == s[j]) { min_palin_cnt[i][j] = 1; }
-   *                 else { min_palin_cnt[i][j] = 2; }
-   *     j - i <= 1, if (s[i] == s[j]) { min_palin_cnt[i][j] = 0; }
-   *                 else { min_palin_cnt[i][j] = 1; }
-   *   }
-   * - min_palin_cnt[j] {
-   *   1. min_palin_cnt(0, j - 1) + 1,
-   *   2. min_palin_cnt(0, j - 1),
-   *      if s[j] fits previous palin
-   *      - prev size == 1 && j = 1, a ?(j)
-   *        ==> only when s[j] == s[j - 1]
-   *      - prev size == 1 && j > 1, a c ?(j)
-   *        ==> only when s[j] == s[j - 2]
-   *      - prev size == 2 && j > 1, a a ?(j)
-   *        ==> only when s[j] == s[j - 1]
-   *      - prev size >= 3 && j > 1, a a a ?(j)
-   *        ==>> only when s[j - 1] == s[j - size + 1] && s[j] == s[j - 1]
-   *   3. 1, 0 == j
-   * - min_cut_cnt(i, n) = min{ i <= j <= n, | min_cut_cnt(j + 1, n) + 1 }
+   * - min_palin_cut[j] -> min palin cuts to break str[0..j] {
+   *   1. j == 0, => 0
+   *   2. j == 1, => 0 | 1
+   *   3. j >= 2, => {
+   *        for i in (0 ... j - 1)
+   *          if str[i..j] is a palindrome,
+   *            min_palin_cut[j] <= min(min_palin_cut[j], min_palin_cut[i - 1] + 1)
+   *          else
+   *            min_palin_cut[j] <= min(min_palin_cut[j], min_palin_cut[j - 1] + 1)
+   *          end
+   *      }
    */
-  static int get_min_palin_cnt(const string & input_str) {
+  static int get_min_palindrome_cnt(const string & input_str) {
     const int input_str_len = input_str.size();
-    int min_palin_cnt_buf[input_str_len + 1]; // min cuts for str[i..n]
-    bool is_token_a_palin[input_str_len][input_str_len];
+    if (0 >= input_str_len) { return 0; }
+    int min_palindrome_cuts[input_str_len];
+    bool is_token_palindrome[input_str_len][input_str_len];
     for (int i = 0; i < input_str_len; i++) {
-      min_palin_cnt_buf[i] = input_str_len - i - 1;
-      for (int j = 0; j < input_str_len; j++) {
-        if (i == j) { is_token_a_palin[i][j] = true; }
-        else { is_token_a_palin[i][j] = false; }
+      min_palindrome_cuts[i] = i;
+      for (int c = 0; c < input_str_len; c++) {
+        if (i == c) { is_token_palindrome[i][c] = true; }
+        else { is_token_palindrome[i][c] = false; }
       }
     }
-    min_palin_cnt_buf[input_str_len] = -1;
-    for (int i = input_str_len - 1; i >= 0; i--) {
-      for (int j = i; j < input_str_len; j++) {
-        if (((input_str[i] == input_str[j])) &&
-            ((j - i < 2) || (is_token_a_palin[i + 1][j - 1]))) {
-          is_token_a_palin[i][j] = true;
-          min_palin_cnt_buf[i] = std::min(min_palin_cnt_buf[i],
-                                          min_palin_cnt_buf[j + 1] + 1);
+    /* i from 1 -> last */
+    for (int i = 1; i < input_str_len; i++) {
+      /* c from i - 1 to 0 */
+      for (int c = i - 1; c >= 0; c--) {
+        if ((input_str[c] == input_str[i]) &&
+            ((c == i - 1) || (is_token_palindrome[c + 1][i - 1]))) {
+          is_token_palindrome[c][i] = true;
+          if (c - 1 >= 0) {
+            min_palindrome_cuts[i] = min(min_palindrome_cuts[i],
+                                         min_palindrome_cuts[c - 1] + 1);
+          } else { // whole piece is a palindrome, no cut needed.
+            min_palindrome_cuts[i] = min(min_palindrome_cuts[i], 0);
+          }
         }
       }
+      min_palindrome_cuts[i] = min(min_palindrome_cuts[i],
+                                   min_palindrome_cuts[i - 1] + 1);
     }
-    return min_palin_cnt_buf[0];
+    return min_palindrome_cuts[input_str_len - 1];
   }
 
-  /** Given a 2D binary matrix filled with 0's and 1's, find the largest
-    * rectangle containing all ones and return its area.
-    * max_radius[r][c] = min{ max_radius[r - 1][c] + 1, max_radius[r + 1][c] + 1
-    *                         max_radius[r][c - 1] - 1, max_radius[r][c + 1] + 1
-    *                    }, for any value[x][y] == 1
-    */
-
-  /** Say you have an array for which the i-th element is the price of a given
-    * stock on day i. Design an algorithm to find the maximum profit. You may
-    * complete at most two transactions.
-    * Note: You may not engage in multiple transactions at the same time (ie,
-    * you must sell the stock before you buy again).
-    */
-
-  /** 13.7 Scramble String
-    * Given a string s1, we may represent it as a binary tree by partitioning
-    * it to two non-empty substrings recursively.
-    * Below is one possible representation of s1 = "great":
-    *   gr eat
-    *    /  \
-    *  gr   eat
-    *  /\    /\
-    * g  r  e  at
-    *          /\
-    *         a  t
-    * To scramble the string, we may choose any non-leaf node and swap its two
-    * children. For example, if we choose the node "gr" and swap its two
-    * children, it produces a scrambled string "rgeat".
-    *       rg eat
-    *        /  \
-    *      rg   eat
-    *      /\    /\
-    *     r  g  e  at
-    *              /\
-    *             a  t
-    * We say that "rgeat" is a scrambled string of "great".
-    * Similarly, if we continue to swap the children of nodes "eat" and "at",
-    * it produces a scrambled string "rgtae".
-    *       rg tae
-    *        /  \
-    *      rg    tae
-    *      /\    / \
-    *     r  g  ta  e
-    *           /\
-    *          t  a
-    * We say that "rgtae" is a scrambled string of "great".
-    * Given two strings s1 and s2 of the same length, determine if s2 is a
-    * scrambled string of s1.
-    *
-    * true if s1 == s2
-    * if str.size > 2 {
-    *   is_scramble(s1[0..n], s2[0..n]) <=> any {
-    *     0 <= i < n | (is_scramble(s1[0..i], s2[0..i]) &&
-    *                   is_scramble(s1[i + 1..n], s2[i + 1..n])) ||
-    *                  (is_scramble(s1[0..i], s2[n - i..n]) &&
-    *                   is_scramble(s1[i + 1..n], s2[0..n - i - 1]))
-    *   }
-    * } else {
-    *   s1.reverse == s2.reverse
-    * }
-    */
+  /**
+   * 13.7 Scramble String
+   * Given a string s1, we may represent it as a binary tree by partitioning
+   * it to two non-empty substrings recursively.
+   * Below is one possible representation of s1 = "great":
+   *   gr eat
+   *    /  \
+   *  gr   eat
+   *  /\    /\
+   * g  r  e  at
+   *          /\
+   *         a  t
+   * To scramble the string, we may choose any non-leaf node and swap its two
+   * children. For example, if we choose the node "gr" and swap its two
+   * children, it produces a scrambled string "rgeat".
+   *       rg eat
+   *        /  \
+   *      rg   eat
+   *      /\    /\
+   *     r  g  e  at
+   *              /\
+   *             a  t
+   * We say that "rgeat" is a scrambled string of "great".
+   * Similarly, if we continue to swap the children of nodes "eat" and "at",
+   * it produces a scrambled string "rgtae".
+   *       rg tae
+   *        /  \
+   *      rg    tae
+   *      /\    / \
+   *     r  g  ta  e
+   *           /\
+   *          t  a
+   * We say that "rgtae" is a scrambled string of "great".
+   * Given two strings s1 and s2 of the same length, determine if s2 is a
+   * scrambled string of s1.
+   *
+   * true if s1 == s2
+   * if str.size > 2 {
+   *   is_scramble(s1[0..n], s2[0..n]) <=> any {
+   *     0 <= i < n | (is_scramble(s1[0..i], s2[0..i]) &&
+   *                   is_scramble(s1[i + 1..n], s2[i + 1..n])) ||
+   *                  (is_scramble(s1[0..i], s2[n - i..n]) &&
+   *                   is_scramble(s1[i + 1..n], s2[0..n - i - 1]))
+   *   }
+   * } else {
+   *   s1.reverse == s2.reverse
+   * }
+   */
+  enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
   static bool is_input_via_scramble(const string & base,const string & str_chk){
     if (base.size() != str_chk.size()) { return false; }
     unordered_map<string, int> strategy_lookup;
@@ -141,214 +123,171 @@ public:
   static string get_hash_key(const string & base, const string & str_chk) {
     return (base + "$" + str_chk);
   }
+
   static bool check_scramble(const string & base, const string & str_chk,
                              unordered_map<string, int> & strategy_lookup){
+    if (base.size() != str_chk.size()) { return false; }
+    if (base == str_chk) { return true; }
     string lookup_key = get_hash_key(base, str_chk);
-    string alt_lk_key = get_hash_key(str_chk, base);
-    if (strategy_lookup.end() != strategy_lookup.find(lookup_key)) {
-      return (STRATEGY_SUCCESS == strategy_lookup[lookup_key]);
+    if (strategy_lookup.find(lookup_key) != strategy_lookup.end()) {
+      return strategy_lookup[lookup_key];
     }
-    if (strategy_lookup.end() != strategy_lookup.find(alt_lk_key)) {
-      return (STRATEGY_SUCCESS == strategy_lookup[alt_lk_key]);
+    bool is_pair_scramble = false;
+    int str_len = base.size();
+    for (int i = 0; i < str_len - 1; i++) {
+      is_pair_scramble = (
+        (check_scramble(base.substr(0, i + 1),
+                        str_chk.substr(0, i + 1),
+                        strategy_lookup) &&
+         check_scramble(base.substr(i + 1, str_len - i - 1),
+                        str_chk.substr(i + 1, str_len - i - 1),
+                        strategy_lookup)) ||
+        (check_scramble(base.substr(0, i + 1),
+                        str_chk.substr(str_len - 1 - i, i + 1),
+                        strategy_lookup) &&
+         check_scramble(base.substr(i + 1, str_len - i - 1),
+                        str_chk.substr(0, str_len - i - 1),
+                        strategy_lookup))
+      );
+      if (true == is_pair_scramble) { break; }
     }
-    bool is_scramble = false;
-    if (base == str_chk) { is_scramble = true; }
-    if (false == is_scramble) {
-      int start_idx = 0; int end_idx = base.size() - 1;
-      for (int i = start_idx; i < end_idx; i++) {
-        if ((check_scramble(base.substr(start_idx, i - start_idx + 1),
-                            str_chk.substr(start_idx, i - start_idx + 1),
-                            strategy_lookup) &&
-             check_scramble(base.substr(i + 1, end_idx - i),
-                            str_chk.substr(i + 1, end_idx - i),
-                            strategy_lookup)) ||
-            (check_scramble(base.substr(start_idx, i - start_idx + 1),
-                            str_chk.substr(end_idx - i, i - start_idx + 1),
-                            strategy_lookup) &&
-             check_scramble(base.substr(i + 1, end_idx - i),
-                            str_chk.substr(start_idx, end_idx - i),
-                            strategy_lookup))) { is_scramble = true; break; }
-      }
-    }
-    strategy_lookup[lookup_key] = (
-      (true == is_scramble) ? STRATEGY_SUCCESS : STRATEGY_FAIL
-    );
-    strategy_lookup[alt_lk_key] = strategy_lookup[lookup_key];
-// cout << lookup_key << " : " << is_scramble << " | " << base << " | " << str_chk << endl;
-    return is_scramble;
+    strategy_lookup[lookup_key] = is_pair_scramble;
+    return is_pair_scramble;
   }
 
-  /** Given s1, s2, s3, find whether s3 is formed by the interleaving of
-    * s1 and s2. For example, Given: s1 = "aabcc", s2 = "dbbca",
-    * When s3 = "aadbbcbcac", return true.
-    * When s3 = "aadbbbaccc", return false.
-    */
+  /**
+   * Given s1, s2, s3, find whether s3 is formed by the interleaving of
+   * s1 and s2. For example, Given: s1 = "aabcc", s2 = "dbbca",
+   * When s3 = "aadbbcbcac", return true.
+   * When s3 = "aadbbbaccc", return false.
+   * - input -> T1 T2 check if P is a interleave of T1 & T2
+   *   P[0..i + j + 1] is a interleave of T1[0..i] & T2[0..j] then
+   *   P[0..i + j] must be a interleave of T1[0..i - 1] & T2[0..j] OR
+   *                                       T1[0..i] & T2[0..j + 1]
+   *   P(i, j) {
+   *   - true if (((T1[i] == P[i + j]) && P(i - 1, j)) ||
+   *              ((T2[j] == P[i + j]) && P(i, j - 1)))
+   */
+  static string get_check_signature(int pos_l, int pos_r, int pos_s) {
+    return to_string(pos_l) + "$" + to_string(pos_r) + "$" + to_string(pos_s);
+  }
+
   static bool is_input_via_interleave(const string & base_l,
                                       const string & base_r,
-                                      const string & str_chk) {
-    const int l_len = base_l.size(), r_len = base_r.size();
-    const int t_len = str_chk.size();
-    if (l_len + r_len != t_len) { return false; }
-    int ** strategy_lookup = new int * [l_len];
-    for (int i = 0; i < l_len; i++) {
-      strategy_lookup[i] = new int[r_len]; // 1 -> SUCCESS 0 -> FAIL -1 -> NA
-      for (int j = 0; j < r_len; j++) { strategy_lookup[i][j]=STRATEGY_UNDEF; }
-    }
-    bool is_interleave = check_interleave(
-      base_l, base_r, str_chk, 0, 0, 0, (int **)strategy_lookup
+                                      const string & str_chk,
+                                      unordered_map<string, bool> & lookup,
+                                      int pos_l = 0,
+                                      int pos_r = 0,
+                                      int pos_s = 0) {
+
+    if ((base_l.size() - pos_l) + (base_r.size() - pos_r) !=
+        (str_chk.size() - pos_s)) { return false; }
+    if (str_chk.size() == pos_s) { return true; }
+    if ((str_chk[pos_s] != base_l[pos_l]) &&
+        (str_chk[pos_s] != base_r[pos_r])) { return false; }
+    string signature = get_check_signature(pos_l, pos_r, pos_s);
+    if (lookup.end() != lookup.find(signature)) { return lookup[signature]; }
+    // return true if all chars str_chk been checked already.
+    bool is_interleave = (
+      ((str_chk[pos_s] == base_l[pos_l]) &&
+       (is_input_via_interleave(base_l, base_r, str_chk, lookup,
+                                pos_l + 1, pos_r, pos_s + 1))) ||
+      ((str_chk[pos_s] == base_r[pos_r]) &&
+       (is_input_via_interleave(base_l, base_r, str_chk, lookup,
+                                pos_l, pos_r + 1, pos_s + 1)))
     );
-    for (int i = 0; i < l_len; i++) { delete [] strategy_lookup[i]; }
-    delete [] strategy_lookup;
+    lookup[signature] = is_interleave;
     return is_interleave;
   }
 
-  static bool check_interleave(const string & base_l,
-                               const string & base_r,
-                               const string & str_chk,
-                               int curr_lidx, int curr_ridx, int chck_idx,
-                               int ** strategy_lookup) {
-    if (curr_lidx >= base_l.size() && curr_ridx >= base_r.size()){ return true; }
-    if ((curr_lidx < base_l.size()) && (curr_ridx < base_r.size()) &&
-        (str_chk[chck_idx] != base_l[curr_lidx]) &&
-        (str_chk[chck_idx] != base_r[curr_ridx])) { return false; }
-    if ((curr_lidx < base_l.size()) && (curr_ridx < base_r.size()) &&
-        (STRATEGY_UNDEF != strategy_lookup[curr_lidx][curr_ridx])) {
-      return (STRATEGY_SUCCESS == strategy_lookup[curr_lidx][curr_ridx]);
-    }
-    bool is_interleave = false;
-    if ((curr_lidx < base_l.size()) &&
-        (str_chk[chck_idx] == base_l[curr_lidx])) {
-      is_interleave = check_interleave(
-        base_l, base_r, str_chk, curr_lidx + 1,
-        curr_ridx, chck_idx + 1, strategy_lookup
-      );
-    }
-    if ((false == is_interleave) && (curr_ridx < base_r.size()) &&
-        (str_chk[chck_idx] == base_r[curr_ridx])) {
-      is_interleave = check_interleave(
-        base_l, base_r, str_chk, curr_lidx,
-        curr_ridx + 1, chck_idx + 1, strategy_lookup
-      );
-    }
-    if ((curr_lidx < base_l.size()) && (curr_ridx < base_r.size())) {
-      strategy_lookup[curr_lidx][curr_ridx] = (
-        (true == is_interleave) ? STRATEGY_SUCCESS : STRATEGY_FAIL
-      );
-    }
-    return is_interleave;
+  static bool _check_input_via_interleave(const string & base_l,
+                                          const string & base_r,
+                                          const string & str_chk) {
+    unordered_map<string, bool> lookup;
+    return is_input_via_interleave(base_l, base_r, str_chk, lookup, 0, 0, 0);
   }
-
   /**
-    * 13.8 Minimum Path Sum
-    * Given a m × n grid filled with non-negative numbers, find a path from top
-    * left to bottom right which minimizes the sum of all numbers along its path
-    * Note: You can only move either down or right at any point in time
-    *
-    * min_sum(i, j) = min{ grid[i][j] + min_sum(i, j - 1),
-    *                      grid[i][j] + min_sum(i - 1, j) }
-    */
-  static int find_min_path_sum(const vector<vector<int>> & grid) {
-    int row_cnt = grid.size(); int col_cnt = grid.front().size();
-    vector<vector<int>> sum_buffer;
-    for (int i = 0; i < row_cnt; i++) {
-      sum_buffer.push_back(vector<int>(col_cnt, INT_MAX));
-    }
-    for (int r = 0; r < row_cnt; r++) {
-      for (int c = 0; c < col_cnt; c++) {
-        sum_buffer[r][c] = grid[r][c];
-        if ((0 == r) && (0 == c)) { continue; }
-        else if (0 == r) { sum_buffer[r][c] += sum_buffer[r][c - 1]; }
-        else if (0 == c) { sum_buffer[r][c] += sum_buffer[r - 1][c]; }
-        else {
-          sum_buffer[r][c] += std::min(sum_buffer[r][c - 1], sum_buffer[r - 1][c]);
-        }
-      }
-    }
-    return sum_buffer[row_cnt - 1][col_cnt - 1];
-  }
-
-  /**
-   * 13.11 Distinct Subsequences
-   * Given a string S and a string T, count the number of distinct subsequences
-   * of T in S. A subsequence of a string is a new string which is formed from
-   * the original string by deleting some (can be none) of the characters
-   * without disturbing the relative positions of the remaining characters.
-   * (ie, "ACE" is a subsequence of "ABCDE" while "AEC" is not).
-   * Here is an example: S = "rabbbit", T = "rabbit" Return 3.
-   *
-   * Let seq_cnt[i][j] be max common seq len for seq[0..j] found in text[0..i]
-   *
-   * if (i == 0 || j == 0) {
-   *   seq_len[i][j] = (seq[i] == text[j]) ? 1 : 0
-   * }
-   * if (text[i] == seq[j]) {
-   *   seq_len[i][j] = seq_len[i - 1][j - 1] + 1
-   * } else {
-   *   seq_len[i][j] = max(seq_len[i - 1][j], seq_len[i][j - 1])
-   * }
+   *   P(i, j) { T1[0..i] & T2[0..j] could form P[0..i + j + 1]
+   *   - true if (((T1[i] == P[i + j]) && P(i - 1, j)) ||
+   *              ((T2[j] == P[i + j]) && P(i, j - 1)))
    */
-  static int count_distinct_subseq(const string & text, const string & seq) {
-cout << text << " | " << seq << endl;
-    int seq_cnt  = 0;
-    int text_len = text.size();
-    int seq_len  = seq.size();
-    if (seq_len == 0 || seq_len > text_len) { return seq_cnt; }
-    vector<vector<int>> common_seq_len;
-    common_seq_len.push_back(vector<int>(seq_len + 1, 0));
-    for (int i = 1; i <= text_len; i++) {
-      common_seq_len.push_back(vector<int>(seq_len + 1, 0));
-      for (int j = 1; j <= seq_len; j++) {
-        if (i == 1 && j == 1) {
-          common_seq_len[i][j] = (seq[j - 1] == text[i - 1]) ? 1 : 0;
-        } else if (text[i - 1] == seq[j - 1]) {
-          // cnt of seq[0..j-1] in text[0..i-1] and seq[0..j] in text[0..i-1]
-          common_seq_len[i][j] = (
-            common_seq_len[i - 1][j - 1] + common_seq_len[i - 1][j]
-          );
+  static bool check_input_via_interleave(const string & base_l,
+                                         const string & base_r,
+                                         const string & str_chk) {
+    // vector, cnt & value
+    vector<vector<bool>> lookup(base_l.size(), vector<bool>(base_r.size(), false));
+    for (int i = 0; i < base_l.size(); i++) {
+      for (int j = 0; j < base_r.size(); j++) {
+        if (i == 0 && j == 0) {
+          lookup[i][j] = (base_l[i] == str_chk[i] && base_r[j] == str_chk[j + 1]);
+        } else if (i == 0) {
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1])) ||
+                          ((base_r[j] == str_chk[i + j + 1]) && lookup[i][j - 1]));
+        } else if (j == 0) {
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1]) && lookup[i - 1][j]) ||
+                          ((base_r[j] == str_chk[i + j + 1])));
         } else {
-          common_seq_len[i][j] = common_seq_len[i - 1][j];
+          lookup[i][j] = (((base_l[i] == str_chk[i + j + 1]) && lookup[i - 1][j]) ||
+                          ((base_r[j] == str_chk[i + j + 1]) && lookup[i][j - 1]));
         }
-cout << common_seq_len[i][j] << "  ";
       }
-cout << endl;
     }
-cout << endl;
-    seq_cnt = common_seq_len[text_len][seq_len];
-    return seq_cnt;
+    return lookup.back().back();
   }
 
-  static int calc_max_subseq_len(const string & text, const string & seq) {
-cout << text << " | " << seq << endl;
-    int seq_cnt  = 0;
-    int text_len = text.size();
-    int seq_len  = seq.size();
-    if (seq_len == 0 || seq_len > text_len) { return seq_cnt; }
-    vector<vector<int>> common_seq_len;
-    for (int i = 0; i < text_len; i++) {
-      common_seq_len.push_back(vector<int>(seq_len, 0));
-      for (int j = 0; j < seq_len; j++) {
-        if (i == 0 && j == 0) {
-          common_seq_len[i][j] = (seq[j] == text[i]) ? 1 : 0;
-        } else if (text[i] == seq[j]) {
-          common_seq_len[i][j] = common_seq_len[i - 1][j - 1] + 1;
+  /**
+   * Given a triangle, find the maximum path sum from top to bottom. Each step you
+   * may move to adjacent numbers on the row below.
+   * For example, given the following triangle
+   * [
+   *     [2], ---- 0 i
+   *    [3,4], --- 1
+   *   [6,5,7], -- 2, i => (k, k || k + 1)
+   *  [4,1,8,3]  - 3 (0, 1, 2, 3, j)
+   * ]
+   * The maximum path sum from top to bottom is 11 (i.e., 2 + 3 + 5 + 1 = 11).
+   * Note: Bonus point if you are able to do this using only O(n) extra space,
+   *       where n is the total number of rows in the triangle.
+   * max_sum(i, k) = { m[0, 0], i == 0;
+   *                   max{ max_sum(i - 1, k - 1) + m[i, k],
+   *                        max_sum(i - 1, k)     + m[i, k] }
+   * - i => current row id of input of vectors.
+   * - k => current index @ end of the path on row i.
+   */
+  static int calc_max_sum_triangle(const vector<vector<int>> input_matrix){
+    if (input_matrix.empty()) { return INT_MAX; }
+    vector<int> prev_sum_buf(input_matrix.back().size(), INT_MAX);
+    vector<int> curr_sum_buf(input_matrix.back().size(), INT_MAX);
+    vector<int> & curr_sum_buf_ref = curr_sum_buf,
+                & prev_sum_buf_ref = prev_sum_buf,
+                & temp_sum_buf_ref = prev_sum_buf;
+
+    prev_sum_buf[0] = input_matrix[0][0];
+    for (size_t row_id = 1; row_id < input_matrix.size(); row_id++) {
+      for (size_t col_id = 0; col_id < input_matrix[row_id].size(); col_id++) {
+        if (0 == col_id) {
+          curr_sum_buf[col_id] = input_matrix[row_id][col_id] + prev_sum_buf[col_id];
+        } else if (input_matrix[row_id].size() - 1 == col_id) {
+          curr_sum_buf[col_id]=input_matrix[row_id][col_id]+prev_sum_buf[col_id - 1];
         } else {
-          if (i == 0 || j == 0) {
-            common_seq_len[i][j] = (
-              (j == 0) ? common_seq_len[i - 1][j] : common_seq_len[i][j - 1]
-            );
-          } else {
-            common_seq_len[i][j] = std::max(common_seq_len[i - 1][j],
-                                            common_seq_len[i][j - 1]);
-          }
-          // longest common substr, common_seq_len[i][j] = 0;
+          curr_sum_buf[col_id] = max(
+            input_matrix[row_id][col_id] + prev_sum_buf[col_id],
+            input_matrix[row_id][col_id] + prev_sum_buf[col_id - 1]
+          );
         }
-        if (common_seq_len[i][j] == seq_len){ seq_cnt++; }
-cout << common_seq_len[i][j] << "  ";
       }
-cout << endl;
+      temp_sum_buf_ref = curr_sum_buf_ref;
+      curr_sum_buf_ref = prev_sum_buf_ref;
+      prev_sum_buf_ref = temp_sum_buf_ref;
     }
-cout << endl;
-    return seq_cnt;
+
+    return find_max_elem(prev_sum_buf_ref);
+  }
+
+  static int find_max_elem(const vector<int> & int_vec) {
+    int max_val = int_vec.front();
+    for (auto & val : int_vec) { if (val > max_val ) { max_val = val; } }
+    return max_val;
   }
 
   /**
@@ -365,134 +304,145 @@ cout << endl;
    * if w.size = 1 ==>> good if w[0] in dict
    * 0 1 2 3 => 0..3   0 <= i <= 3   0 <= j <= i
    * if w.size = i + 1, ==>> good if w[0..j - 1] breakable && w[j..i] in dict
+   *
+   * w[0..n] is breakable if w[0..j] is breakable && dict has token w[j + 1..n]
+   * enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
    */
-  static bool is_word_breakable(const unordered_set<string> & dict,
-                                const string & word) {
-    bool is_breakable = (
-      (dict.end() != dict.find(word)) || (true == word.empty())
-    );
-    if (true == is_breakable) { return is_breakable; }
-    string token; vector<bool> lookup(word.size(), false);
+  static bool is_word_breakable(const unordered_set<string> dict,
+                                const string word) {
+    if (true == word.empty()) { return true; }
+    vector<bool> break_lookup(word.size(), STRATEGY_UNDEF);
     for (int i = 0; i < word.size(); i++) {
-      if (i == 0) { lookup[i] = (
-                      dict.end() != dict.find(word.substr(0, 1))
-                    ); continue; }
-      for (int j = 0; j <= i; j++) {
-        token = word.substr(j, i - j + 1);
-        lookup[i] = (dict.end() != dict.find(token));
-        if (j > 0) { lookup[i] = (lookup[j - 1] && lookup[i]); }
-        if (true == lookup[i]) { break; }
+      break_lookup[i] = (dict.end() != dict.find(word.substr(0, i + 1)));
+      if (true == break_lookup[i]) { continue; }
+      for (int j = i; j > 0; j--) {
+        if (true == break_lookup[i]) { break; }
+        break_lookup[i] = (dict.end() != dict.find(word.substr(j, (i - j + 1))) &&
+                           true == break_lookup[j - 1]);
       }
     }
-    is_breakable = lookup.back();
-    return is_breakable;
+    return break_lookup.back();
+  }
+
+  static bool _is_word_breakable(const unordered_set<string> dict,
+                                const string word) {
+    if (true == word.empty()) { return true; }
+    vector<vector<int>> break_lookup(
+      word.size(), vector<int>(word.size(), STRATEGY_UNDEF)
+    );
+    return _check_word_breakable(dict, word, 0, word.size() - 1, break_lookup);
+  }
+
+  static bool _check_word_breakable(const unordered_set<string> & dict,
+                                    const string & word,
+                                    int start_pos, int end_pos,
+                                    vector<vector<int>> & break_lookup) {
+    if (STRATEGY_UNDEF != break_lookup[start_pos][end_pos]) {
+      return (STRATEGY_SUCCESS == break_lookup[start_pos][end_pos]);
+    }
+    bool is_word_breakable = false;
+    if (dict.find(word.substr(start_pos, end_pos - start_pos + 1)) != dict.end()) {
+      is_word_breakable = true;
+    } else {
+      for (int i = start_pos; i < end_pos; i++) {
+        is_word_breakable = (
+          _check_word_breakable(dict, word, start_pos, i, break_lookup) &&
+          _check_word_breakable(dict, word, i + 1, end_pos, break_lookup)
+        );
+        if (true == is_word_breakable) { break; }
+      }
+    }
+    break_lookup[start_pos][end_pos] = (
+      (true == is_word_breakable) ? STRATEGY_SUCCESS : STRATEGY_FAIL
+    );
+    return is_word_breakable;
   }
 
   /**
-   * if w.max-id == 0 ==>> good if w[0] in dict
-   * else w.max-id == i ==>> exist a j, where w[0..j-1] is breakable and also
-   *      w[j..i] is in dict, whether w[0..j] is breakable can be cached in the
-   *      meantime, we can keep append the token until the end.
+   * 13.11 Distinct Subsequences
+   * Given a string S and a string T, count the number of distinct subsequences
+   * of T in S. A subsequence of a string is a new string which is formed from
+   * the original string by deleting some (can be none) of the characters
+   * without disturbing the relative positions of the remaining characters.
+   * (ie, "ACE" is a subsequence of "ABCDE" while "AEC" is not).
+   * Here is an example: S = "rabbbit", T = "rabbit" Return 3.
+   * - S[0..i..m] & T[0..j..n], F(i, j) => # of dist subseq by S[0..i] & T[0..j]
+   *   for F[i, j], i >= j (i < j, all value will be 0 as token is longer)
+   *     if S[i] == T[j] => F[n - 1, m - 1] + F[n - 1, m]
+   *     else            => F[n - 1, m]
+   *   rabbbit
+   *   rabbit
    */
-  static vector<vector<string>> break_word(const unordered_set<string> & dict,
-                                           const string & word) {
-    vector<string> curr_token_path;
-    vector<vector<string>> token_path_arr;
-
-    string sub_token; int word_len = word.size(); bool tmp_flag = false;
-
-    if (0 == word_len) { return token_path_arr; }
-
-    vector<bool> lookup(word_len, false);
-    map<int, vector<string>> start_pos_to_token_arr_map;
-    for (int i = 0; i < word_len; i++) {
-      for (int j = 0; j <= i; j++) {
-        sub_token = word.substr(j, i - j + 1);
-        tmp_flag = lookup[i];
-        lookup[i] = (dict.end() != dict.find(sub_token));
-        if (j > 0) { lookup[i] = lookup[i] && lookup[j - 1]; }
-        if (true == lookup[i]) {
-          if (start_pos_to_token_arr_map.find(j) == start_pos_to_token_arr_map.end()){
-            start_pos_to_token_arr_map[j] = vector<string>();
-          }
-          start_pos_to_token_arr_map[j].push_back(sub_token);
-        }
-        // reset every time when false
-        if (false == lookup[i]) { lookup[i] = tmp_flag; }
-      }
-    }
-    search_all_results(start_pos_to_token_arr_map,
-                       start_pos_to_token_arr_map.begin(),
-                       token_path_arr, curr_token_path, word_len);
-    for (auto & token_arr: token_path_arr) {
-      cout << "[ "; for (auto & token: token_arr) { cout << token << " "; } cout << "] ";
-    }; cout << endl;
-    return token_path_arr;
-  }
-
-  static void search_all_results(map<int, vector<string>> & start_pos_to_token_arr_map,
-                                 map<int, vector<string>>::const_iterator pos_token_pair_itr,
-                                 vector<vector<string>> & token_path_arr,
-                                 vector<string> curr_token_path, int target_size) {
-    if (start_pos_to_token_arr_map.end() == pos_token_pair_itr) { return; }
-    int next_start_pos = pos_token_pair_itr->first;
-    map<int, vector<string>>::const_iterator next_pair_itr;
-    for (auto token : pos_token_pair_itr->second) {
-      next_start_pos = pos_token_pair_itr->first + token.size();
-      curr_token_path.push_back(token);
-      if (target_size == next_start_pos) {
-        token_path_arr.push_back(curr_token_path);
-      } else {
-        next_pair_itr = start_pos_to_token_arr_map.find(next_start_pos);
-        if (start_pos_to_token_arr_map.end() != next_pair_itr) {
-          search_all_results(start_pos_to_token_arr_map, next_pair_itr,
-                             token_path_arr, curr_token_path, target_size);
+  static int count_distinct_subseq(const string text, const string seq) {
+    int text_len = text.size(), seq_len = seq.size();
+    if ((true == seq.empty()) || (true == text.empty()) ||
+        (seq_len > text_len)) { return 0; }
+    vector<vector<int>> seq_cnt_lookup(text_len, vector<int>(seq_len, 0));
+    for (int i = 0; i < text_len; i++) {
+      for (int j = 0; ((j <= i) && (j < seq.size())); j++) {
+        if (0 == j && 0 == i) {
+          seq_cnt_lookup[i][j] = (text[i] == seq[j]) ? 1 : 0;
+        } else if (0 == j) {
+          seq_cnt_lookup[i][j] = ((text[i] == seq[j]) ?
+            (1 + seq_cnt_lookup[i - 1][j]) : (seq_cnt_lookup[i - 1][j]));
+        } else {
+          seq_cnt_lookup[i][j] = ((text[i] == seq[j]) ?
+            (seq_cnt_lookup[i - 1][j - 1] + seq_cnt_lookup[i - 1][j]) :
+            (seq_cnt_lookup[i - 1][j]));
         }
       }
-      curr_token_path.pop_back();
     }
+    return seq_cnt_lookup[text_len - 1][seq_len - 1];
   }
 };
 
-
-
 int main(void) {
+  cout << "1. dp_util::get_min_palindrome_cnt" << endl;
   string test_input[] = { "", "a", "aab", "aaa", "aaacdfe", "aaacaaafe",
                           "abcde", "abacabaca", "abacakacaba" };
-  int test_output[] = { -1, 0, 1, 0, 4, 2, 4, 2, 0 };
-  cout << "DPUtil::get_min_palin_cnt" << endl;
+  int test_output[] = { 0, 0, 1, 0, 4, 2, 4, 2, 0 };
+  cout << "dp_util::get_min_palin_cnt" << endl;
   for (int i = 0; i < sizeof(test_input) / sizeof(string); i++) {
-    assert(DPUtil::get_min_palin_cnt(test_input[i]) == test_output[i]);
-    cout << test_input[i] << endl;
-    cout << DPUtil::get_min_palin_cnt(test_input[i]) << endl;
+    int min_palin_cnt = dp_util::get_min_palindrome_cnt(test_input[i]);
+    cout << "1-" << i << ": " << test_input[i] << " | min-palin-cuts: "
+         << test_output[i] << " vs " << min_palin_cnt << endl;
+    assert(min_palin_cnt == test_output[i]);
   }
-  cout << "DPUtil::is_input_via_interleave" << endl;
-  cout << DPUtil::is_input_via_interleave("aabcc", "dbbca", "aadbbcbcac") << endl; // T
-  cout << DPUtil::is_input_via_interleave("aabcc", "dbbca", "aadbbbaccc") << endl; // F
-  cout << "DPUtil::is_input_via_scramble" << endl;
-  cout << DPUtil::is_input_via_scramble("great", "rgeat") << endl;
-  cout << DPUtil::is_input_via_scramble("great", "rgtae") << endl;
-  cout << DPUtil::is_input_via_scramble("great", "rtage") << endl;
-  cout << "==>> DPUtil::count_distinct_subseq" << endl;
-  cout << DPUtil::count_distinct_subseq("rabbbit", "rabbit") << endl;
-  cout << DPUtil::count_distinct_subseq("ABCDE", "ACE") << endl;
-  cout << DPUtil::count_distinct_subseq("ABCDE", "AEC") << endl;
-  cout << DPUtil::count_distinct_subseq("ABCDE", "BE") << endl;
-  cout << DPUtil::count_distinct_subseq("ABCDE", "A") << endl;
-  cout << DPUtil::count_distinct_subseq("ABCDE", "") << endl;
-  cout << "==>> is_word_breakable" << endl;
-  unordered_set<string> dict = { "leet", "code" };
-  cout << DPUtil::is_word_breakable(dict, "leetcode") << endl;
-  cout << DPUtil::is_word_breakable(dict, "") << endl;
-  cout << DPUtil::is_word_breakable(dict, "k") << endl;
-  cout << "==>> break_word" << endl;
-  unordered_set<string> dictc = {
-    "x", "k", "leet", "code", "leetc", "cat", "cats", "and", "sand", "dog"
-  };
-  DPUtil::break_word(dictc, "leetcode");
-  DPUtil::break_word(dictc, "");
-  DPUtil::break_word(dictc, "k");
-  DPUtil::break_word(dictc, "y");
-  DPUtil::break_word(dictc, "catsanddog");
+
+  cout << "2. dp_util::is_input_via_scramble" << endl;
+  assert(true == dp_util::is_input_via_scramble("great", "rgeat"));
+  assert(true == dp_util::is_input_via_scramble("great", "rgtae"));
+  assert(false == dp_util::is_input_via_scramble("great", "rtage"));
+
+  cout << "3. dp_util::is_input_via_interleave" << endl;
+  assert(true == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
+  assert(false == dp_util::check_input_via_interleave("aabcc","dbbca","aadbbbaccc"));
+
+  cout << "4. dp_util::calc_max_sum_triangle" << endl;
+  cout << "21 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 2 }), vector<int>({ 3, 4 }), vector<int>({ 6, 5, 7 }),
+      vector<int>({ 4, 1, 8, 3 }) })) << endl;
+  cout << "23 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 3 }), vector<int>({ 7, 4 }), vector<int>({ 2, 4, 6 }),
+      vector<int>({ 8, 5, 9, 3 }) })) << endl;
+  cout << "19 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+    { vector<int>({ 8 }), vector<int>({ -4, 4 }), vector<int>({ 2, 2, 6 }),
+      vector<int>({ 1, 1, 1, 1 }) })) << endl;
+
+  cout << "5. dp_util::is_word_breakable" << endl;
+  unordered_set<string> dict = { "mobile","samsung","sam","sung","man","mango",
+                                 "icecream","and","go","i","like","ice","cream" };
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "iiiiiiii") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikesamsung") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikelikeimangoiii") << endl;
+  cout << "1 <=> " << dp_util::is_word_breakable(dict, "samsungandmango") << endl;
+  cout << "0 <=> " << dp_util::is_word_breakable(dict, "samsungandmangok") << endl;
+
+  cout << "6. dp_util::count_distinct_subseq" << endl;
+  cout << "6 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "ge") << endl;
+  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "xe") << endl;
+  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "") << endl;
+  cout << "3 <=> " << dp_util::count_distinct_subseq("rabbbit", "rabbit") << endl;
   return 0;
 }
