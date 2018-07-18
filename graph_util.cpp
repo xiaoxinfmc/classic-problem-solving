@@ -235,6 +235,7 @@ namespace graph_util {
         vertex_heap.push_back(graph_vertex(
           i, mst_graph_metrix[pending_vertex.id][i], pending_vertex.id
         ));
+        push_heap(vertex_heap.begin(), vertex_heap.end());
       }
       is_vertex_visited_lookup[pending_vertex.id] = true;
     }
