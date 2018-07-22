@@ -471,7 +471,7 @@ public:
    * - for p to cover whole parts of input s
    *   let lookup(i, j) be p[0..j] covers s[0..i], goal is to calc lookup[i][j]
    *   assume we know all results for lookup[0..i - 1][0..j - 1], lookup[i][j]?
-   *   # abc && abc i > 0 & j > 
+   *   # abc && abc i > 0 & j > 0
    *   lookup[i][j] => good? for s[0..i-1] && p[0..j], s[0..i-1] && p[0..j-1], s[0..i] && p[0..j-1]
    *   # abc k*ab*k*c.*k*          a aa
    *                            |===============================v--+===========================v--+
@@ -486,12 +486,12 @@ public:
    *                                         * == *, ((ab, k*a) F || (ab, k*ab) T) => T
    *                                                              k != *, (a, k*ab*) || (k != b) => F
    *                                                              * == *, (ab, k*ab*) T || (ab, k*ab*k) F => T
-   * - aa a* => (aa, a) F [ (a, a) T && 
+   * - aa a* => (aa, a) F [ (a, a) T &&
    * - 1. p[j] != '*', then
    *        lookup[i][j] = (s[i] == p[j]) && (true == lookup[i - 1][j - 1]);
    * - 2. else
    *        lookup[i][j] = lookup[i][j - 2] || lookup[i][j - 1] ||
-   *                       lookup[i - 1][j] && text[i] == text[i - 1] (repeat)
+   *                       lookup[i - 1][j] && (text[i] == text[i - 1] || '.' == pattern[j - 1] (repeat)
    * - when 0 == i && 0 == j then lookup_buffer[0][0] = (text[0] == pattern[0]);
    * - when 0 == i && j > 0 then
    *   if (* == pattern[j]) then
@@ -500,20 +500,36 @@ public:
    *     lookup[i][j] = ((* == pattern[j - 1]) && (text[i] == pattern[j]))
    */
   static bool is_pattern_matched(const string text, const string pattern) {
-    if (text.empty() || pattern.empty()) { return false; }
+    if (!text.empty() && pattern.empty()) { return false; }
+    if ( text.empty() && pattern.empty()) { return true; }
 
     int text_len = text.size(); int pattern_len = pattern.size();
+    if (text.empty()) {
+      if (0 != pattern_len % 2) { return false; }
+      for (int i = 0; i < pattern_len; i++) {
+        if (1 == i % 2 && pattern[i] != '*') { return false; }
+      }
+      return true;
+    }
+
     vector<vector<bool>> lookup(text_len, vector<bool>(pattern_len, false));
 
     lookup[0][0] = is_char_pair_match(text[0], pattern[0]);
-    for (int j = 1; j < pattern_len; j++){
-      if ('*' == pattern[j]) {
-        lookup[0][j] = (((j > 1) && (true == lookup[0][j - 2])) ||
-                                    (true == lookup[0][j - 1]));
-      } else {
-        lookup[0][j] = (('*' == pattern[j - 1]) &&
-                        (true == is_char_pair_match(text[0], pattern[j])));
-      }
+    int min_good_char_cnt = lookup[0][0] ? 1 : 0; int min_bad_char_cnt = lookup[0][0] ? 0 : 1;
+    for (int j = 1; j < pattern_len; j++) {
+      if (is_char_pair_match(text[0], pattern[j])) {
+        lookup[0][j] = (0 == min_good_char_cnt && 0 == min_bad_char_cnt);
+        min_good_char_cnt += 1;
+      } else if ('*' == pattern[j]) {
+        if (is_char_pair_match(text[0], pattern[j - 1])) {
+          lookup[0][j] = (((j > 1) && (lookup[0][j - 2])) ||
+                          ((lookup[0][j - 1])));
+          min_good_char_cnt -= 1;
+        } else {
+          lookup[0][j] = ((j > 1) && (lookup[0][j - 2]));
+          min_bad_char_cnt -= 1;
+        }
+      } else { min_bad_char_cnt += 1; }
     }
     for (int i = 1; i < text_len; i++) {
       for (int j = 1; j < pattern_len; j++) {
@@ -521,22 +537,14 @@ public:
           lookup[i][j] = ((true == is_char_pair_match(text[i], pattern[j])) &&
                           (true == lookup[i - 1][j - 1]));
         } else {
-          lookup[i][j] = (((text[i] == text[i - 1]) && (true == lookup[i - 1][j])) ||
-                                           ((j > 1) && (true == lookup[i][j - 2]))     ||
-                                                       (true == lookup[i][j - 1]));
+          lookup[i][j] = (((true == is_char_pair_match(text[i], pattern[j - 1])) &&
+                           (true == is_char_pair_match(text[i - 1], pattern[j - 1])) &&
+                                      (true == lookup[i - 1][j])) || // pat[j - 1] appear at least twice
+                          ((j > 1) && (true == lookup[i][j - 2])) || // pat[j - 1] did not appear
+                                      (true == lookup[i][j - 1]));   // pat[j - 1] appear once
         }
-      } 
+      }
     }
-/*
-cout << endl << "  ";
-for (int j = 0; j < pattern_len; j++) { cout << pattern[j] << " "; }
-cout << endl;
-for (int i = 0; i < text_len; i++) {
-  cout << text[i] << " ";
-  for (int j = 0; j < pattern_len; j++) { cout << lookup[i][j] << " "; }
-  cout << endl;
-}
-*/
     return lookup.back().back();
   }
 
@@ -608,16 +616,24 @@ int main(void) {
 
   cout << "8. dp_util::is_pattern_matched" << endl;
 
+  cout << "1 <=> " << dp_util::is_pattern_matched("", "x*") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("", "x*x*x*") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("", "") << endl;
   cout << "0 <=> " << dp_util::is_pattern_matched("x", "") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("", "x*") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("", "") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("", "") << endl;
   cout << "0 <=> " << dp_util::is_pattern_matched("a", "") << endl;
   cout << "0 <=> " << dp_util::is_pattern_matched("a", "aa") << endl;
   cout << "0 <=> " << dp_util::is_pattern_matched("aa", "a") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("aa", "a*") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("aa", ".*") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("ab", ".*") << endl;
   cout << "0 <=> " << dp_util::is_pattern_matched("mississippi", "mis*is*p*.") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("aab", "c*a*b") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("aab", "a*b") << endl;
+  cout << "0 <=> " << dp_util::is_pattern_matched("aaa", "ab*a") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("aaaa", ".*") << endl;
+  cout << "0 <=> " << dp_util::is_pattern_matched("b", "ab*b") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("aaa", "ab*ac*a") << endl;
+  cout << "1 <=> " << dp_util::is_pattern_matched("a", "..*") << endl;
   return 0;
 }
