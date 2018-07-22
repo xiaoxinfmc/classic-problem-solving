@@ -550,6 +550,44 @@ public:
 
   static bool is_char_pair_match(char l, char r) { return ((l == r) || ('.' == r)); }
 
+  /**
+   * def lcs_buf[i][j] => lcs-len of l_str[0..i] & r_str[0..j],
+   * to calc lcs_buf[i][j], assume we already know lcs_buf[0..i - 1][0..j - 1]
+   *                                               lcs_buf[0..i - 1][j]
+   *                                               lcs_buf[0..i][j - 1]
+   * lcs_buf[0][0] = (l_str[0] == r_str[0]) ? 1 : 0;
+   * if l_str[i] == r_str[j]
+   *   lcs_buf[i][j] = lcs_buf[0..i - 1][0..j - 1] + 1
+   * else
+   *   lcs_buf[i][j] = max{ lcs_buf[0..i - 1][0..j],
+   *                        lcs_buf[0..i][j - 1] }
+   * end
+   */
+  static int calc_lcs_len(const string l_str, const string r_str) {
+    if (l_str.empty() || r_str.empty()) { return 0; }
+    vector<vector<int>> lcs_buffer(l_str.size(), vector<int>(r_str.size(), 0));
+    for (int i = 0; i < l_str.size(); i++) {
+      for (int j = 0; j < r_str.size(); j++) {
+        if (i == 0 && j == 0) {
+          lcs_buffer[0][0] = (l_str[0] == r_str[0]) ? 1 : 0; continue;
+        }
+        if (l_str[i] == r_str[j]) {
+          if (0 == i || j == 0) {
+            lcs_buffer[i][j] = (j > 0) ? max(lcs_buffer[i][j - 1], 1) :
+                                         max(lcs_buffer[i - 1][j], 1);
+          } else {
+            lcs_buffer[i][j] = lcs_buffer[i - 1][j - 1] + 1;
+          }
+        } else {
+          lcs_buffer[i][j] = (j > 0) ? lcs_buffer[i][j - 1] : 0;
+          if (i > 0) {
+            lcs_buffer[i][j] = max(lcs_buffer[i - 1][j], lcs_buffer[i][j]);
+          }
+        }
+      }
+    }
+    return lcs_buffer.back().back();
+  }
 };
 
 int main(void) {
@@ -635,5 +673,14 @@ int main(void) {
   cout << "0 <=> " << dp_util::is_pattern_matched("b", "ab*b") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("aaa", "ab*ac*a") << endl;
   cout << "1 <=> " << dp_util::is_pattern_matched("a", "..*") << endl;
+
+  cout << "9. dp_util::calc_lcs_len" << endl;
+  cout << "4 <=> " << dp_util::calc_lcs_len("AGGTAB", "GXTXAYB") << endl;
+  cout << "3 <=> " << dp_util::calc_lcs_len("ABCDGH", "AEDFHR") << endl;
+  cout << "1 <=> " << dp_util::calc_lcs_len("A", "AEDFHR") << endl;
+  cout << "1 <=> " << dp_util::calc_lcs_len("ABCDGH", "G") << endl;
+  cout << "0 <=> " << dp_util::calc_lcs_len("ABCDGH", "") << endl;
+  cout << "0 <=> " << dp_util::calc_lcs_len("", "AEDFHR") << endl;
+  cout << "0 <=> " << dp_util::calc_lcs_len("", "") << endl;
   return 0;
 }
