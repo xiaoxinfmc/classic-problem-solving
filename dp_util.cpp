@@ -588,6 +588,64 @@ public:
     }
     return lcs_buffer.back().back();
   }
+
+  /**
+   * Given an unsorted array of int, find the len of longest increasing subseq.
+   * Example:
+   * Input: [10,9,2,5,3,7,101,18]
+   * Output: 4
+   * Explanation: The longest increasing subsequence is [2,3,7,101], therefore
+   *              the length is 4. 
+   * Note:
+   * - There may be more than one LIS combination, it is only necessary for you to
+   *   return the length. Your algorithm should run in O(n2) complexity.
+   *   Follow up: Could you improve it to O(nlogn) time complexity?
+   * Analysis:
+   * - let lis(i, j) be the lis-len for arr[i..j], then goal is to get lis(0, j)
+   * - to calc lis(i, j), assume we already know lis(i + 1, j) && lis(i, j - 1);
+   *     4 5 7 2 1 0 6
+   *   4 1         3 ?
+   *   5   1         3
+   *   7     1
+   *   2       1
+   *   1         1
+   *   0           1 2
+   *   6             1
+   *
+   *   4 5 7         arr[i][j]         ? -> 4, 5, 7
+   *   |---------|   arr[i][j - 1]     3 -> 4, 5, 7 -> max 7
+   *   | |-------|-| arr[i + 1][j]     2 -> 5, 7    -> max 7
+   *   4 5 7 2 1 0 6
+   * - arr[i + 1][j]  < arr[i][j - 1] => seq starts from beginning
+   *                                     ( -1 <0 1 2 3 5) 4> => use arr[i][j - 1];
+   * - arr[i + 1][j]  > arr[i][j - 1] => seq ends with curr num arr[j]
+   *                                     (  7 <0 1 2 3 5) 6> => use arr[i + 1][j];
+   * - arr[i + 1][j] == arr[i][j - 1] => seq has nothing to do with begin & end
+   *                                     ( -1 <0 1 2 3 4)  5> arr[j] > arr[i] && arr[j] > arr[j - 1] => +1
+   *                                     (100 <0 1 2 3 4) -1> arr[j] < arr[i] => same
+   */
+  static int calc_longest_incr_subseq_len(vector<int> input) {
+    int total_cnt = input.size();
+    if (0 == total_cnt) { return 0; }
+    vector<vector<int>> lis_buffer(total_cnt, vector<int>(total_cnt, 0));
+    for (int i = total_cnt - 1; i >= 0; i--) {
+      for (int j = i; j < total_cnt; j++) {
+        if (i == j) { lis_buffer[i][j] = 1; continue; }
+        if (lis_buffer[i + 1][j] < lis_buffer[i][j - 1]) {
+          lis_buffer[i][j] = lis_buffer[i][j - 1]; continue;
+        } else if (lis_buffer[i + 1][j] > lis_buffer[i][j - 1]) {
+          lis_buffer[i][j] = lis_buffer[i + 1][j]; continue;
+        } else {
+          if (input[i] < input[j] && input[j] > input[j - 1]) {
+            lis_buffer[i][j] = lis_buffer[i + 1][j] + 1;
+          } else {
+            lis_buffer[i][j] = lis_buffer[i + 1][j];
+          }
+        }
+      }
+    }
+    return lis_buffer.front().back();
+  }
 };
 
 int main(void) {
@@ -682,5 +740,13 @@ int main(void) {
   cout << "0 <=> " << dp_util::calc_lcs_len("ABCDGH", "") << endl;
   cout << "0 <=> " << dp_util::calc_lcs_len("", "AEDFHR") << endl;
   cout << "0 <=> " << dp_util::calc_lcs_len("", "") << endl;
+
+  cout << "10. dp_util::calc_longest_incr_subseq_len" << endl;
+  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+                        vector<int>({ 2, 5, 3, 7, 11, 8, 10, 13, 6 })
+                      ) << endl;
+  cout << "5 <=> " << dp_util::calc_longest_incr_subseq_len(
+                        vector<int>({ 10, 22, 9, 33, 21, 50, 41, 60 })
+                      ) << endl;
   return 0;
 }
