@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -616,35 +617,41 @@ public:
    *   |---------|   arr[i][j - 1]     3 -> 4, 5, 7 -> max 7
    *   | |-------|-| arr[i + 1][j]     2 -> 5, 7    -> max 7
    *   4 5 7 2 1 0 6
+   *     |-------|   arr[i + 1][j - 1] 2 -> 5, 7
    * - arr[i + 1][j]  < arr[i][j - 1] => seq starts from beginning
    *                                     ( -1 <0 1 2 3 5) 4> => use arr[i][j - 1];
    * - arr[i + 1][j]  > arr[i][j - 1] => seq ends with curr num arr[j]
    *                                     (  7 <0 1 2 3 5) 6> => use arr[i + 1][j];
-   * - arr[i + 1][j] == arr[i][j - 1] => seq has nothing to do with begin & end
-   *                                     ( -1 <0 1 2 3 4)  5> arr[j] > arr[i] && arr[j] > arr[j - 1] => +1
-   *                                     (100 <0 1 2 3 4) -1> arr[j] < arr[i] => same
+   * - arr[i + 1][j] == arr[i][j - 1] => arr[i][j] can only differ. at most by 1
+   *                                     for case of +1, arr[i] && arr[j] both be part of seq.
+   *                                     if any of them not part of seq, then no diff.
+   * - ( -1 <9 1 2 3 4) 5> <=> (arr[i] < arr[j] && lis(i + 1, j) == lis(i + 1, j - 1) + 1 &&
+   *         |-------| -> 1 2 3 4 => 4             lis(i, j - 1) == lis(i + 1, j - 1) + 1)
+   *                 5  6
+   *                 4  5
+   *
+   * - lis(i) => lis-len for input(0..i) including elem i. we know lis(0) ... lis(i - 1)
+   *   lis(i) <= for input(0) ... input(i - 1), with value input(x) & lis(x),
+   *             if input(i) > input(x) then lis(i)
+   *               max(lis(i), lis(x))
+   *             end
+   *             lis(i) += 1;
    */
   static int calc_longest_incr_subseq_len(vector<int> input) {
-    int total_cnt = input.size();
-    if (0 == total_cnt) { return 0; }
-    vector<vector<int>> lis_buffer(total_cnt, vector<int>(total_cnt, 0));
-    for (int i = total_cnt - 1; i >= 0; i--) {
-      for (int j = i; j < total_cnt; j++) {
-        if (i == j) { lis_buffer[i][j] = 1; continue; }
-        if (lis_buffer[i + 1][j] < lis_buffer[i][j - 1]) {
-          lis_buffer[i][j] = lis_buffer[i][j - 1]; continue;
-        } else if (lis_buffer[i + 1][j] > lis_buffer[i][j - 1]) {
-          lis_buffer[i][j] = lis_buffer[i + 1][j]; continue;
-        } else {
-          if (input[i] < input[j] && input[j] > input[j - 1]) {
-            lis_buffer[i][j] = lis_buffer[i + 1][j] + 1;
-          } else {
-            lis_buffer[i][j] = lis_buffer[i + 1][j];
-          }
+    int lis = 0, total_cnt = input.size();
+    if (0 == total_cnt) { return lis; }
+    vector<int> lis_buffer(total_cnt, lis);
+    lis_buffer[0] = 1; lis = 1;
+    for (int i = 1; i < total_cnt; i++) {
+      for (int j = 0; j < i; j++) {
+        if (input[i] > input[j]) {
+          lis_buffer[i] = max(lis_buffer[i], lis_buffer[j]);
         }
       }
+      lis_buffer[i] += 1;
+      lis = max(lis, lis_buffer[i]);
     }
-    return lis_buffer.front().back();
+    return lis;
   }
 };
 
@@ -747,6 +754,15 @@ int main(void) {
                       ) << endl;
   cout << "5 <=> " << dp_util::calc_longest_incr_subseq_len(
                         vector<int>({ 10, 22, 9, 33, 21, 50, 41, 60 })
+                      ) << endl;
+  cout << "3 <=> " << dp_util::calc_longest_incr_subseq_len(
+                        vector<int>({ 4, 10, 4, 3, 8, 9 })
+                      ) << endl;
+  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+                        vector<int>({ -1, 9, 1, 2, 3, 4, 5 })
+                      ) << endl;
+  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+                        vector<int>({ 3,5,6,2,5,4,19,5,6,7,12 })
                       ) << endl;
   return 0;
 }
