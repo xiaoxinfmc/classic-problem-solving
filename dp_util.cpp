@@ -653,6 +653,96 @@ public:
     }
     return lis;
   }
+
+  static int calc_min_partition_diff(vector<int> input) {
+    int min_diff = INT_MAX, sum = 0;
+    if (true == input.empty()) { return min_diff; }
+    vector<int> min_diff_lookup(input.size(), INT_MAX);
+    for (int i = 0; i < input.size(); i++) { sum += input[i]; }
+    min_diff_lookup[0] = abs(sum - 2 * input[0]);
+    for (int i = 1; i < input.size(); i++) {
+      for (int j = 0; j < i; j++) {
+        min_diff_lookup[i] = min(
+          min_diff_lookup[i], abs(sum - 2 * (min_diff_lookup[j] + input[i]))
+        );
+      }
+      min_diff = min(min_diff, min_diff_lookup[i]);
+    }
+    return min_diff;
+  }
+
+  static int calc_max_incr_path_len(vector<vector<int>> input) {
+    int max_len = 0;
+    if (true == input.empty() || true == input.front().size()) { return max_len; }
+    vector<vector<int>> max_path_len(input.size(), vector<int>(input.front().size(), 1));
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 0; j < input[i].size(); j++) {
+        if (i > 0 && input[i][j] == input[i - 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i - 1][j] + 1, max_path_len[i][j] + 1); }
+        if (j > 0 && input[i][j] == input[i][j - 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j - 1] + 1, max_path_len[i][j] + 1); }
+        max_len = max(max_len, max_path_len[i][j]);
+      }
+    }
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = input[i].size() - 1; j >= 0; j--) {
+        if (i > 0 && input[i][j] == input[i - 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i - 1][j] + 1, max_path_len[i][j] + 1); }
+        if (j < input[i].size() - 1 && input[i][j] == input[i][j + 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j + 1] + 1, max_path_len[i][j] + 1); }
+        max_len = max(max_len, max_path_len[i][j]);
+      }
+    }
+    for (int i = input.size() - 1; i >= 0; i--) {
+      for (int j = input[i].size() - 1; j >= 0; j--) {
+        if (i < input.size() - 1 && input[i][j] == input[i + 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i + 1][j] + 1, max_path_len[i][j] + 1); }
+        if (j < input[i].size() - 1 && input[i][j] == input[i][j + 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j + 1] + 1, max_path_len[i][j] + 1); }
+        max_len = max(max_len, max_path_len[i][j]);
+      }
+    }
+    for (int i = input.size() - 1; i >= 0; i--) {
+      for (int j = 0; j < input[i].size(); j++) {
+        if (i < input.size() - 1 && input[i][j] == input[i + 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i + 1][j] + 1, max_path_len[i][j] + 1); }
+        if (j > 0 && input[i][j] == input[i][j - 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j - 1] + 1, max_path_len[i][j] + 1); }
+        max_len = max(max_len, max_path_len[i][j]);
+      }
+    }
+    return max_len;
+  }
+
+  /**
+   * Given a set of non-negative integers, and a value sum, determine if there
+   * is a subset of the given set with sum equal to given sum.
+   * Examples: set[] = {3, 34, 4, 12, 5, 2}, sum = 9
+   * Output:  True => There is a subset (4, 5) with sum 9.
+   * Analysis:
+   * - Given input[0..i] & sum, check if any subset mounts to sum?
+   * - let lookup(i, j) => i : subset from input[0..i]
+   *                       j : target sum
+   *       lookup(i, j) => sum of the corresponding subset.
+   * - constraint is 9, then simply pack as much as possible to see if we reach 9
+   * - goal is to calc and check for anything in lookup equals to 9
+   * - init all values to -1;
+   *   if lookup(i - 1, j - input[i]) + input[i] <= j {
+   *     lookup(i, j) = max(lookup(i - 1, j - input[i]) + input[i], lookup(i - 1, j))
+   *   } else {
+   *     lookup(i, j) = lookup(i - 1, j)
+   *   }
+   */
+  static bool check_subset_sum(vector<int> input, int sum) {
+    bool is_sum_existed = false;
+    vector<vector<int>> lookup(input.size(), vector<int>(sum + 1, 0));
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 0; j <= sum; j++) {
+        if (0 == i) {
+          lookup[i][j] = (j >= input[i]) ? input[i] : 0;
+        } else {
+          lookup[i][j] = lookup[i - 1][j];
+          if (j >= input[i] && lookup[i - 1][j - input[i]] + input[i] <= j) {
+            lookup[i][j] = max(lookup[i - 1][j - input[i]] + input[i], lookup[i][j]);
+          }
+        }
+        is_sum_existed = (!is_sum_existed && sum == lookup[i][j]);
+      }
+    }
+    return is_sum_existed;
+  }
 };
 
 int main(void) {
@@ -764,5 +854,32 @@ int main(void) {
   cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
                         vector<int>({ 3,5,6,2,5,4,19,5,6,7,12 })
                       ) << endl;
+
+  cout << "11. dp_util::calc_min_partition_diff" << endl;
+  cout << "1 <=> " << dp_util::calc_min_partition_diff(
+                        vector<int>({ 3, 1, 4, 2, 2, 1 })
+                      ) << endl;
+
+  cout << "12. dp_util::calc_max_incr_path_len" << endl;
+  cout << "4 <=> " << dp_util::calc_max_incr_path_len(
+                        vector<vector<int>>({ vector<int>({1, 2, 9}),
+                                              vector<int>({5, 3, 8}),
+                                              vector<int>({4, 6, 7}) })
+                      ) << endl;
+  cout << "8 <=> " << dp_util::calc_max_incr_path_len(
+                        vector<vector<int>>({ vector<int>({3, 2, 9}),
+                                              vector<int>({4, 5, 8}),
+                                              vector<int>({4, 6, 7}) })
+                      ) << endl;
+  cout << "9 <=> " << dp_util::calc_max_incr_path_len(
+                        vector<vector<int>>({ vector<int>({40, 30, 20, 25, 90}),
+                                              vector<int>({40, 3, 2, 1, 90}),
+                                              vector<int>({40, 4, 9, 8, 90}),
+                                              vector<int>({40, 5, 6, 7, 90}),
+                                              vector<int>({40, 30, 20, 25, 90}) })
+                      ) << endl;
+
+  cout << "13. dp_util::check_subset_sum" << endl;
+  cout << "1 <=> " << dp_util::check_subset_sum(vector<int>({3, 34, 4, 12, 5, 2}), 9) << endl;
   return 0;
 }
