@@ -743,6 +743,83 @@ public:
     }
     return is_sum_existed;
   }
+
+  /**
+   * Dynamic Programming | Set 8 (Matrix Chain Multiplication)
+   * Given a sequence of matrices, find the most efficient way to multiply
+   * matrices together. The problem is not actually to perform multiplications,
+   * but merely to decide in which order to perform the multiplications.
+   * We have many options to multiply a chain of matrices because matrix
+   * multiplication is associative. In other words, no matter how parenthesize
+   * the product, the result will be the same. For example, if we had four
+   * matrices A, B, C, and D, we would have:
+   * (ABC)D = (AB)(CD) = A(BCD) = ....
+   * However, the order in which we parenthesize the product affects number
+   * of simple arithmetic operations needed to compute the product, or the
+   * efficiency. For example, suppose A is a 10 * 30 matrix, B is a 30 * 5
+   * matrix, and C is a 5 * 60 matrix. Then,
+   * (AB)C = (10×30×5) + (10×5×60) = 1500 + 3000 = 4500 operations
+   * A(BC) = (30×5×60) + (10×30×60) = 9000 + 18000 = 27000 operations.
+   * Input: p[] = {40, 20, 30, 10, 30}
+   * Output: 26000
+   * - There are 4 matrices of dimensions 40x20, 20x30, 30x10 and 10x30.
+   *   Let the input 4 matrices be A, B, C and D.  The minimum number of
+   *   multiplications are obtained by putting parenthesis in following way
+   *   (A(BC))D --> 20*30*10 + 40*20*10 + 40*10*30
+   * Input: p[] = {10, 20, 30, 40, 30}
+   * Output: 30000
+   * - There are 4 matrices of dimensions 10x20, 20x30, 30x40 and 40x30.
+   *   Let the input 4 matrices be A, B, C and D.  The minimum number of
+   *   multiplications are obtained by putting parenthesis in following way
+   *   ((AB)C)D --> 10*20*30 + 10*30*40 + 10*40*30
+   * Input: p[] = {10, 20, 30}
+   * Output: 6000
+   * - There are only two matrices of dimensions 10x20 and 20x30. So there
+   *   is only one way to multiply the matrices, cost of which is 10*20*30
+   *
+   * Let min_mult_ops(i, j) be the min mult ops need for matrix from i..j
+   * to calc min_mult_ops(i, j), we know min_mult_ops(i, k), i < k < j
+   * As matrix(j) will always be multiplied with another one produced by the
+   * mult of subsets of matrices(by any consequtive matrices next to each).
+   * - Goal is to calc min_mult_ops(0, j)
+   *   20 x 30, 30 x 40, 40 x 3, 3 x 1
+   *            30 x 40 x 1 40 x 3 x 1
+   * - min_mult_ops(i, j) = {
+   *     0 if j == i
+   *     ops_cnt(m[i], m[j]) if j == i + 1
+   *     min { i <= k < j | min_mult_ops(i, k) +
+   *                        min_mult_ops(k + 1, j) +
+   *                        row[i] * col[k + 1] * col[j + 1] }
+   *  }
+   *            0   1   2   3
+   * 26000 <=> 40, 20, 30, 10, 30
+   * [   0     1     2     3                       1 - k             40 * 30 * 10 -> 12k                         6k        8k
+   * 0 [ 0 24000 36000 48000 ] (0, 1) (0, 2) { m(0, 1) 24k + m[1][1] + m[i] * m[k + 1] * m[3] => 36k, | m(0, 0) + m(1, 2) + 40 * 20 * 10 => 14k }
+   * 1 [ 0     0  6000 12000 ] (1, 2) (1, 3) { 20 * 30 * 10 + 20 * 10 * 30 => 12000, 9000 + 20 * 30 * 30 } -> i => 1, j = 3, k -> (2) m(1, 2) + m(3, 3) + 20 * 10 * 30 => 12000
+   * 2 [ 0     0     0  9000 ] (2, 3)
+   * 3 [ 0     0     0     0 ]
+   * ]
+   */
+  static int calc_min_multiply_ops(vector<int> matrix) {
+    vector<vector<int>> min_mult_ops(
+      matrix.size() - 1, vector<int>(matrix.size() - 1, 0)
+    );
+    for (int i = min_mult_ops.size() - 1; i >= 0; i--) {
+      for (int j = i + 1; j < min_mult_ops.size(); j++) {
+        if (j == i + 1) {
+          min_mult_ops[i][j] = matrix[i] * matrix[j] * matrix[j + 1]; continue;
+        }
+        min_mult_ops[i][j] = INT_MAX;
+        for (int k = i; k < j; k++) {
+          //int ops_cnt = min_mult_ops[i][k] + matrix[i] * matrix[k + 1] * matrix[j + 1];
+          //if (k + 1 < j) { ops_cnt += min_mult_ops[k + 1][j]; }
+          int ops_cnt = min_mult_ops[i][k] + min_mult_ops[k + 1][j] + matrix[i] * matrix[k + 1] * matrix[j + 1];
+          min_mult_ops[i][j] = ops_cnt < min_mult_ops[i][j] ? ops_cnt : min_mult_ops[i][j];
+        }
+      }
+    }
+    return min_mult_ops.front().back();
+  }
 };
 
 int main(void) {
@@ -881,5 +958,12 @@ int main(void) {
 
   cout << "13. dp_util::check_subset_sum" << endl;
   cout << "1 <=> " << dp_util::check_subset_sum(vector<int>({3, 34, 4, 12, 5, 2}), 9) << endl;
+
+  cout << "14. dp_util::calc_min_multiply_ops" << endl;
+  cout << "30000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30, 40, 30})) << endl;
+  cout << "26000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({40, 20, 30, 10, 30})) << endl;
+  cout << "6000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30})) << endl;
+  cout << "18 <=> " << dp_util::calc_min_multiply_ops(vector<int>({1, 2, 3, 4})) << endl;
+
   return 0;
 }
