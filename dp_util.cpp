@@ -917,6 +917,71 @@ public:
     }
     return max_cut_lookup.back().back();
   }
+
+  /**
+   * Dynamic Programming | Set 7 (Coin Change)
+   * Given a value N, if we want to make change for N cents, we have infinite
+   * supply of each of S = { S1, S2, .. , Sm} valued coins, how many ways can
+   * we make the change? The order of coins doesn't matter
+   *
+   * For example, for N = 4 and S = {1,2,3}, there are four solutions:
+   * {1,1,1,1},{1,1,2},{2,2},{1,3}.
+   * So output should be 4.
+   *
+   * For N = 10 and S = {2, 5, 3, 6}, there are five solutions:
+   * {2,2,2,2,2}, {2,2,3,3}, {2,2,6}, {2,3,5} and {5,5}.
+   * So the output should be 5.
+   *
+   * Reduced to Knapsack to pick unlimited items(weighted, from well known
+   * categories) with constraint of maximum capacity, instead of check if
+   * we can fully pack it or the maximum packed value, the goal here is to
+   * count how many ways we can fully pack it. Actually it is the same when
+   * compared to check if we can fully pack it, we only needs to count them
+   * after we fill out the table.
+   *
+   * 1 Reduced to 0/1 knapsack as only limited # of each coins are possible.
+   * - Let coin_change_lookup(i, j) be added sum of max change(<=N) based on
+   *   coins 0...i, with target sum of j. goal is to calc. whole table then
+   *   count coin_change_lookup(i, N) with value equals to N.
+   *
+   * if (j > value(i)) {
+   *   coin_change_lookup(i, j) = max{ coin_change_lookup(i - 1, j),
+   *                                   coin_change_lookup(i - 1, j - value(i)) + value(i) }
+   * } else {
+   *   coin_change_lookup(i, j) = coin_change_lookup(i - 1, j)
+   * }
+   *
+   * 2 Change the constraints, as the capacity will not change, while each
+   *   we can choose to pick diff. coins each time, then:
+   * - Let coin_change_lookup(i, j) be the max # of full-packing for capacity
+   *   j based on i kinds of coin with > 0 # of coin i is chosen.
+   *   To calc. coin_change_lookup(i, j), we know
+   *   coin_change_lookup(0..i, 0..j), then
+   * - coin_change_lookup(i, j) = coin_change_lookup(i - 1, j)
+   *                              + 1 if coin_change_lookup(i - 1, j - coin(i)) > 0
+   *                              + 1 if coin_change_lookup(i, j - coin(i)) > 0 || 0 == N % coin(i)
+   *             0   1   2   3   4
+   *         { } 1   0   0   0   0
+   *       { 1 } 0   1   1   1   1
+   *    { 1, 2 } 0   1   2   2   3 (2, 1 1) (1 1 1, 1 2) (1 1 1 1, 2 2, 1 1 2) (1 1 1 1, 2 2, 1 1 2, 1 3)
+   * { 1, 2, 3 } 0   1   2   3   3 + 1
+   */
+  static int calc_coin_change(vector<int> coin_values, int target) {
+    vector<vector<int>> coin_change_lookup(
+      coin_values.size() + 1, vector<int>(target + 1, 0)
+    );
+    for (int i = 1; i <= coin_values.size(); i++) {
+      for (int j = 1; j <= target; j++) {
+        coin_change_lookup[i][j] = coin_change_lookup[i - 1][j];
+        if (j < coin_values[i - 1]) { continue; }
+        if (coin_change_lookup[i - 1][j - coin_values[i - 1]] > 0) { coin_change_lookup[i][j]++; }
+        if (coin_change_lookup[i][j - coin_values[i - 1]] >
+            coin_change_lookup[i - 1][j - coin_values[i - 1]] ||
+            0 == j % coin_values[i - 1]) { coin_change_lookup[i][j]++; }
+      }
+    }
+    return coin_change_lookup.back().back();
+  }
 };
 
 int main(void) {
@@ -1074,5 +1139,8 @@ int main(void) {
   cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "24 <=> " << dp_util::max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
 
+  cout << "15. dp_util::calc_coin_change" << endl;
+  cout << "4 <=> " << dp_util::calc_coin_change(vector<int>({1, 2, 3}), 4) << endl;
+  cout << "5 <=> " << dp_util::calc_coin_change(vector<int>({2, 5, 3, 6}), 10) << endl;
   return 0;
 }
