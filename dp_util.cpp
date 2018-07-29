@@ -860,6 +860,63 @@ public:
     }
     return is_set_evenly_partitioned;
   }
+  /**
+   * Dynamic Programming | Set 13 (Cutting a Rod)
+   *
+   * Given a rod of length n inches and an array of prices that contains prices
+   * of all pieces of size smaller than n. Determine maximum value obtainable
+   * by cutting up the rod and selling the pieces.
+   *
+   * For example, if length of the rod is 8 and the values of different pieces
+   * are given as following, then the maximum obtainable value is 22 (by cutting
+   * in two pieces of 2 and 6)
+   *
+   * length   | 1   2   3   4   5   6   7   8
+   * --------------------------------------------
+   * price    | 1   5   8   9  10  17  17  20
+   *
+   * And if the prices are as following, then the maximum obtainable value is
+   * 24 (by cutting in eight pieces of length 1)
+   *
+   * length   | 1   2   3   4   5   6   7   8
+   * --------------------------------------------
+   * price    | 3   5   8   9  10  17  17  20
+   *
+   * Reduced to weighted knapsnack problem, having number of diff. items, with
+   * max capacity of rod length, try to pack as much value as possible.
+   * max_cut_lookup(i, j) => max value by picking subset from 0 ... i with j cap.
+   */
+  static int max_cut_value(vector<int> value_arr, int max_len) {
+    vector<int> max_items_cnt(max_len + 1, 0);
+    for (int i = 1; i <= max_len; i++) { max_items_cnt[i] = max_len / i; }
+    int total_items = 0;
+    for (auto & i : max_items_cnt){ total_items += i; }
+    vector<int> item_value_arr, item_len_arr;
+    for (int i = 1; i <= max_len; i++) {
+      for (int j = 0; j < max_items_cnt[i]; j++) {
+        item_len_arr.push_back(i);
+        item_value_arr.push_back(value_arr[i - 1]);
+      }
+    }
+    vector<vector<int>> max_cut_lookup(
+      item_value_arr.size() + 1, vector<int>(max_len + 1, 0)
+    );
+    for (int i = 1; i <= total_items; i++) {
+      for (int j = 1; j <= max_len; j++) {
+        int log_length = item_len_arr[i - 1];
+        int log_value = item_value_arr[i - 1];
+        // not adding log[i]
+        max_cut_lookup[i][j] = max_cut_lookup[i - 1][j];
+        // adding log[i] if we have cap large-enough
+        if (j >= log_length) {
+          max_cut_lookup[i][j] = max(
+            max_cut_lookup[i - 1][j], max_cut_lookup[i - 1][j - log_length] + log_value
+          );
+        }
+      }
+    }
+    return max_cut_lookup.back().back();
+  }
 };
 
 int main(void) {
@@ -1012,6 +1069,10 @@ int main(void) {
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 3, 5})) << endl;
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
+
+  cout << "14. dp_util::is_set_evenly_partitioned" << endl;
+  cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "24 <=> " << dp_util::max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
 
   return 0;
 }
