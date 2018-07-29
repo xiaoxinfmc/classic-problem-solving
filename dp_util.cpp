@@ -927,9 +927,6 @@ public:
         max_cut_lookup[i][j] = max_cut_lookup[i - 1][j];
         if (j >= i) {
           max_cut_lookup[i][j] = max(
-            max_cut_lookup[i][j], max_cut_lookup[i - 1][j - i] + value_arr[i - 1]
-          );
-          max_cut_lookup[i][j] = max(
             max_cut_lookup[i][j], max_cut_lookup[i][j - i] + value_arr[i - 1]
           );
         }
@@ -943,9 +940,6 @@ public:
     for (int i = 0; i < value_arr.size(); i++) {
       for (int j = 1; j <= max_len; j++) {
         if (j >= i + 1) {
-          max_cut_lookup[j] = max(
-            max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
-          );
           max_cut_lookup[j] = max(
             max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
           );
@@ -1172,7 +1166,7 @@ int main(void) {
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
 
-  cout << "14. dp_util::is_set_evenly_partitioned" << endl;
+  cout << "14. dp_util::max_cut_value" << endl;
   cout << "22 <=> " << dp_util::_max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "24 <=> " << dp_util::_max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
