@@ -820,6 +820,46 @@ public:
     }
     return min_mult_ops.front().back();
   }
+
+  /**
+   * Partition problem is to determine whether a given set can be partitioned
+   * into two subsets such that the sum of elements in both subsets is same.
+   * Examples
+   * - arr[] = {1, 5, 11, 5}
+   *   Output: true
+   *   The array can be partitioned as {1, 5, 5} and {11}
+   * - arr[] = {1, 5, 3}
+   *   Output: false 
+   *   The array cannot be partitioned into equal sum sets.
+   * - Let diff_lookup(i) be the diff. between 2 sets, which consists
+   *   a subset from arr[0..i - 1] with arr[i] selected, then its value should
+   *   be min< { 0 <= k <= i - 1 | abs(arr[k] + 2 * arr[i]) }, abs(total - 2 * arr[i]) >
+   *   we selected the plan with min abs, but store its actual diff instead of abs.
+   *   A + B = total
+   *   A - B = arr[i - 1]
+   *   arr[i] => (A + arr[i] - (B - arr[i])) => arr[i - 1] + 2 * arr[i]
+   */
+  static bool is_set_evenly_partitioned(vector<int> arr) {
+    bool is_set_evenly_partitioned = false;
+    // reserve 1 more represents no elem selected
+    vector<int> diff_lookup(arr.size() + 1, 0);
+    int total_sum = 0;
+    for (auto & val : arr) { total_sum += val; }
+    // when we do not choose anything, then diff would be 0 - total.
+    diff_lookup[0] = -1 * total_sum;
+    for (int i = 1; i <= arr.size(); i++) {
+      int min_diff_abs = INT_MAX;
+      for (int j = 0; j < i; j++) {
+        int curr_diff_abs = abs(diff_lookup[j] + 2 * arr[i]);
+        if (curr_diff_abs < min_diff_abs) {
+          min_diff_abs = curr_diff_abs;
+          diff_lookup[i] = diff_lookup[j] + 2 * arr[i];
+        }
+      }
+      if (0 == diff_lookup[i]) { is_set_evenly_partitioned = true; break; }
+    }
+    return is_set_evenly_partitioned;
+  }
 };
 
 int main(void) {
@@ -964,6 +1004,11 @@ int main(void) {
   cout << "26000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({40, 20, 30, 10, 30})) << endl;
   cout << "6000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30})) << endl;
   cout << "18 <=> " << dp_util::calc_min_multiply_ops(vector<int>({1, 2, 3, 4})) << endl;
+
+  cout << "14. dp_util::is_set_evenly_partitioned" << endl;
+  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 11, 5})) << endl;
+  cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 3})) << endl;
+  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 4})) << endl;
 
   return 0;
 }
