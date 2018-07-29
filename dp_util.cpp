@@ -833,7 +833,7 @@ public:
    *   The array cannot be partitioned into equal sum sets.
    * - Let diff_lookup(i) be the diff. between 2 sets, which consists
    *   a subset from arr[0..i - 1] with arr[i] selected, then its value should
-   *   be min< { 0 <= k <= i - 1 | abs(arr[k] + 2 * arr[i]) }, abs(total - 2 * arr[i]) >
+   *   be min{ 0 <= k <= i - 1 | abs(arr[k] + 2 * arr[i]) }
    *   we selected the plan with min abs, but store its actual diff instead of abs.
    *   A + B = total
    *   A - B = arr[i - 1]
@@ -856,8 +856,8 @@ public:
           diff_lookup[i] = diff_lookup[j] + 2 * arr[i];
         }
       }
+      if (0 == diff_lookup[i]) { is_set_evenly_partitioned = true; break; }
     }
-    is_set_evenly_partitioned = (0 == diff_lookup.back());
     return is_set_evenly_partitioned;
   }
 };
@@ -1011,6 +1011,7 @@ int main(void) {
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 4})) << endl;
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 3, 5})) << endl;
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
+  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
 
   return 0;
 }
