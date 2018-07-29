@@ -886,7 +886,7 @@ public:
    * max capacity of rod length, try to pack as much value as possible.
    * max_cut_lookup(i, j) => max value by picking subset from 0 ... i with j cap.
    */
-  static int max_cut_value(vector<int> value_arr, int max_len) {
+  static int __max_cut_value(vector<int> value_arr, int max_len) {
     vector<int> max_items_cnt(max_len + 1, 0);
     for (int i = 1; i <= max_len; i++) { max_items_cnt[i] = max_len / i; }
     int total_items = 0;
@@ -916,6 +916,43 @@ public:
       }
     }
     return max_cut_lookup.back().back();
+  }
+
+  static int _max_cut_value(vector<int> value_arr, int max_len) {
+    vector<vector<int>> max_cut_lookup(
+      value_arr.size() + 1, vector<int>(max_len + 1, 0)
+    );
+    for (int i = 1; i <= value_arr.size(); i++) {
+      for (int j = 1; j <= max_len; j++) {
+        max_cut_lookup[i][j] = max_cut_lookup[i - 1][j];
+        if (j >= i) {
+          max_cut_lookup[i][j] = max(
+            max_cut_lookup[i][j], max_cut_lookup[i - 1][j - i] + value_arr[i - 1]
+          );
+          max_cut_lookup[i][j] = max(
+            max_cut_lookup[i][j], max_cut_lookup[i][j - i] + value_arr[i - 1]
+          );
+        }
+      }
+    }
+    return max_cut_lookup.back().back();
+  }
+
+  static int max_cut_value(vector<int> value_arr, int max_len) {
+    vector<int> max_cut_lookup(value_arr.size() + 1, 0);
+    for (int i = 0; i < value_arr.size(); i++) {
+      for (int j = 1; j <= max_len; j++) {
+        if (j >= i + 1) {
+          max_cut_lookup[j] = max(
+            max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
+          );
+          max_cut_lookup[j] = max(
+            max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
+          );
+        }
+      }
+    }
+    return max_cut_lookup.back();
   }
 
   /**
@@ -1136,7 +1173,9 @@ int main(void) {
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
 
   cout << "14. dp_util::is_set_evenly_partitioned" << endl;
+  cout << "22 <=> " << dp_util::_max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "24 <=> " << dp_util::_max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "24 <=> " << dp_util::max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
 
   cout << "15. dp_util::calc_coin_change" << endl;
