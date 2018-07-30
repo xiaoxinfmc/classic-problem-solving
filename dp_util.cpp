@@ -1013,6 +1013,57 @@ public:
     }
     return coin_change_lookup.back().back();
   }
+
+  /**
+   * Dynamic Programming | Set 36 (Maximum Product Cutting)
+   * Given a rope of length n meters, cut the rope in different parts of
+   * integer lengths in a way that maximizes product of lengths of all
+   * parts. You must make at least one cut. Assume that the length of rope
+   * is more than 2 meters.
+   * Examples:
+   * Input: n = 2
+   * Output: 1 (Maximum obtainable product is 1*1)
+   *
+   * Input: n = 3
+   * Output: 2 (Maximum obtainable product is 1*2)
+   *
+   * Input: n = 4
+   * Output: 4 (Maximum obtainable product is 2*2)
+   *
+   * Input: n = 5
+   * Output: 6 (Maximum obtainable product is 2*3)
+   *
+   * Input: n = 10
+   * Output: 36 (Maximum obtainable product is 3*3*4)
+   *
+   * Reduced to knapsack, pack unlimited items(bounded categories) into a bag
+   * with cap. N. the goal is to maximize the value of product.
+   * let product_lookup(i, j) denote max product based on subset 0..i line
+   * fragments with line length of j. Goal is to calc product_lookup(N, N)
+   * - max_cut_lookup(i, j) = max{ max_cut_lookup(i - 1, j),
+   *                               max_cut_lookup(i, j - len(i)) * len(i),
+   *                               len(i) * (j - len(i) }
+   * - for line frag. size i, must be cut from j > i, otherwise default to 0
+   * -   0 1 2 3 4 5 6 7 8 9 10
+   *   0 1 1 1 1 1 1 1 1 1 1  1
+   *   1 1 1 1 1 1 1 1 1 1 1  1 (all 1m long)
+   *   2 1 1 1 2 4 6 8 (1, 5 * 2 => 10, 6 * 2
+   *   3 1
+   */
+  static int calc_max_line_cut(int length) {
+    vector<vector<int>> max_cut_lookup(length + 1, vector<int>(length + 1, 1));
+    for (int i = 1; i <= length; i++) {
+      for (int j = 1; j <= length; j++) {
+        max_cut_lookup[i][j] = max_cut_lookup[i - 1][j];
+        if (j > i) {
+          max_cut_lookup[i][j] = max(max_cut_lookup[i][j], i * (j - i));
+          max_cut_lookup[i][j] = max(max_cut_lookup[i][j],
+                                     max_cut_lookup[i][j - i] * i);
+        }
+      }
+    }
+    return max_cut_lookup.back().back();
+  }
 };
 
 int main(void) {
@@ -1149,16 +1200,16 @@ int main(void) {
                                               vector<int>({40, 30, 20, 25, 90}) })
                       ) << endl;
 
-  cout << "13. dp_util::check_subset_sum" << endl;
+  cout << "13 dp_util::check_subset_sum" << endl;
   cout << "1 <=> " << dp_util::check_subset_sum(vector<int>({3, 34, 4, 12, 5, 2}), 9) << endl;
 
-  cout << "14. dp_util::calc_min_multiply_ops" << endl;
+  cout << "14 dp_util::calc_min_multiply_ops" << endl;
   cout << "30000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30, 40, 30})) << endl;
   cout << "26000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({40, 20, 30, 10, 30})) << endl;
   cout << "6000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30})) << endl;
   cout << "18 <=> " << dp_util::calc_min_multiply_ops(vector<int>({1, 2, 3, 4})) << endl;
 
-  cout << "14. dp_util::is_set_evenly_partitioned" << endl;
+  cout << "14 dp_util::is_set_evenly_partitioned" << endl;
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 11, 5})) << endl;
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 3})) << endl;
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 4})) << endl;
@@ -1166,14 +1217,22 @@ int main(void) {
   cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
   cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
 
-  cout << "14. dp_util::max_cut_value" << endl;
+  cout << "14 dp_util::max_cut_value" << endl;
   cout << "22 <=> " << dp_util::_max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "24 <=> " << dp_util::_max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
   cout << "24 <=> " << dp_util::max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
 
-  cout << "15. dp_util::calc_coin_change" << endl;
+  cout << "15 dp_util::calc_coin_change" << endl;
   cout << "4 <=> " << dp_util::calc_coin_change(vector<int>({1, 2, 3}), 4) << endl;
   cout << "5 <=> " << dp_util::calc_coin_change(vector<int>({2, 5, 3, 6}), 10) << endl;
+
+  cout << "16 dp_util::calc_max_line_cut" << endl;
+  cout << "1 <=> " << dp_util::calc_max_line_cut(2) << endl;
+  cout << "2 <=> " << dp_util::calc_max_line_cut(3) << endl;
+  cout << "4 <=> " << dp_util::calc_max_line_cut(4) << endl;
+  cout << "6 <=> " << dp_util::calc_max_line_cut(5) << endl;
+  cout << "36 <=> " << dp_util::calc_max_line_cut(10) << endl;
+
   return 0;
 }
