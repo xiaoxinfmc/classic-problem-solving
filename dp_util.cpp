@@ -13,15 +13,15 @@ using namespace std;
 class dp_util{
 public:
   template <class Type>
-  static void print_all_elem(const vector<Type> & input) {
+  static void print_all_elem(const vector<Type> input) {
     cout << "[ ";
-    for (auto & arr : input) { cout << arr << " "; }
+    for (auto arr : input) { cout << arr << " "; }
     cout << "]" << endl;
   }
   template <class Type>
-  static void print_all_elem_vec(const vector<vector<Type>> & input) {
+  static void print_all_elem_vec(const vector<vector<Type>> input) {
     cout << "[" << endl;
-    for (auto & arr : input){ cout << "  "; print_all_elem<Type>(arr); }
+    for (auto arr : input){ cout << "  "; print_all_elem<Type>(arr); }
     cout << "]" << endl;
   }
 
@@ -1064,6 +1064,48 @@ public:
     }
     return max_cut_lookup.back().back();
   }
+
+  /**
+   * Dynamic Programming | Set 32 (Word Break Problem)
+   * Given an input string and a dictionary of words, find out if the input
+   * string can be segmented into a space-separated sequence of dictionary
+   * words. See following examples for more details.
+   *
+   * Consider the following dictionary
+   * { i, like, sam, sung, samsung, mobile, ice,
+   *   cream, icecream, man, go, mango}
+   *
+   * Input:  ilike
+   * Output: Yes 
+   * The string can be segmented as "i like"
+   *
+   * Input:  ilikesamsung
+   * Output: Yes
+   * The string can be segmented as "i like samsung"
+   * or "i like sam sung"
+   *
+   * - input: text of size n, & dict of size m words
+   * - breakable_lookup(i) denote if text(0..i) is breakable, implies that
+   *   exists a j, such that { 0 <= j <= i | text(0..j) && dict.find(text[j + 1..i])
+   * - goal is to calc breakable_lookup(n)
+   */
+  static bool is_text_breakable(string text, unordered_set<string> dict) {
+    if (text.empty()) { return true; }
+    vector<bool> breakable_lookup(text.size(), false);
+    breakable_lookup[0] = (dict.end() != dict.find(text.substr(0, 1)));
+    for (int i = 1; i < text.size(); i++) {
+      for (int j = 0; j <= i; j++) {
+        if (j < i) {
+          breakable_lookup[i] = (dict.end() != dict.find(text.substr(j + 1, (i - j))) &&
+                                 breakable_lookup[j]);
+        } else {
+          breakable_lookup[i] = (dict.end() != dict.find(text.substr(0, j + 1)));
+        }
+        if (true == breakable_lookup[i]) { break; }
+      }
+    }
+    return breakable_lookup.back();
+  }
 };
 
 int main(void) {
@@ -1233,6 +1275,36 @@ int main(void) {
   cout << "4 <=> " << dp_util::calc_max_line_cut(4) << endl;
   cout << "6 <=> " << dp_util::calc_max_line_cut(5) << endl;
   cout << "36 <=> " << dp_util::calc_max_line_cut(10) << endl;
+
+  cout << "17 dp_util::is_text_breakable" << endl;
+  cout << "1 <=> " << dp_util::is_text_breakable(
+    "ilike", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                     "mobile", "ice", "cream", "icecream",
+                                     "man", "go", "mango" })) << endl;
+  cout << "1 <=> " << dp_util::is_text_breakable(
+    "ilikesamsung", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                            "mobile", "ice", "cream", "icecream",
+                                            "man", "go", "mango" })) << endl;
+  cout << "1 <=> " << dp_util::is_text_breakable(
+    "iiiiiiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                        "mobile", "ice", "cream", "icecream",
+                                        "man", "go", "mango" })) << endl;
+   cout << "1 <=> " << dp_util::is_text_breakable(
+    "", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                "mobile", "ice", "cream", "icecream",
+                                "man", "go", "mango" })) << endl;
+   cout << "1 <=> " << dp_util::is_text_breakable(
+    "ilikelikeimangoiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                "mobile", "ice", "cream", "icecream",
+                                                "man", "go", "mango" })) << endl;
+   cout << "1 <=> " << dp_util::is_text_breakable(
+    "samsungandmango", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                "mobile", "ice", "cream", "icecream",
+                                                "and", "man", "go", "mango" })) << endl;
+   cout << "0 <=> " << dp_util::is_text_breakable(
+    "samsungandmangok", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                "mobile", "ice", "cream", "icecream",
+                                                "and", "man", "go", "mango" })) << endl;
 
   return 0;
 }
