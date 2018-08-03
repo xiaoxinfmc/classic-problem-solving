@@ -1106,6 +1106,39 @@ public:
     }
     return breakable_lookup.back();
   }
+
+  /**
+   * Dynamic Programming | Set 30 (Dice Throw)
+   * Given n dice each with m faces, numbered from 1 to m, find the number of
+   * ways to get sum X. X is the summation of values on each face when all the
+   * dice are thrown.
+   * brutal force: face_per_dice ^ dice_cnt, combination.
+   * we see overlapping effort to do the summation, DP.
+   *
+   * Reduce to knapsack, say we have m different kinds of item to pack, with
+   * each kind items totaled n. We need to pick n items from each category with
+   * backpack size of x, we want to count how many ways to pack it full.
+   *
+   * Let dice-sum-lookup(i, j) be the # of plans throw i times with sum of j
+   * if there is no plan/path, then default to 0, goal is calc to bottom-right
+   * dice-sum-lookup(i, j) = {
+   *   sum{ 1 < k < m, dice-sum-lookup(i - 1, j - k) }
+   * }
+   */
+  static int calc_sum_of_throws(int face_per_dice, int dice_cnt, int target_num) {
+    vector<vector<int>> dice_sum_lookup(
+      dice_cnt + 1, vector<int>(target_num + 1, 0)
+    );
+    for (int i = 1; i <= dice_cnt; i++) {
+      for (int j = 1; j <= target_num; j++) {
+        if (i == 1) { dice_sum_lookup[i][j] = (j <= face_per_dice) ? 1 : 0; continue; }
+        for (int k = 1; k <= face_per_dice && k <= j; k++) {
+          dice_sum_lookup[i][j] += dice_sum_lookup[i - 1][j - k];
+        }
+      }
+    }
+    return dice_sum_lookup[dice_cnt][target_num];
+  }
 };
 
 int main(void) {
@@ -1289,22 +1322,29 @@ int main(void) {
     "iiiiiiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                         "mobile", "ice", "cream", "icecream",
                                         "man", "go", "mango" })) << endl;
-   cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << dp_util::is_text_breakable(
     "", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                 "mobile", "ice", "cream", "icecream",
                                 "man", "go", "mango" })) << endl;
-   cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << dp_util::is_text_breakable(
     "ilikelikeimangoiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "man", "go", "mango" })) << endl;
-   cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << dp_util::is_text_breakable(
     "samsungandmango", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "and", "man", "go", "mango" })) << endl;
-   cout << "0 <=> " << dp_util::is_text_breakable(
+  cout << "0 <=> " << dp_util::is_text_breakable(
     "samsungandmangok", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "and", "man", "go", "mango" })) << endl;
+
+  cout << "17 dp_util::calc_sum_of_throws" << endl;
+  cout << "0 <=> " << dp_util::calc_sum_of_throws(4, 2, 1) << endl;
+  cout << "2 <=> " << dp_util::calc_sum_of_throws(2, 2, 3) << endl;
+  cout << "21 <=> " << dp_util::calc_sum_of_throws(6, 3, 8) << endl;
+  cout << "4 <=> " << dp_util::calc_sum_of_throws(4, 2, 5) << endl;
+  cout << "6 <=> " << dp_util::calc_sum_of_throws(4, 3, 5) << endl;
 
   return 0;
 }
