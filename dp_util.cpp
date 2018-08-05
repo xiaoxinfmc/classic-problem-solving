@@ -1139,6 +1139,127 @@ public:
     }
     return dice_sum_lookup[dice_cnt][target_num];
   }
+
+  /**
+   * Dynamic Programming | Set 11 (Egg Dropping Puzzle)
+   * The following is a description of the instance of this famous puzzle
+   * involving n=2 eggs and a building with k=36 floors.
+   *
+   * Suppose that we wish to know which stories in a 36-story building are safe
+   * to drop eggs from, and which will cause the eggs to break on landing. We
+   * make a few assumptions:
+   * - An egg that survives a fall can be used again.
+   * - A broken egg must be discarded.
+   * - The effect of a fall is the same for all eggs.
+   * - If an egg breaks when dropped, then it break if dropped from higher floor
+   * - If an egg survives a fall then it would survive a shorter fall.
+   * - It is not ruled out that the first-floor windows break eggs, nor is it
+   *   ruled out that the 36th-floor do not cause an egg to break.
+   *
+   * If only one egg is available and we wish to be sure of obtaining the right
+   * result, the experiment can be carried out in only one way. Drop the egg
+   * from the first-floor window; if it survives, drop it from the second floor
+   * window. Continue upward until it breaks. In the worst case, this method may
+   * require 36 droppings. Suppose 2 eggs are available. What is the least
+   * number of egg-droppings that is guaranteed to work in all cases?
+   *
+   * The problem is not actually to find the critical floor, but merely to
+   * decide floors from which eggs should be dropped so that total number of
+   * trials are minimized.
+   *
+   * - steps to test of floor 1 2 3 is same as steps needed to test floor 4 5 6
+   *
+   * - During our test procedure, let min-egg-drops(i, j) be total # of drops
+   *   needed for i eggs available and j floors to be tested. By dropping
+   *   the egg for test(we always drop an egg no matter where our position is),
+   *   it could either survive or not. AGAIN, the position we are dropping the
+   *   egg could be any, say 4 from 2 3 4 5 6 7, i -> 3, j -> 6
+   *
+   * - if egg breaks, we only have i - 1 eggs and only 0..j - 1 floors to check
+   *   depends on the position we are dropping the ball, and position could be
+   *   from 2 ... 7, if break @ 2, then we done, means 0 left, if break @ 7,
+   *   then we have j - 1 left, no matter which plan we use, we need worst #.
+   *   => then min-egg-drops(i, j) = max{ 1 <= x <= j | min-egg-drops(i - 1, x - 1) + 1 }
+   *
+   * - if egg survived, then we have i eggs, with j - 1 possible floors to check
+   *   depends on the position we are dropping the ball, and position could be
+   *   from 2 ... 7, if survived @ 2, then we have j - 1 left, if break @ 7,
+   *   then done 0 left, no matter which plan we use, we need worst #.
+   *
+   *   => then min-egg-drops(i, j) = max{ 1 <= x <= j | min-egg-drops(i, j - x) + 1 }
+   *
+   * - min-egg-drops(i, j) = min{
+   *     max{ 1 <= x <= j | min-egg-drops(i - 1, x - 1) + 1, # worst when egg breaks
+   *                        min-egg-drops(i, j - x) + 1 }    # worst when egg good
+   *   }
+   *
+   * - when i => 1, then min-egg-drops(i, j) => j
+   *   when j => 1, then min-egg-drops(i, j) => 1
+   *
+   * - no matter how many eggs actually been used, we will always perform last
+   *   drop of test which leads us to critical floor, and this step will either
+   *   breaks our egg (which identify the previous floor) or succeed (we reach
+   *   the max possible testing steps and curr floor is the only one left test)
+   * - case 1, if last test breaks our egg (which identify the previous floor)
+   *   then the last test must be failed during one-floor lag up phase, means
+   *   for same floor but 1 egg less case, it fail all binary test & last one.
+   *   also for current case, we also fail all binary test & last one, which
+   *   implies we basically wasted 1 more binary test compared to previous 1
+   *   | |x vx    vx
+   *   1 2  3 4 5 6 7 8 9 10 11
+   *   | |x       vx
+   *   1 2  3 4 5 6 7 8 9 10 11
+   *   else previous egg survivie, 
+   *   then min-egg-drops(i, j) => min-egg-drops(i - 1, j) || min-egg-drops(i - 1, j )
+   *        v v x vx
+   *   1 2  3 4 5 6 7 8 9 10 11
+   *   |      | x vx
+   *   1 2  3 4 5 6 7 8 9 10 11
+   * - case 2, if last egg survived, our egg survive for all subset of floors.
+   *   it implies for same floor but 1 egg less case, it must try 1 more time.
+   *   but it has less by 1 binary test.
+   *   then min-egg-drops(i, j) => min-egg-drops(i - 1, j)
+   *     | vx    vx
+   *   1 2 3 4 5 6 7 8 9 1011
+   *     | |x    vx
+   *   1 2 3 4 5 6 7 8 9 10 11
+   * - if 1 egg left, then we can only start from the safest untested level,
+   * - if we have multiple eggs, then we could use extra ones to reducing the
+   *   searching scope of floors. caes 1, egg survives on floor j / 2, then
+   *   we will search (j / 2 < floor <= j) else test (1 <= floor < j / 2)
+   * - worst case scenario, each test breaks an egg & last egg needs test all
+   * - when floors does not change, every addition of egg guarantees >= 1 test
+   *   which could reduce drops by ((i - 1) + 2 ^ (logk - i + 1)) - ((i) + 2 ^ (logk - i)) => 2^(logk - i) - 1
+   *   min-egg-drops(i - 1, j) - 2^(logk - i) - 1, if i <= logk else logk
+   * - when eggs does not change, every addition of floor requires >= 1 test
+   *   min-egg-drops(i, j - 1) + 1
+   */
+  static int calc_min_egg_drops_for_critical_floor(int egg_cnt, int floor_cnt) {
+    /**
+     * - min-egg-drops(i, j) = min{
+     *     max{ 1 <= x <= j | min-egg-drops(i - 1, x - 1) + 1, # worst when egg breaks
+     *                        min-egg-drops(i, j - x) + 1 }    # worst when egg good
+     *   }
+     *   min steps for worst case senario
+     * - when i => 1, then min-egg-drops(i, j) => j
+     *   when j => 1, then min-egg-drops(i, j) => 1
+     */
+    vector<vector<int>> min_egg_drops(egg_cnt + 1, vector<int>(floor_cnt + 1, 0));
+    for (int i = 1; i <= floor_cnt; i++) { min_egg_drops[1][i] = i; }
+    for (int i = 1; i <= egg_cnt; i++) { min_egg_drops[i][1] = 1; }
+    for (int i = 2; i <= egg_cnt; i++) {
+      for (int j = 2; j <= floor_cnt; j++) {
+        min_egg_drops[i][j] = INT_MAX;
+        for (int c = 1; c <= j; c++) {
+          min_egg_drops[i][j] = min(
+            min_egg_drops[i][j], max(min_egg_drops[i - 1][c - 1] + 1,
+                                     min_egg_drops[i][j - c] + 1)
+          );
+        }
+      }
+    }
+    return min_egg_drops.back().back();
+  }
 };
 
 int main(void) {
@@ -1346,5 +1467,9 @@ int main(void) {
   cout << "4 <=> " << dp_util::calc_sum_of_throws(4, 2, 5) << endl;
   cout << "6 <=> " << dp_util::calc_sum_of_throws(4, 3, 5) << endl;
 
+  cout << "18 dp_util::calc_min_egg_drops_for_critical_floor" << endl;
+  cout << "8 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 36) << endl;
+  cout << "36 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(1, 36) << endl;
+  cout << "1 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 1) << endl;
   return 0;
 }
