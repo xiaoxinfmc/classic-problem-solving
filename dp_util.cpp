@@ -593,80 +593,88 @@ public:
   /**
    * Given an unsorted array of int, find the len of longest increasing subseq.
    * Example:
-   * Input: [10,9,2,5,3,7,101,18]
+   * Input: [10,9,2,5,3,7,101,18,0 ]
    * Output: 4
    * Explanation: The longest increasing subsequence is [2,3,7,101], therefore
-   *              the length is 4. 
+   *              the length is 4.
    * Note:
    * - There may be more than one LIS combination, it is only necessary for you to
    *   return the length. Your algorithm should run in O(n2) complexity.
    *   Follow up: Could you improve it to O(nlogn) time complexity?
-   * Analysis:
-   * - let lis(i, j) be the lis-len for arr[i..j], then goal is to get lis(0, j)
-   * - to calc lis(i, j), assume we already know lis(i + 1, j) && lis(i, j - 1);
-   *     4 5 7 2 1 0 6
-   *   4 1         3 ?
-   *   5   1         3
-   *   7     1
-   *   2       1
-   *   1         1
-   *   0           1 2
-   *   6             1
    *
-   *   4 5 7         arr[i][j]         ? -> 4, 5, 7
-   *   |---------|   arr[i][j - 1]     3 -> 4, 5, 7 -> max 7
-   *   | |-------|-| arr[i + 1][j]     2 -> 5, 7    -> max 7
-   *   4 5 7 2 1 0 6
-   *     |-------|   arr[i + 1][j - 1] 2 -> 5, 7
-   * - arr[i + 1][j]  < arr[i][j - 1] => seq starts from beginning
-   *                                     ( -1 <0 1 2 3 5) 4> => use arr[i][j - 1];
-   * - arr[i + 1][j]  > arr[i][j - 1] => seq ends with curr num arr[j]
-   *                                     (  7 <0 1 2 3 5) 6> => use arr[i + 1][j];
-   * - arr[i + 1][j] == arr[i][j - 1] => arr[i][j] can only differ. at most by 1
-   *                                     for case of +1, arr[i] && arr[j] both be part of seq.
-   *                                     if any of them not part of seq, then no diff.
-   * - ( -1 <9 1 2 3 4) 5> <=> (arr[i] < arr[j] && lis(i + 1, j) == lis(i + 1, j - 1) + 1 &&
-   *         |-------| -> 1 2 3 4 => 4             lis(i, j - 1) == lis(i + 1, j - 1) + 1)
-   *                 5  6
-   *                 4  5
-   *
-   * - lis(i) => lis-len for input(0..i) including elem i. we know lis(0) ... lis(i - 1)
-   *   lis(i) <= for input(0) ... input(i - 1), with value input(x) & lis(x),
-   *             if input(i) > input(x) then lis(i)
-   *               max(lis(i), lis(x))
-   *             end
-   *             lis(i) += 1;
+   * Solution:
+   * - let lis(i) denote the len of longest increasing subseq for input(0..i),
+   *   with input[i] been selected, then the goal is to calc the max of lis(i)
+   * - assume we know lis(0)..lis(i - 1), with base case of lis(0) -> 1, and to
+   *   calc. lis(i), we need to go over lis(0) -> lis(i - 1), to see max ext.
+   * - lis(i) = max{ 0 <= k <= i - 1, input(i) > input(k) ? lis(k) + 1 : lis(i) }
    */
   static int calc_longest_incr_subseq_len(vector<int> input) {
-    int lis = 0, total_cnt = input.size();
-    if (0 == total_cnt) { return lis; }
-    vector<int> lis_buffer(total_cnt, lis);
-    lis_buffer[0] = 1; lis = 1;
-    for (int i = 1; i < total_cnt; i++) {
-      for (int j = 0; j < i; j++) {
-        if (input[i] > input[j]) {
-          lis_buffer[i] = max(lis_buffer[i], lis_buffer[j]);
+    vector<int> lis_lookup(input.size(), 1);
+    int max_lis_len = INT_MIN;
+    for (int i = 1; i < input.size(); i++) {
+      for (int k = 0; k < i; k++) {
+        if (input[i] > input[k]) {
+          lis_lookup[i] = max(lis_lookup[i], lis_lookup[k] + 1);
         }
       }
-      lis_buffer[i] += 1;
-      lis = max(lis, lis_buffer[i]);
+      max_lis_len = max(max_lis_len, lis_lookup[i]);
     }
-    return lis;
+    return max_lis_len;
   }
 
+  /**
+   * Partition a set into two subsets such that diff. of subset sums is minimum
+   * Given a set of integers, the task is to divide it into two sets S1 and S2
+   * such that the absolute difference between their sums is minimum.
+   *
+   * If there is a set S with n elements, then if we assume Subset1 has m
+   * elements, Subset2 must have n-m elements and the value of
+   * abs(sum(Subset1) – sum(Subset2)) should be minimum.
+   *
+   * Example:
+   * Input:  arr[] = {1, 6, 11, 5}
+   * Output: 1
+   * Explanation:
+   * Subset1 = {1, 5, 6}, sum of Subset1 = 12 
+   * Subset2 = {11}, sum of Subset2 = 11
+   * Analysis:
+   * - 0/1 knapsack with a special goal to optimize
+   * - Let subset_diff_lookup(i, j) be the diff of subset-1 given input(0..i) and
+   *   current max possible sum of j, subset-1 give us the smallest diff.
+   * - subset_diff_lookup(0, j) => j
+   * - subset_diff_lookup(i, j) = {
+   *     if (abs(subset_diff_lookup[i - 1][j - input[i]] - 2 * input[i]) <
+   *         abs(j - 2 * subset_diff_lookup[i - 1][j])) {
+   *       subset_diff_lookup(i, j) = subset_diff_lookup[i - 1][j - input[i]] - 2 * input[i]
+   *     } else {
+   *       subset_diff_lookup(i, j) = subset_diff_lookup[i - 1][j]
+   *     }
+   *   }
+   * - goal is to calc all subset_diff_lookup, then return bottom right
+   */
   static int calc_min_partition_diff(vector<int> input) {
-    int min_diff = INT_MAX, sum = 0;
-    if (true == input.empty()) { return min_diff; }
-    vector<int> min_diff_lookup(input.size(), INT_MAX);
-    for (int i = 0; i < input.size(); i++) { sum += input[i]; }
-    min_diff_lookup[0] = abs(sum - 2 * input[0]);
-    for (int i = 1; i < input.size(); i++) {
-      for (int j = 0; j < i; j++) {
-        min_diff_lookup[i] = min(
-          min_diff_lookup[i], abs(sum - 2 * (min_diff_lookup[j] + input[i]))
-        );
+    int sum = 0, min_diff = INT_MAX;
+    for (auto & val : input) { sum += val; }
+    vector<vector<int>> subset_diff_lookup(input.size() + 1, vector<int>(sum + 1, 0));
+    // do not have anything to pack
+    for (int i = 0; i <= sum; i++) { subset_diff_lookup[0][i] = sum; }
+    // do not have enough cap. to pack anything
+    for (int i = 0; i <= input.size(); i++) { subset_diff_lookup[i][0] = sum; }
+    for (int i = 1; i <= input.size(); i++) {
+      for (int j = 1; j <= sum; j++) {
+        if (j - input[i] < 0) {
+          subset_diff_lookup[i][j] = subset_diff_lookup[i - 1][j];
+        } else if (abs(subset_diff_lookup[i - 1][j - input[i]] - 2 * input[i]) <
+                   abs(subset_diff_lookup[i - 1][j])) {
+          subset_diff_lookup[i][j] = subset_diff_lookup[i - 1][j - input[i]] - 2 * input[i];
+        } else {
+          subset_diff_lookup[i][j] = subset_diff_lookup[i - 1][j];
+        }
       }
-      min_diff = min(min_diff, min_diff_lookup[i]);
+    }
+    for (int i = 1; i <= sum; i++) {
+      min_diff = min(min_diff, abs(subset_diff_lookup.back()[i]));
     }
     return min_diff;
   }
@@ -1375,6 +1383,9 @@ int main(void) {
   cout << "11. dp_util::calc_min_partition_diff" << endl;
   cout << "1 <=> " << dp_util::calc_min_partition_diff(
                         vector<int>({ 3, 1, 4, 2, 2, 1 })
+                      ) << endl;
+  cout << "0 <=> " << dp_util::calc_min_partition_diff(
+                        vector<int>({ 4, 5, 6, 8, 10, 11 })
                       ) << endl;
 
   cout << "12. dp_util::calc_max_incr_path_len" << endl;
