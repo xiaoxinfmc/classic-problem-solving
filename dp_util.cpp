@@ -552,6 +552,44 @@ public:
   static bool is_char_pair_match(char l, char r) { return ((l == r) || ('.' == r)); }
 
   /**
+   * Dynamic Programming | Set 29 (Longest Common Substring)
+   * Given two strings 'X' and 'Y', find length of longest common substring.
+   * Examples :
+   * Input : X = "GeeksforGeeks", y = "GeeksQuiz"
+   * Output : 5
+   * The longest common substring is "Geeks" and is of
+   * length 5
+   * Input : X = "abcdxyz", y = "xyzabcd"
+   * Output : 4
+   * The longest common substring is "abcd" and is of
+   * length 4
+   * Input : X = "zxabcdezy", y = "yzabcdezx"
+   * Output : 6
+   * The longest common substring is "abcdez" and is of length 6
+   *
+   * Analysis:
+   * - Let lcs(i, j) denote the length of lcs for x[0..i] & y[0..j]
+   *   with x[i] and y[j] matched
+   *   lcs(i, j) = {
+   *     if x[i] == y[j] lcs(i - 1, j - 1) + 1
+   *     else 0
+   *   }
+   */
+  static int calc_lcstr_len(string l_str, string r_str) {
+    int lcs_max = 0;
+    vector<int> lcs_lookup(r_str.size(), 0);
+    for (int i = 0; i < l_str.size(); i++) {
+      for (int j = r_str.size() - 1; j >= 0; j--) {
+        if (l_str[i] == r_str[j]) {
+          lcs_lookup[j] = (j > 0) ? lcs_lookup[j - 1] + 1 : 1;
+          lcs_max = max(lcs_max, lcs_lookup[j]);
+        } else { lcs_lookup[j] = 0; }
+      }
+    }
+    return lcs_max;
+  }
+
+  /**
    * def lcs_buf[i][j] => lcs-len of l_str[0..i] & r_str[0..j],
    * to calc lcs_buf[i][j], assume we already know lcs_buf[0..i - 1][0..j - 1]
    *                                               lcs_buf[0..i - 1][j]
@@ -1509,5 +1547,10 @@ int main(void) {
   cout << "8 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 36) << endl;
   cout << "36 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(1, 36) << endl;
   cout << "1 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 1) << endl;
+
+  cout << "19 dp_util::calc_lcstr_len" << endl;
+  cout << "5 <=> " << dp_util::calc_lcstr_len("GeeksforGeeks", "GeeksQuiz") << endl;
+  cout << "4 <=> " << dp_util::calc_lcstr_len("abcdxyz", "xyzabcd") << endl;
+  cout << "6 <=> " << dp_util::calc_lcstr_len("zxabcdezy", "yzabcdezx") << endl;
   return 0;
 }
