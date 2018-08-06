@@ -679,36 +679,63 @@ public:
     return min_diff;
   }
 
+  /**
+   * Find the longest path in a matrix with given constraints
+   * Given a n*n matrix where all numbers are distinct, find the maximum length
+   * path (starting from any cell) such that all cells along the path are in
+   * increasing order with a difference of 1.
+   *
+   * We can move in 4 directions from a given cell (i, j), i.e., we can move to
+   * (i+1, j) or (i, j+1) or (i-1, j) or (i, j-1) with the condition that the
+   * adjacent cells have a difference of 1.
+   *
+   * Example:
+   * Input:  mat[][] = {{1, 2, 9}
+   *                    {5, 3, 8}
+   *                    {4, 6, 7}}
+   * Output: 4
+   * The longest path is 6-7-8-9
+   *
+   * Analysis:
+   * - each value is distinct, and only 4 possible moving direction, as step is
+   *   1 and only 1, so each move is 1 direction ONLY!
+   * - let path_len_lookup(i, j) denote the path len starts with (i, j), ->
+   *   path_len_lookup(i, j) = {
+   *     if (i < n - 1 && input[i][j] == 1 + input[i + 1][j]) { return path_len_lookup(i + 1, j) + 1; }
+   *     if (i > 0 && input[i][j] == 1 + input[i - 1][j]) { return path_len_lookup(i - 1, j) + 1; }
+   *     if (j < n - 1 && input[i][j] == 1 + input[i][j + 1]) { return path_len_lookup(i, j + 1) + 1; }
+   *     if (j > 0 && input[i][j] == 1 + input[i][j - 1]) { return path_len_lookup(i, j - 1) + 1; }
+   *     return 1
+   *   }
+   */
+  static int calc_path_start_from_recur(int i, int j,
+                                        const vector<vector<int>> & input,
+                                              vector<vector<int>> & lookup) {
+    if (lookup[i][j] > 0) { return lookup[i][j]; }
+    if (i < input.size() - 1 && input[i][j] == 1 + input[i + 1][j]) {
+      return calc_path_start_from_recur(i + 1, j, input, lookup) + 1;
+    }
+    if (j < input.size() - 1 && input[i][j] == 1 + input[i][j + 1]) {
+      return calc_path_start_from_recur(i, j + 1, input, lookup) + 1;
+    }
+    if (i > 0 && input[i][j] == 1 + input[i - 1][j]) {
+      return calc_path_start_from_recur(i - 1, j, input, lookup) + 1;
+    }
+    if (j > 0 && input[i][j] == 1 + input[i][j - 1]) {
+      return calc_path_start_from_recur(i, j - 1, input, lookup) + 1;
+    }
+    return 1;
+  }
+
   static int calc_max_incr_path_len(vector<vector<int>> input) {
+    vector<vector<int>> lookup(
+      input.size(), vector<int>(input.front().size(), 0)
+    );
     int max_len = 0;
-    if (true == input.empty() || true == input.front().size()) { return max_len; }
-    vector<vector<int>> max_path_len(input.size(), vector<int>(input.front().size(), 1));
     for (int i = 0; i < input.size(); i++) {
-      for (int j = 0; j < input[i].size(); j++) {
-        if (i > 0 && input[i][j] == input[i - 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i - 1][j] + 1, max_path_len[i][j] + 1); }
-        if (j > 0 && input[i][j] == input[i][j - 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j - 1] + 1, max_path_len[i][j] + 1); }
-        max_len = max(max_len, max_path_len[i][j]);
-      }
-    }
-    for (int i = 0; i < input.size(); i++) {
-      for (int j = input[i].size() - 1; j >= 0; j--) {
-        if (i > 0 && input[i][j] == input[i - 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i - 1][j] + 1, max_path_len[i][j] + 1); }
-        if (j < input[i].size() - 1 && input[i][j] == input[i][j + 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j + 1] + 1, max_path_len[i][j] + 1); }
-        max_len = max(max_len, max_path_len[i][j]);
-      }
-    }
-    for (int i = input.size() - 1; i >= 0; i--) {
-      for (int j = input[i].size() - 1; j >= 0; j--) {
-        if (i < input.size() - 1 && input[i][j] == input[i + 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i + 1][j] + 1, max_path_len[i][j] + 1); }
-        if (j < input[i].size() - 1 && input[i][j] == input[i][j + 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j + 1] + 1, max_path_len[i][j] + 1); }
-        max_len = max(max_len, max_path_len[i][j]);
-      }
-    }
-    for (int i = input.size() - 1; i >= 0; i--) {
-      for (int j = 0; j < input[i].size(); j++) {
-        if (i < input.size() - 1 && input[i][j] == input[i + 1][j] + 1) { max_path_len[i][j] = max(max_path_len[i + 1][j] + 1, max_path_len[i][j] + 1); }
-        if (j > 0 && input[i][j] == input[i][j - 1] + 1) { max_path_len[i][j] = max(max_path_len[i][j - 1] + 1, max_path_len[i][j] + 1); }
-        max_len = max(max_len, max_path_len[i][j]);
+      for (int j = 0; j < input.size(); j++) {
+        lookup[i][j] = calc_path_start_from_recur(i, j, input, lookup);
+        max_len = max(max_len, lookup[i][j]);
       }
     }
     return max_len;
