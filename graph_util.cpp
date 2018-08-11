@@ -128,6 +128,38 @@ namespace graph_util {
   static undirected_graph_vertex * clone_undirected_graph(
     undirected_graph_vertex * udag_start_ptr
   ) {
+    undirected_graph_vertex * new_graph_ptr = NULL,
+                            * tmp_graph_ptr = NULL,
+                            * cur_graph_ptr = NULL;
+    deque<undirected_graph_vertex *> graph_ptr_buffer;
+    unordered_map<int, undirected_graph_vertex *> lookup;
+
+    graph_ptr_buffer.push_back(udag_start_ptr);
+    while (false == graph_ptr_buffer.empty()) {
+      cur_graph_ptr = graph_ptr_buffer.front();
+      graph_ptr_buffer.pop_front();
+      if (lookup.end() != lookup.find(cur_graph_ptr->label)) { continue; }
+
+      tmp_graph_ptr = new undirected_graph_vertex(cur_graph_ptr->label);
+      lookup[cur_graph_ptr->label] = tmp_graph_ptr;
+      if (NULL == new_graph_ptr) { new_graph_ptr = tmp_graph_ptr; }
+
+      for (undirected_graph_vertex * vertex_ptr : cur_graph_ptr->neighbors) {
+        graph_ptr_buffer.push_back(vertex_ptr);
+        if (lookup.end() != lookup.find(vertex_ptr->label)) {
+          tmp_graph_ptr->neighbors.push_back(lookup[vertex_ptr->label]);
+          if (vertex_ptr->label != tmp_graph_ptr->label) {
+            lookup[vertex_ptr->label]->neighbors.push_back(tmp_graph_ptr);
+          }
+        }
+      }
+    }
+    return new_graph_ptr;
+  }
+
+  static undirected_graph_vertex * _clone_undirected_graph(
+    undirected_graph_vertex * udag_start_ptr
+  ) {
     undirected_graph_vertex * cpy_graph_ptr = NULL,
                            * tmp_graph_ptr = NULL,
                            * cur_graph_ptr = udag_start_ptr;
@@ -171,6 +203,46 @@ namespace graph_util {
   }
 
   static vector<graph_vertex> calc_shortest_paths(
+    const vector<vector<int>> & sp_graph_matrix, int start_vid
+  ) {
+    int vertex_cnt = sp_graph_matrix.size();
+    vector<graph_vertex> shortest_path_distance_vec, vertex_heap;
+    vector<bool> is_vertex_visited_lookup(vertex_cnt, false);
+
+    for (int i = 0; i < vertex_cnt; i++) {
+      shortest_path_distance_vec.push_back(graph_vertex(i, INT_MAX));
+      if (i == start_vid) { shortest_path_distance_vec.back().priority = 0; }
+    }
+
+    vertex_heap.push_back(graph_vertex(start_vid, 0));
+
+    while (false == vertex_heap.empty()) {
+      graph_vertex pending_vertex = vertex_heap.front();
+      pop_heap(vertex_heap.begin(), vertex_heap.end());
+      vertex_heap.pop_back();
+
+      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
+
+      for (int i = 0; i < vertex_cnt; i++) {
+        if (0 == sp_graph_matrix[pending_vertex.id][i]) { continue; }
+        int tentative_distance = (
+          shortest_path_distance_vec[pending_vertex.id].priority +
+          sp_graph_matrix[pending_vertex.id][i]
+        );
+        if (tentative_distance < shortest_path_distance_vec[i].priority) {
+          shortest_path_distance_vec[i].priority = tentative_distance;
+          shortest_path_distance_vec[i].id_from  = pending_vertex.id;
+          vertex_heap.push_back(graph_vertex(i, tentative_distance));
+          push_heap(vertex_heap.begin(), vertex_heap.end());
+        }
+      }
+      is_vertex_visited_lookup[pending_vertex.id] = true;
+    }
+
+    return shortest_path_distance_vec;
+  }
+
+  static vector<graph_vertex> _calc_shortest_paths(
     const vector<vector<int>> & sp_graph_metrix, int start_vid
   ) {
     int vertex_cnt = sp_graph_metrix.size();
@@ -190,6 +262,8 @@ namespace graph_util {
       vertex_heap.pop_back();
 
       if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
+
+      /* for every vertex connected by outgoing edges, update dist if smaller */
       for (int i = 0; i < vertex_cnt; i++) {
         if (0 == sp_graph_metrix[pending_vertex.id][i]) { continue; }
         int tentative_distance = (
@@ -210,6 +284,43 @@ namespace graph_util {
   }
 
   static vector<graph_edge> calc_minimum_spanning_tree(
+    const vector<vector<int>> & mst_graph_metrix
+  ) {
+    int total_vertex_cnt = mst_graph_metrix.size();
+
+    vector<graph_edge> mst_edeges;
+    vector<graph_vertex> vertex_heap;
+    vector<bool> is_vertex_visited_lookup(total_vertex_cnt, false);
+
+    vertex_heap.push_back(graph_vertex(0, 0));
+    while (false == vertex_heap.empty()) {
+      graph_vertex pending_vertex = vertex_heap.front();
+      pop_heap(vertex_heap.begin(), vertex_heap.end());
+      vertex_heap.pop_back();
+
+      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
+
+      /* for every connected outgoing edges, push its vertex to min heap */
+      for (int i = 0; i < total_vertex_cnt; i++) {
+        if (0 == mst_graph_metrix[pending_vertex.id][i]) { continue; }
+        vertex_heap.push_back(graph_vertex(
+          i, mst_graph_metrix[pending_vertex.id][i], pending_vertex.id)
+        );
+        push_heap(vertex_heap.begin(), vertex_heap.end());
+      }
+
+      is_vertex_visited_lookup[pending_vertex.id] = true;
+      if (-1 != pending_vertex.id_from) {
+        mst_edeges.push_back(graph_edge(
+          pending_vertex.id_from, pending_vertex.id, pending_vertex.priority)
+        );
+      }
+    }
+
+    return mst_edeges;
+  }
+
+  static vector<graph_edge> _calc_minimum_spanning_tree(
     const vector<vector<int>> & mst_graph_metrix
   ) {
     int total_vertex_cnt = mst_graph_metrix.size();
@@ -284,6 +395,29 @@ namespace graph_util {
    * only 1 sequence can be constructed => seqs covers all links & no conflicts.
    */
   static bool is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
+    unordered_map<int, int> links_to_confirm_map, value_to_index_map;
+    for (int i = 0; i < origin_seq.size(); i++) {
+      if (i < origin_seq.size() - 1) {
+        links_to_confirm_map[origin_seq[i]] = origin_seq[i + 1];
+      }
+      value_to_index_map[origin_seq[i]] = i;
+    }
+
+    for (auto & seq_to_chk : seqs) {
+      for (int i = 0; i < seq_to_chk.size() - 1; i++) {
+        if (value_to_index_map[seq_to_chk[i]] >
+            value_to_index_map[seq_to_chk[i + 1]]) { return false; }
+        if (links_to_confirm_map.find(seq_to_chk[i]) != links_to_confirm_map.end() &&
+            links_to_confirm_map[seq_to_chk[i]] == seq_to_chk[i + 1]) {
+          links_to_confirm_map.erase(seq_to_chk[i]);
+        }
+      }
+    }
+
+    return links_to_confirm_map.empty();
+  }
+
+  static bool _is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
     unordered_map<int, int> links_to_confirm_map, value_to_index_map;
 
     for (int i = 0; i < origin_seq.size(); i++) {
