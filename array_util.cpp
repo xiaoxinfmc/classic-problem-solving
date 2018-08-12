@@ -27,6 +27,37 @@ namespace array_util {
   }
 
   /**
+   * 2.1.6 Longest Consecutive Sequence
+   * Given an unsorted array of integers, find the length of the longest
+   * consecutive elements sequence.
+   * For example, Given [100, 4, 200, 3, 1, 2], The longest consecutive
+   * elements sequence is [1, 2, 3, 4]. Return its length: 4.
+   * Your algorithm should run in O(n) complexity.
+   * - consecutive elements means each elem differs by just 1, longest
+   *   sequence will have a min value and a max.
+   * - brutal force would be sort than scan => nlogn
+   * - use a hashtable, for every entry we keep expanding & logout cnt.
+   * - in the meantime, extract the elem from the map(IMPORTANT)
+   */
+  static int calc_longest_seq_len(vector<int> input) {
+    unordered_map<int, int> seq_buf;
+    int max_seq_len = 1, start_val = 0;
+    for(auto & value : input) { seq_buf[value] = 1; }
+    while(false == seq_buf.empty()) {
+      start_val = seq_buf.begin()->first;
+      for (int i = start_val + 1; seq_buf.end() != seq_buf.find(i); i++) {
+        seq_buf[start_val] += seq_buf[i]; seq_buf.erase(i);
+      }
+      for (int i = start_val - 1; seq_buf.end() != seq_buf.find(i); i--) {
+        seq_buf[start_val] += seq_buf[i]; seq_buf.erase(i);
+      }
+      max_seq_len = max(max_seq_len, seq_buf[start_val]);
+      seq_buf.erase(start_val);
+    }
+    return max_seq_len;
+  }
+
+  /**
    * 2.1.3 Search in Rotated Sorted Array
    * Suppose a sorted array is rotated at some pivot unknown to you beforehand.
    * (i.e., 0 1 2 4 5 6 7 might become 4 5 6 7 0 1 2).
@@ -46,7 +77,7 @@ namespace array_util {
     for (int min_idx = 0, max_idx = input.size() - 1; min_idx <= max_idx;) {
       target_idx = (min_idx + max_idx) / 2;
       if (input[target_idx] == target) { target_ret = target_idx; break; }
-      if (input[max_idx] > input[min_idx]) {
+      if (input[max_idx] >= input[min_idx]) {
         if (target < input[target_idx]) {
           max_idx = target_idx - 1;
         } else {
@@ -142,6 +173,7 @@ int main(void) {
   using array_util::print_all_elem_vec;
   using array_util::get_next_permutation_asc;
   using array_util::find_in_rotated_sorted_arr;
+  using array_util::calc_longest_seq_len;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -162,5 +194,9 @@ int main(void) {
   cout << "-1 <=> " << find_in_rotated_sorted_arr(vector<int>({ 5, 6, 7, 8, 9, 10, 1, 2, 3 }), 30) << endl;
   cout << "3 <=> " << find_in_rotated_sorted_arr(vector<int>({ 30, 40, 50, 10, 20 }), 10) << endl;
   cout << "2 <=> " << find_in_rotated_sorted_arr(vector<int>({ 4, 5, 6, 7, 8, 9, 1, 2, 3 }), 6) << endl;
+
+  cout << "3. calc_longest_seq_len" << endl;
+  cout << "4 <=> " << calc_longest_seq_len(vector<int>({ 100, 4, 200, 3, 1, 2 })) << endl;
+  cout << "8 <=> " << calc_longest_seq_len(vector<int>({ 100, 4, 200, 3, 1, 2, 8, 6, 7, 5 })) << endl;
   return 0;
 }
