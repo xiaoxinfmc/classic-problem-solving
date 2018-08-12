@@ -26,6 +26,89 @@ namespace array_util {
     cout << "]" << endl;
   }
 
+  /**     v                              v |
+   * ==>> 1 2 7  9 11 15             x x x x x x x (x will come before s -> skip xxx)
+   * ==>> 3 4 8 10 14 17 19          s s s s s s s (x will cannot be median if x < s)
+   *                                     ^ |
+   * - 1st -> all 5 from set x, => x x x x x s x s x s s s s s -> x[k - 1] < s[0]
+   *                                       v
+   * - 2nd -> all 5 from set s, => s s s s s x s x s x x x x x -> s[k - 1] < x[0]
+   *                                   | | v                       5/2-1->1    4/2-1->1
+   * - 3rd -> some from set sx, => s x s x s x s s s x x x s x -> x[k / 2 - 1] > s[k / 2 - 1]
+   *   x[k / 2-1] > s[k / 2-1], k/2-1 elems from s will be ahead of kth elem, vice versa.
+   *                            (s0 s1)
+   *   so it becomes x[0..k - 1] && s[k / 2..k - 1] else
+   *                 x[k / 2..k - 1] && s[0..k - 1] & needs to merge k/2 + 1 elems
+   * - always assume left-arr has more elems left.
+   */
+  static int find_kth_elem(vector<int>::const_iterator l_arr_itr, int l_elem_left,
+                           vector<int>::const_iterator r_arr_itr, int r_elem_left,
+                           int elems_to_merge) {
+    if (r_elem_left > l_elem_left) {
+      return find_kth_elem(r_arr_itr, r_elem_left, l_arr_itr,
+                           l_elem_left, elems_to_merge);
+    }
+    if (0 >= l_elem_left) { return INT_MIN; }
+    if (0 == r_elem_left) { return * (l_arr_itr + elems_to_merge - 1); }
+    if (1 == elems_to_merge) { return min(* l_arr_itr, * r_arr_itr); }
+
+    int elems_to_skip = min(elems_to_merge / 2, r_elem_left);
+    if (* (l_arr_itr + elems_to_skip - 1) > * (r_arr_itr + elems_to_skip - 1)) {
+      return find_kth_elem(
+        l_arr_itr, l_elem_left, r_arr_itr + elems_to_skip,
+        r_elem_left - elems_to_skip, elems_to_merge - elems_to_skip
+      );
+    } else {
+      return find_kth_elem(
+        l_arr_itr + elems_to_skip, l_elem_left - elems_to_skip,
+        r_arr_itr, r_elem_left, elems_to_merge - elems_to_skip
+      );
+    }
+  }
+
+  /**
+   * 2.1.5 Median of Two Sorted Arrays
+   * There are two sorted arrays A and B of size m and n respectively. Find
+   * the median of the two sorted arrays. The overall run time complexity
+   * should be O(log(m + n)).           v
+   * [ 1, 2, 7, 8, 9 ] => [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ] median is 5 (id => 4)
+   * [ 3, 4, 5, 6 ]       5 # in total, first half [ 1, 2 ], from A or B
+   * A => [ 1, 2 ], B => [ 3, 4 ] => B covers more as B [1] > A[1]
+   * All half of A will be included before B[1] merged => not including 5.
+   * => A[k / 2 - 1] == B[k / 2 - 1] => either one is good
+   *    A[k / 2 - 1] <  B[k / 2 - 1] => A[start_pos ... k / 2 - 1] => can skip
+   *    A[k / 2 - 1] >  B[k / 2 - 1] => B[start_pos ... k / 2 - 1] => can skip
+   * ==>> x x x x x x x total: 7, if we need 5th elem from merged sets, then
+   * ==>> s s s s s s s total: 7  5 elem needs to be merged before we can pick
+   * - upper searching scope is k elems from both set s & set x, then
+   *                                       v
+   * - 1st -> all 5 from set x, => x x x x x s x s x s s s s s -> x[k - 1] < s[0]
+   *                                       v
+   * - 2nd -> all 5 from set s, => s s s s s x s x s x x x x x -> s[k - 1] < x[0]
+   *                                   | | v                       5/2-1->1    4/2-1->1
+   * - 3rd -> some from set sx, => s x s x s x s s s x x x s x -> x[k / 2 - 1] > s[k / 2 - 1]
+   *   x[k / 2-1] > s[k / 2-1], k/2-1 elems from s will be ahead of kth elem, vice versa.
+   *                            (s0 s1)
+   *   so it becomes x[0..k - 1] && s[k / 2..k - 1] else
+   *                 x[k / 2..k - 1] && s[0..k - 1]
+   */
+  static double find_median_elem(vector<int> l_sorted_arr,
+                                 vector<int> r_sorted_arr) {
+    if (0 == ((l_sorted_arr.size() + r_sorted_arr.size()) % 2)) {
+      return (find_kth_elem(l_sorted_arr.begin(), l_sorted_arr.size(),
+                            r_sorted_arr.begin(), r_sorted_arr.size(),
+                            (l_sorted_arr.size() + r_sorted_arr.size()) / 2) +
+              find_kth_elem(l_sorted_arr.begin(), l_sorted_arr.size(),
+                            r_sorted_arr.begin(), r_sorted_arr.size(),
+                            (l_sorted_arr.size() + r_sorted_arr.size()) / 2 + 1)
+      ) / 2.0;
+    } else {
+      return find_kth_elem(l_sorted_arr.begin(), l_sorted_arr.size(),
+                           r_sorted_arr.begin(), r_sorted_arr.size(),
+                           (l_sorted_arr.size() + r_sorted_arr.size()) / 2 + 1);
+    }
+  }
+
   /**
    * 2.1.6 Longest Consecutive Sequence
    * Given an unsorted array of integers, find the length of the longest
@@ -174,6 +257,7 @@ int main(void) {
   using array_util::get_next_permutation_asc;
   using array_util::find_in_rotated_sorted_arr;
   using array_util::calc_longest_seq_len;
+  using array_util::find_median_elem;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -198,5 +282,16 @@ int main(void) {
   cout << "3. calc_longest_seq_len" << endl;
   cout << "4 <=> " << calc_longest_seq_len(vector<int>({ 100, 4, 200, 3, 1, 2 })) << endl;
   cout << "8 <=> " << calc_longest_seq_len(vector<int>({ 100, 4, 200, 3, 1, 2, 8, 6, 7, 5 })) << endl;
+
+  cout << "4. find_median_elem" << endl;
+  cout << "{2, 3, 6, 7, 9} & {1, 4, 8, 10} <=> 6 <=> "
+       << find_median_elem(vector<int>({ 2, 3, 6, 7, 9 }),
+                           vector<int>({ 1, 4, 8, 10 })) << endl;
+  cout << "{1, 4, 8, 10} & {2, 3, 6, 7, 9} <=> 6 <=> "
+       << find_median_elem(vector<int>({ 1, 4, 8, 10 }),
+                           vector<int>({ 2, 3, 6, 7, 9 })) << endl;
+  cout << "{1} & {2} <=> 1.5 <=> "
+       << find_median_elem(vector<int>({ 1 }), vector<int>({ 2 })) << endl;
+
   return 0;
 }
