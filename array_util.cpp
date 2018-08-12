@@ -27,6 +27,44 @@ namespace array_util {
   }
 
   /**
+   * 2.1.3 Search in Rotated Sorted Array
+   * Suppose a sorted array is rotated at some pivot unknown to you beforehand.
+   * (i.e., 0 1 2 4 5 6 7 might become 4 5 6 7 0 1 2).
+   * You are given a target value to search. If found in the array return its
+   * index, otherwise return -1. You may assume no duplicate exists in the array.
+   * Analysis:
+   * - 5 6 7 8 0 1 2
+   * - 5 6 7 8 0 1 2 7 => x if right elem > left elem, whole arr has to be no rotation
+   * - 4 5 6 7 0 1 2 => 1, either > > _ < < < < or > _ < < < < or < < < _
+   *   |     ^     |
+   * - arr[min_idx] < arr[target_idx] && arr[target_idx] > arr[max_idx]
+   *   search 1, which is smaller than arr[min_idx] && arr[target_idx]
+   *   then we search for arr[target_idx + 1] <=> arr[max_idx]
+   */
+  static int find_in_rotated_sorted_arr(const vector<int> input, int target) {
+    int target_idx = 0, target_ret = -1;
+    for (int min_idx = 0, max_idx = input.size() - 1; min_idx <= max_idx;) {
+      target_idx = (min_idx + max_idx) / 2;
+      if (input[target_idx] == target) { target_ret = target_idx; break; }
+      if (input[max_idx] > input[min_idx]) {
+        if (target < input[target_idx]) {
+          max_idx = target_idx - 1;
+        } else {
+          min_idx = target_idx + 1;
+        }
+      } else {
+        if ((target < input[target_idx] && target <= input[min_idx]) ||
+            (target > input[target_idx] && target >= input[max_idx])) {
+          min_idx = target_idx + 1;
+        } else {
+          max_idx = target_idx - 1;
+        }
+      }
+    }
+    return target_ret;
+  }
+
+  /**
    * 2.1.12 Next Permutation
    * Implement next permutation, which rearranges numbers into lexicographically
    * next greater permutation of numbers.
@@ -103,6 +141,7 @@ int main(void) {
   using array_util::print_all_elem;
   using array_util::print_all_elem_vec;
   using array_util::get_next_permutation_asc;
+  using array_util::find_in_rotated_sorted_arr;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -117,5 +156,11 @@ int main(void) {
   print_all_elem<int>(get_next_permutation_asc(vector<int>({ 2, 1, 8, 7, 6, 5 })));
   cout << "[ 5 3 6 4 7 9 ] <=> " << endl;
   print_all_elem<int>(get_next_permutation_asc(vector<int>({ 5, 3, 4, 9, 7, 6 })));
+
+  cout << "2. find_in_rotated_sorted_arr" << endl;
+  cout << "8 <=> " << find_in_rotated_sorted_arr(vector<int>({ 5, 6, 7, 8, 9, 10, 1, 2, 3 }), 3) << endl;
+  cout << "-1 <=> " << find_in_rotated_sorted_arr(vector<int>({ 5, 6, 7, 8, 9, 10, 1, 2, 3 }), 30) << endl;
+  cout << "3 <=> " << find_in_rotated_sorted_arr(vector<int>({ 30, 40, 50, 10, 20 }), 10) << endl;
+  cout << "2 <=> " << find_in_rotated_sorted_arr(vector<int>({ 4, 5, 6, 7, 8, 9, 1, 2, 3 }), 6) << endl;
   return 0;
 }
