@@ -294,6 +294,39 @@ namespace array_util {
    */
   vector<vector<int>> calc_triplets_by_sum(vector<int> input, int target = 0) {
     vector<vector<int>> triplets;
+    sort(input.begin(), input.end());
+    int arry_siz = input.size(), target_diff = 0;
+    for (int curr_idx = 0; curr_idx < arry_siz - 2; curr_idx++) {
+      target_diff = target - input[curr_idx];
+      for (int midd_idx = curr_idx + 1, last_idx = arry_siz - 1;
+               midd_idx < last_idx;) {
+        if (input[midd_idx + 1] == input[midd_idx] && midd_idx < last_idx) {
+          while (input[midd_idx + 1] == input[midd_idx] &&
+                 midd_idx < last_idx){ midd_idx++; }
+        }
+        if (input[last_idx - 1] == input[last_idx] && midd_idx < last_idx) {
+          while (input[last_idx - 1] == input[last_idx] &&
+                 midd_idx < last_idx){ last_idx--; }
+        }
+        if ((input[midd_idx] + input[last_idx]) == target_diff) {
+          triplets.push_back(vector<int>({ input[curr_idx], input[midd_idx], input[last_idx] }));
+          midd_idx++; last_idx--;
+        } else if ((input[midd_idx] + input[last_idx]) > target_diff) {
+          last_idx--;
+        } else {
+          midd_idx++;
+        }
+      }
+      if (input[curr_idx + 1] == input[curr_idx] && curr_idx < arry_siz - 2) {
+        while (input[curr_idx + 1] == input[curr_idx] &&
+               curr_idx < arry_siz - 2) { curr_idx++; }
+      }
+    }
+    return triplets;
+  }
+
+  vector<vector<int>> _calc_triplets_by_sum(vector<int> input, int target = 0) {
+    vector<vector<int>> triplets;
     //        sum of 2            smaller #      related idx
     unordered_map<int, unordered_map<int, unordered_set<int>>> lookup;
     for (int i = 0; i < input.size(); i++) {
