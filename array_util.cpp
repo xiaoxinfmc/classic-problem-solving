@@ -249,6 +249,89 @@ namespace array_util {
     }
     return next_perm;
   }
+
+  /**
+   * 2.1.7 Two Sum
+   * Given an array of integers, find two numbers such that they add up to a
+   * specific target number.
+   * The function twoSum should return indices of the two numbers such that
+   * they add up to the target, where index1 must be less than index2. Please
+   * note that your returned answers (both index1 and index2) are not zero-based.
+   * You may assume that each input would have exactly one solution.
+   * Input: numbers={2, 7, 11, 15}, target=9
+   * Output: index1=1, index2=2
+   */
+  vector<int> calc_two_sum(vector<int> input, int target) {
+    vector<int> index_pair({ -1, -1 });
+    unordered_map<int, int> lookup;
+    for (int i = 0; i < input.size(); i++) { lookup[input[i]] = i + 1; }
+    for (auto & curr_val : input) {
+      if (lookup.end() != lookup.find(target - curr_val) &&
+          lookup[curr_val] != lookup[target - curr_val]) {
+        if (lookup[curr_val] < lookup[target - curr_val]) {
+          index_pair[0] = lookup[curr_val]; index_pair[1] = lookup[target - curr_val];
+        } else {
+          index_pair[1] = lookup[curr_val]; index_pair[0] = lookup[target - curr_val];
+        }
+        break;
+      }
+    }
+    return index_pair;
+  }
+
+  /**
+   * 2.1.8 3Sum
+   * Given an array S of n integers, are there elements a,b,c in S such that
+   * a + b + c = 0? Find all unique triplets in array which gives sum of zero.
+   * Note:
+   * Elements in a triplet (a, b, c) must be ascending order. (ie, a ≤ b ≤ c)
+   * The solution set must not contain duplicate triplets.
+   * For example, given array S = {-1 0 1 2 -1 -4}.
+   * A solution set is: (-1, 0, 1) (-1, -1, 2)
+   * - Reduce to 2 sum, as target == elem + sum(elem pair)
+   * - use a map to store all possible sum of 2 elem, with sorted values & idx as val.
+   * - Or sort the input in place 1st, then 
+   */
+  vector<vector<int>> calc_triplets_by_sum(vector<int> input, int target = 0) {
+    vector<vector<int>> triplets;
+    //        sum of 2            smaller #      related idx
+    unordered_map<int, unordered_map<int, unordered_set<int>>> lookup;
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = i + 1; j < input.size(); j++) {
+        int curr_sum = input[i] + input[j];
+        if (lookup.end() == lookup.find(curr_sum)) {
+          lookup[curr_sum] = unordered_map<int, unordered_set<int>>();
+        }
+        int num_to_check = min(input[i], input[j]);
+        if (lookup[curr_sum].end() == lookup[curr_sum].find(num_to_check)) {
+          lookup[curr_sum][num_to_check] = unordered_set<int>();
+        }
+        lookup[curr_sum][num_to_check].insert(i);
+        lookup[curr_sum][num_to_check].insert(j);
+      }
+    }
+
+    for (int i = 0; i < input.size(); i++) {
+      int delta = target - input[i];
+      if (lookup.end() == lookup.find(delta)) { continue; }
+      unordered_map<int, unordered_set<int>> pair_map = lookup[delta];
+      for (auto & sum_pair : pair_map) {
+        if (sum_pair.second.end() != sum_pair.second.find(i)) { continue; }
+        int third_val = delta - sum_pair.first;
+        if (input[i] <= sum_pair.first) {
+          triplets.push_back({ input[i], sum_pair.first, third_val });
+        } else if (input[i] < third_val) {
+          triplets.push_back({ sum_pair.first, input[i], third_val });
+        } else {
+          triplets.push_back({ sum_pair.first, third_val, input[i] });
+        }
+        lookup[input[i] + sum_pair.first].erase(min(input[i], sum_pair.first));
+        lookup[input[i] + third_val].erase(min(input[i], third_val));
+      }
+      lookup.erase(delta);
+    }
+    return triplets;
+  }
 };
 
 int main(void) {
@@ -258,6 +341,8 @@ int main(void) {
   using array_util::find_in_rotated_sorted_arr;
   using array_util::calc_longest_seq_len;
   using array_util::find_median_elem;
+  using array_util::calc_two_sum;
+  using array_util::calc_triplets_by_sum;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -292,6 +377,20 @@ int main(void) {
                            vector<int>({ 2, 3, 6, 7, 9 })) << endl;
   cout << "{1} & {2} <=> 1.5 <=> "
        << find_median_elem(vector<int>({ 1 }), vector<int>({ 2 })) << endl;
+
+  cout << "5. calc_two_sum" << endl;
+  cout << "[ 2 3 ] <=> "; print_all_elem<int>(calc_two_sum(vector<int>({ 3, 2, 4 }), 6));
+  cout << "[ 1 2 ] <=> "; print_all_elem<int>(calc_two_sum(vector<int>({ 2, 7, 11, 15 }), 9));
+
+  cout << "6. calc_triplets_by_sum" << endl;
+  cout << "[ [ -1 0 1 ], [ -1, -1, 2 ] ] <=> " << endl;
+  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -1, 0, 1, 2, -1, -4 })));
+  cout << "[ [3, 9, 12], [6, 6, 12] ] <=> " << endl;
+  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ 12, 3, 6, 1, 6, 9 }), 24));
+  cout << "[ [-2, 0, 2], [-2, 1, 1] ] <=> " << endl;
+  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 })));
+  cout << "[ ] <=> " << endl;
+  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
 
   return 0;
 }
