@@ -56,3 +56,21 @@ where x1.salary >= (
   select x3.salary from employee as x3 where x3.departmentid = x1.departmentid order by x3.salary desc limit 1, 1
 )
 order by x1.departmentid asc, x1.salary desc;
+
+# select employee whoose salary is highest from each depart.
+select x1.dname as dept, x1.departmentid as deptid, x1.id, x1.name, x1.salary from (
+  select e.id, d.name as dname, e.departmentid, e.name, e.salary from employee as e join department as d on (e.departmentid = d.id)
+) as x1
+where not exists (
+  select count(*) as total from employee as x3 where x3.departmentid = x1.departmentid and x3.id <> x1.id and x3.salary > x1.salary group by x3.departmentid having total > 0
+)
+order by x1.departmentid asc, x1.salary desc;
+
+# select employee whoose salary is not highest from each depart.
+select x1.dname as dept, x1.departmentid as deptid, x1.id, x1.name, x1.salary from (
+  select e.id, d.name as dname, e.departmentid, e.name, e.salary from employee as e join department as d on (e.departmentid = d.id)
+) as x1
+where exists (
+  select count(*) as total from employee as x3 where x3.departmentid = x1.departmentid and x3.id <> x1.id and x3.salary > x1.salary group by x3.departmentid having total > 0
+)
+order by x1.departmentid asc, x1.salary desc;
