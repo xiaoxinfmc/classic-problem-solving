@@ -26,6 +26,47 @@ namespace array_util {
     cout << "]" << endl;
   }
 
+  /**
+   * 2.1.10 4Sum
+   * Given an array S of n integers, are there elements a, b, c, and d in S such
+   * that a + b + c + d = target? Find all unique quadruplets in the array which
+   * gives the sum of target.
+   * Note:
+   * - Elements in a quadruplet (a, b, c, d) must be in non-descending order.
+   *   (ie, a ≤ b ≤ c ≤ d)
+   * - The solution set must not contain duplicate quadruplets.
+   *   For example, given array S = {1 0 -1 0 -2 2}, and target = 0.
+   *   A solution set is:
+   *   (-1,  0, 0, 1)
+   *   (-2, -1, 1, 2)
+   *   (-2,  0, 0, 2)
+   */
+  vector<vector<int>> calc_quadruplets_by_sum(vector<int> input, int target = 0) {
+    vector<vector<int>> quadruplets;
+    sort(input.begin(), input.end());
+    for (int i = 0; i < input.size() - 3; i++) {
+      for (int j = i + 1; j < input.size() - 2; j++) {
+        for (int k = j + 1, l = input.size() - 1; k < l;) {
+          int curr_sum = (input[i] + input[j] + input[k] + input[l]);
+          if (target == curr_sum) {
+            quadruplets.push_back(vector<int>({ input[i], input[j], input[k], input[l]}));
+            k++;
+            l--;
+          } else if (curr_sum > target) {
+            l--;
+          } else {
+            k++;
+          }
+          while (k < l && input[k] == input[k + 1]) { k++; }
+          while (l > k && input[l] == input[l - 1]) { l--; }
+        }
+        while (j < input.size() - 2 && input[j] == input[j + 1]) { j++; }
+      }
+      while (i < input.size() - 3 && input[i] == input[i + 1]) { i++; }
+    }
+    return quadruplets;
+  }
+
   /**     v                              v |
    * ==>> 1 2 7  9 11 15             x x x x x x x (x will come before s -> skip xxx)
    * ==>> 3 4 8 10 14 17 19          s s s s s s s (x will cannot be median if x < s)
@@ -376,6 +417,7 @@ int main(void) {
   using array_util::find_median_elem;
   using array_util::calc_two_sum;
   using array_util::calc_triplets_by_sum;
+  using array_util::calc_quadruplets_by_sum;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -416,14 +458,20 @@ int main(void) {
   cout << "[ 1 2 ] <=> "; print_all_elem<int>(calc_two_sum(vector<int>({ 2, 7, 11, 15 }), 9));
 
   cout << "6. calc_triplets_by_sum" << endl;
-  cout << "[ [ -1 0 1 ], [ -1, -1, 2 ] ] <=> " << endl;
+  cout << "[ [ -1 0 1 ], [ -1 -1 2 ] ] <=> " << endl;
   print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -1, 0, 1, 2, -1, -4 })));
-  cout << "[ [3, 9, 12], [6, 6, 12] ] <=> " << endl;
+  cout << "[ [ 3 9 12 ], [ 6 6 12 ] ] <=> " << endl;
   print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ 12, 3, 6, 1, 6, 9 }), 24));
-  cout << "[ [-2, 0, 2], [-2, 1, 1] ] <=> " << endl;
+  cout << "[ [ -2 0 2 ], [ -2 1 1 ] ] <=> " << endl;
   print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 })));
   cout << "[ ] <=> " << endl;
   print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
+
+  cout << "7. calc_quadruplets_by_sum" << endl;
+  cout << "[ [ -1 0 0 1 ], [ -2 -1 1 2 ], [ -2 0 0 2 ] ] <=> " << endl;
+  print_all_elem_vec<int>(calc_quadruplets_by_sum(vector<int>({ 1, 0, -1, 0, -2, 2 })));
+  cout << "[ ] <=> " << endl;
+  print_all_elem_vec<int>(calc_quadruplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
 
   return 0;
 }

@@ -74,3 +74,8 @@ where exists (
   select count(*) as total from employee as x3 where x3.departmentid = x1.departmentid and x3.id <> x1.id and x3.salary > x1.salary group by x3.departmentid having total > 0
 )
 order by x1.departmentid asc, x1.salary desc;
+
+select * from employee as e0, employee e1
+where e0.id <> e1.id and e0.departmentid = e1.departmentid and e0.salary < e1.salary
+group by e0.id, e0.departmentid, e0.salary
+having count(*) = 0;
