@@ -2,6 +2,7 @@
 #include <list>
 #include <deque>
 #include <string>
+#include <utility>
 #include <vector>
 #include <cassert>
 #include <iostream>
@@ -19,11 +20,99 @@ namespace array_util {
     cout << "]" << endl;
   }
 
+  template <class t1, class t2>
+  static void print_all_pairs(const vector<pair<t1, t2>> & input) {
+    cout << "[ ";
+    for (auto & arr : input) { cout << arr.first << "|" << arr.second << " "; }
+    cout << "]" << endl;
+  }
+
   template <class type>
   static void print_all_elem_vec(const vector<vector<type>> & input) {
     cout << "[" << endl;
     for (auto & arr : input){ cout << "  "; print_all_elem<type>(arr); }
     cout << "]" << endl;
+  }
+
+  /**
+   * 2.1.15 Trapping Rain Water
+   * Given n non-negative integers representing an elevation map where the
+   * width of each bar is 1, compute how much water it is able to trap after
+   * raining. For example, Given [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1], return 6.
+   *                |
+   *        |       | |   |
+   *    |   | |   | | | | | |
+   * ------------------------------------
+   *  0 1 0 2 1 0 1 3 2 1 2 1
+   *  0 1 2 3 4 5 6 7 8 9 10 11
+   * Analysis:
+   * - use a stack to keep track of walls, water is only trapped between walls
+   *   and dominated by the short side.
+   * - 4 0 0 0 5 0 0 0 7
+   * - 4 0 0 0 3 0 0 0 7
+   * - a wall can be ditched once it is paired with another no shorter piece with a gap.
+   * - only add up amount of water when we see 2 walls appear between gaps.
+   * - stack: [ 0 ] [ 0 1 ] -> [ 1 ] [ 1 0 ] [ 1 0 2 ] -> [ 2 ] [ 2 1 ] [ 2 1 0 ] [ 2 1 0 1 ] -> [ 2 ] [ 2 3 ] [ 3 ]
+   *            |     |-|                      |---|  loop  ^     ^       ^         ^ |---|              |-|
+   * - idx:   [ 0 ] [ 0 1 ] -> [ 1 ] [ 1 2 ] [ 1 2 3 ]    [ 3 ] [ 3 4 ] [ 3 4 5 ] [ 3 4 5 6 ]    [ 3 ] [ 3 7 ] [ 7 ]
+   * - delta:                                  1+1+2        0(rm all wall)              3          3      3      0
+   * - water:          1         1               2          2      2        2           3          3      6      6
+   *
+   * - stack: [ 3 ] [ 3 2 1 2 ] -> [ 3 ] [ 3 1 ]
+   *                    |---|
+   * - idx:   [ 7 ] [ 7 8 9 10]    [ 7 ] [ 7 11]
+   * - delta:   0         6          6      6 > (11 - 7 - 1) * 1 => 3 * 1 -> 3
+   * - water:   6         7          7      7
+   * - [ 4 3 2 1 0 3 7 ] gap => 1
+   *     0 1 2 3 4 5 6
+   *   [ 4 3 2 1   3 ]
+   *             1 (delta -> 2)
+   *   [ 4 3 2     3 ]
+   *         2 * 2 - 2->2 (delta 2+2+2 -> 6)
+   *   [ 4 3       3 ]
+   *       3 * 3 - 6 -> 3 (delta 6+3+3 -> 12)
+   *       |-------|
+   *   [ 4 3 ] 7
+   *     0 5
+   *   [ 4 3 7 ]
+   *     0 5 6
+   *     delta -> 12 +3 -> 15
+
+   *   [ 4 3 ]      (30)          4
+   *   [ 
+   * - [ 4 3 2 1 3 ] gap => 0
+   *       |-----|
+   * - [ 4         7 ]
+   *     |---------|
+   */
+  int calc_max_trapping_water(vector<int> elevations) {
+    int total_water = 0, curr_water = 0, delta = 0, wall_gap = 0;
+    vector<pair<int, int>> elevation_stack;
+//print_all_elem<int>(elevations);
+    for (int i = 0; i < elevations.size(); i++) {
+      if (0 == elevations[i]) { continue; }
+      while ((false == elevation_stack.empty()) &&
+             (elevation_stack.back().first <= elevations[i] ||
+              i - elevation_stack.back().second - 1 > 0)) {
+        wall_gap = i - elevation_stack.back().second - 1;
+        curr_water = (
+          min(elevation_stack.back().first, elevations[i]) * wall_gap - delta
+        );
+        if (curr_water < 0) {
+          delta += elevation_stack.back().first;
+          elevation_stack.pop_back(); continue;
+        }
+        if (elevation_stack.back().first > elevations[i]) { break; }
+        delta += (elevation_stack.back().first + curr_water);
+        total_water += curr_water;
+ //cout << "wall: " << elevations[i] << " i: " << i << " delta: " << delta << " curr water: " << curr_water << " <=> "; print_all_pairs<int, int>(elevation_stack);
+        elevation_stack.pop_back();
+      }
+      if (true == elevation_stack.empty()) { delta = 0; }
+      elevation_stack.push_back(pair<int, int>(elevations[i], i));
+ //print_all_pairs<int, int>(elevation_stack);
+    }
+    return total_water;
   }
 
   /**
@@ -418,6 +507,7 @@ int main(void) {
   using array_util::calc_two_sum;
   using array_util::calc_triplets_by_sum;
   using array_util::calc_quadruplets_by_sum;
+  using array_util::calc_max_trapping_water;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -473,5 +563,10 @@ int main(void) {
   cout << "[ ] <=> " << endl;
   print_all_elem_vec<int>(calc_quadruplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
 
+  cout << "8. calc_max_trapping_water" << endl;
+  cout << "6 <=> " << calc_max_trapping_water(vector<int>({ 0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1 })) << endl;
+  cout << "11 <=> " << calc_max_trapping_water(vector<int>({ 4, 3, 2, 1, 0, 3, 7 })) << endl;
+  cout << "2 <=> " << calc_max_trapping_water(vector<int>({ 2, 0, 2 })) << endl;
+  cout << "10 <=> " << calc_max_trapping_water(vector<int>({ 3, 0, 0, 2, 0, 4 })) << endl;
   return 0;
 }
