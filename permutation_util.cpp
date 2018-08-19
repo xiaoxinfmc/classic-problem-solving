@@ -35,25 +35,21 @@ namespace permutation_util {
    * [ [3], [1], [2], [1,2,3], [1,3], [2,3], [1,2], [] ]
    * C(5, 5) + C(5, 4) ... + C(5, 0)
    */
-  static void enumerate_all_subsets_recur(deque<int> values,
-                                          vector<int> prev_subset,
-                                          vector<vector<int>> & all_subsets) {
-    while(false == values.empty()) {
-      all_subsets.push_back(prev_subset);
-      all_subsets.back().push_back(values.front());
-      values.pop_front();
-      enumerate_all_subsets_recur(values, all_subsets.back(), all_subsets);
+  static void enumerate_all_subsets_recur(vector<int> values, vector<int> curr_set,
+                                          vector<vector<int>> & subsets) {
+    while (false == values.empty()) {
+      subsets.push_back(curr_set);
+      subsets.back().push_back(values.back());
+      values.pop_back();
+      enumerate_all_subsets_recur(values, subsets.back(), subsets);
     }
   }
 
   static vector<vector<int>> enumerate_all_subsets(vector<int> values) {
-    vector<vector<int>> all_subsets({ vector<int>() });
-    if (true == values.empty()) { return all_subsets; }
-    sort(values.begin(), values.end());
-    enumerate_all_subsets_recur(
-      deque<int>(values.begin(), values.end()), vector<int>(), all_subsets
-    );
-    return all_subsets;
+    vector<vector<int>> subsets({ vector<int>() });
+    sort(values.rbegin(), values.rend());
+    enumerate_all_subsets_recur(values, vector<int>(), subsets);
+    return subsets;
   }
 
   /**
@@ -63,26 +59,23 @@ namespace permutation_util {
    * out of 1...n. For example, If n = 4 and k = 2, a solution is:
    * [ [2,4], [3,4], [2,3], [1,2], [1,3], [1,4] ]
    */
-  static void enumerate_all_subsets_of_size_k_recur(list<int> values,
-                                                    vector<int> prev_subset, int k,
-                                                    vector<vector<int>> & subsets_of_size_k) {
-    if (prev_subset.size() == k) { subsets_of_size_k.push_back(prev_subset); }
-    if (prev_subset.size() >= k) { return; }
-    while (false == values.empty()) {
-      vector<int> curr_subset(prev_subset.begin(), prev_subset.end());
-      curr_subset.push_back(values.front());
-      values.pop_front();
-      enumerate_all_subsets_of_size_k_recur(values, curr_subset, k, subsets_of_size_k);
+  static void enumerate_all_subsets_of_size_k_recur(int max, int k,
+                                                    vector<int> curr_set,
+                                                    vector<vector<int>> & subsets) {
+    if (curr_set.size() > k) { return; }
+    if (curr_set.size() == k) { subsets.push_back(curr_set); return; }
+    for (int i = curr_set.empty() ? 1 : curr_set.back() + 1; i <= max; i++) {
+      curr_set.push_back(i);
+      enumerate_all_subsets_of_size_k_recur(max, k, curr_set, subsets);
+      curr_set.pop_back();
     }
   }
 
   static vector<vector<int>> enumerate_all_subsets_of_size_k(int max, int k) {
-    vector<vector<int>> subsets_of_size_k;
-    if (max < 0 || k < 0 || max < k) { return subsets_of_size_k; }
-    list<int> elem_list;
-    for (int i = 1; i <= max; i++) { elem_list.push_back(i); }
-    enumerate_all_subsets_of_size_k_recur(elem_list, vector<int>(), k, subsets_of_size_k);
-    return subsets_of_size_k;
+    vector<vector<int>> subsets;
+    if (k > max) { return subsets; }
+    enumerate_all_subsets_of_size_k_recur(max, k, vector<int>(), subsets);
+    return subsets;
   }
 
   /**
@@ -96,30 +89,22 @@ namespace permutation_util {
    * 1, 3 (2)
    * A(5, 5)
    */
-  static void enumerate_all_comb_recur(list<int> values,
-                                       vector<int> curr_comb_vect,
-                                       vector<vector<int>> & all_comb_vects){
-    if (true == values.empty()) {
-      all_comb_vects.push_back(curr_comb_vect); return;
-    }
-    int curr_val = 0;
-    for (list<int>::iterator itr = values.begin(); itr != values.end(); itr++){
-      curr_val = * itr;
-      curr_comb_vect.push_back(curr_val);
+  static void enumerate_all_comb_recur(list<int> values, vector<int> curr_set,
+                                       vector<vector<int>> & subsets) {
+    if (true == values.empty()) { subsets.push_back(curr_set); return; }
+    for (list<int>::iterator itr = values.begin(); itr != values.end(); itr++) {
+      curr_set.push_back(* itr);
       itr = values.erase(itr);
-      enumerate_all_comb_recur(values, curr_comb_vect, all_comb_vects);
-      itr = values.insert(itr, curr_val);
-      curr_comb_vect.pop_back();
+      enumerate_all_comb_recur(values, curr_set, subsets);
+      itr = values.insert(itr, curr_set.back());
+      curr_set.pop_back();
     }
   }
 
   static vector<vector<int>> enumerate_all_comb(const vector<int> values) {
-    vector<vector<int>> all_comb_vects;
-    if (true == values.empty()) { return all_comb_vects; }
-    enumerate_all_comb_recur(
-      list<int>(values.begin(), values.end()), vector<int>(), all_comb_vects
-    );
-    return all_comb_vects;
+    vector<vector<int>> subsets;
+    enumerate_all_comb_recur(list<int>(values.begin(), values.end()), vector<int>(), subsets);
+    return subsets;
   }
 
   /**
@@ -129,32 +114,27 @@ namespace permutation_util {
    * unique permutations: [1,1,2], [1,2,1], and [2,1,1].
    */
   static void enumerate_all_uniq_comb_recur(list<int> values,
-                                            vector<int> curr_comb_vect,
-                                            vector<vector<int>> & all_comb_vects){
-    if (true == values.empty()) {
-      all_comb_vects.push_back(curr_comb_vect); return;
-    }
-    unordered_set<int> selected_elems;
-    int curr_val = 0;
-    for (list<int>::iterator itr = values.begin(); itr != values.end(); itr++){
-      curr_val = * itr;
-      if (selected_elems.end() != selected_elems.find(curr_val)) { continue; }
-      curr_comb_vect.push_back(curr_val);
+                                            vector<int> curr_set,
+                                            vector<vector<int>> & subsets) {
+    unordered_set<int> used_value_set;
+    if (true == values.empty()) { subsets.push_back(curr_set); return; }
+    int curr_value = 0;
+    for (list<int>::iterator itr = values.begin(); itr != values.end(); itr++) {
+      curr_value = * itr;
+      if (used_value_set.end() != used_value_set.find(curr_value)) { continue; }
+      curr_set.push_back(curr_value);
       itr = values.erase(itr);
-      enumerate_all_uniq_comb_recur(values, curr_comb_vect, all_comb_vects);
-      itr = values.insert(itr, curr_val);
-      curr_comb_vect.pop_back();
-      selected_elems.insert(curr_val);
+      enumerate_all_uniq_comb_recur(values, curr_set, subsets);
+      itr = values.insert(itr, curr_value);
+      curr_set.pop_back();
+      used_value_set.insert(curr_value);
     }
   }
 
   static vector<vector<int>> enumerate_all_uniq_comb(const vector<int> values) {
-    vector<vector<int>> all_comb_vects;
-    if (true == values.empty()) { return all_comb_vects; }
-    enumerate_all_uniq_comb_recur(
-      list<int>(values.begin(), values.end()), vector<int>(), all_comb_vects
-    );
-    return all_comb_vects;
+    vector<vector<int>> subsets;
+    enumerate_all_uniq_comb_recur(list<int>(values.begin(), values.end()), vector<int>(), subsets);
+    return subsets;
   }
 
   /**
@@ -170,31 +150,29 @@ namespace permutation_util {
    *   " ", "", "abc", "def", // '0','1','2',...
    *   "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz" };
    */
+
   static void translate_all_comb_recur(const vector<string> & keyboard,
                                        const string & phone,
+                                       int curr_phone_digit_idx,
                                        string curr_prefix,
-                                       vector<string> & mapping_comb_ret) {
-    if (curr_prefix.size() == phone.size()) {
-      mapping_comb_ret.push_back(curr_prefix);
+                                       vector<string> & char_sets) {
+    if (curr_phone_digit_idx >= phone.size()) {
+      char_sets.push_back(curr_prefix); return;
     }
-    if (curr_prefix.size() >= phone.size()) { return; }
-    int curr_digit_idx = int(phone[curr_prefix.size()]) - int('0');
-    if (curr_digit_idx < 0 || curr_digit_idx >= keyboard.size()) { return; }
-    for (int i = 0; i < keyboard[curr_digit_idx].size(); i++) {
-      translate_all_comb_recur(
-        keyboard, phone, curr_prefix + keyboard[curr_digit_idx][i], mapping_comb_ret
-      );
+    int curr_phone_num = (int)(phone[curr_phone_digit_idx] - '0');
+    for (int i = 0; i < keyboard[curr_phone_num].size(); i++) {
+      translate_all_comb_recur(keyboard, phone, curr_phone_digit_idx + 1,
+                               curr_prefix + keyboard[curr_phone_num][i],
+                               char_sets);
     }
   }
 
   static vector<string> translate_all_comb(const string & phone) {
-    vector<string> mapping_comb_ret;
-    if (true == phone.empty()) { return mapping_comb_ret; }
-    const vector<string> keyboard({
-      "", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz"
-    });
-    translate_all_comb_recur(keyboard, phone, "", mapping_comb_ret);
-    return mapping_comb_ret;
+    const vector<string> keyboard({ "+", "", "abc", "def", "ghi", "jkl",
+                                    "mno", "pqrs", "tuv", "wxyz" });
+    vector<string> char_sets;
+    translate_all_comb_recur(keyboard, phone, 0, "", char_sets);
+    return char_sets;
   }
 };
 
