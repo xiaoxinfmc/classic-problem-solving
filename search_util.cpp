@@ -194,9 +194,33 @@ namespace search_util{
    * - The solution set must not contain duplicate combinations.
    *   For example, given candidate set 2,3,6,7 and target 7, A solution set is:
    *   [7] [2, 2, 3]
+   * - C(n, 1) ... C(n, n) & pick set sum up to T
    */
+  static void find_nsum_recur(int target, int curr_sum,
+                              vector<int>::iterator curr_itr,
+                              vector<int>::iterator ends_itr,
+                              vector<int> & curr_set,
+                              vector<vector<int>> & nsum_ret) {
+    if ((target < curr_sum) || (curr_itr == ends_itr)) { return; }
+    if (target == curr_sum) {
+      nsum_ret.push_back(vector<int>(curr_set.begin(), curr_set.end()));
+    } else {
+      curr_set.push_back(* curr_itr);
+      find_nsum_recur(target, curr_sum + curr_set.back(),
+                      curr_itr, ends_itr, curr_set, nsum_ret);
+      curr_set.pop_back();
+      while ((curr_itr + 1 != ends_itr) &&
+             (* curr_itr == * (curr_itr + 1))) { curr_itr++; }
+      find_nsum_recur(target, curr_sum, curr_itr + 1,
+                      ends_itr, curr_set, nsum_ret);
+    }
+  }
+
   static vector<vector<int>> find_nsum(vector<int> values, int target){
+    vector<int> curr_set;
     vector<vector<int>> nsum_ret;
+    sort(values.begin(), values.end());
+    find_nsum_recur(target, 0, values.begin(), values.end(), curr_set, nsum_ret);
     return nsum_ret;
   }
 
@@ -213,9 +237,32 @@ namespace search_util{
    * - For example, given candidate set 10,1,2,7,6,1,5 and target 8, A solution
    *   set is: [1, 7] [1, 2, 5] [2, 6] [1, 1, 6]
    */
+  static void find_cnsum_recur(int target, int curr_sum,
+                               vector<int>::iterator curr_itr,
+                               vector<int>::iterator ends_itr,
+                               vector<int> & curr_set,
+                               vector<vector<int>> & nsum_ret) {
+    if ((target < curr_sum) || (curr_itr == ends_itr)) { return; }
+    if (target == curr_sum) {
+      nsum_ret.push_back(vector<int>(curr_set.begin(), curr_set.end()));
+    } else {
+      curr_set.push_back(* curr_itr);
+      find_cnsum_recur(target, curr_sum + curr_set.back(),
+                       curr_itr + 1, ends_itr, curr_set, nsum_ret);
+      curr_set.pop_back();
+      while ((curr_itr + 1 != ends_itr) &&
+             (* curr_itr == * (curr_itr + 1))) { curr_itr++; }
+      find_cnsum_recur(target, curr_sum, curr_itr + 1,
+                       ends_itr, curr_set, nsum_ret);
+    }
+  }
+
   static vector<vector<int>> find_sum_paths(vector<int> values, int target){
-    vector<vector<int>> paths_ret;
-    return paths_ret;
+    vector<int> curr_set;
+    vector<vector<int>> nsum_ret;
+    sort(values.begin(), values.end());
+    find_cnsum_recur(target, 0, values.begin(), values.end(), curr_set, nsum_ret);
+    return nsum_ret;
   }
 
   /**
