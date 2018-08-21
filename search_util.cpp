@@ -121,35 +121,64 @@ namespace search_util{
    * Note:
    * - All words have the same length.
    * - All words contain only lowercase alphabetic characters.
+   * - BFS to get the shortest ladder length, then DFS to get all ladders.
    */
-  class elem {
-  public:
-    elem(int curr_levl,const string & val) : level(curr_levl), value(val){}
-    virtual ~elem(){}
-    int level; string value;
-    friend ostream & operator<< (ostream & os, const elem & elem) {
-      os << elem.value << ":" << elem.level; return os;
-    }
-  };
-  class elem_hash_func {
-  public:
-    size_t operator() (const elem & elem) const {
-      // return hash<string>() (to_string(elem.level) + elem.value);
-      return hash<string>() (elem.value);
-    }
-  };
-  class elem_comparator {
-  public:
-    bool operator() (const elem & l_elem, const elem & r_elem) const {
-      // return (l_elem.level == r_elem.level && l_elem.value == r_elem.value);
-      return (l_elem.value == r_elem.value);
-    }
-  };
+  static void dfs_find_all_ladders(int max_ladder_len,
+                                   const string & target_str,
+                                   vector<string> & curr_ladder,
+                                   vector<string> & dict,
+                                   unordered_set<string> & visited_lookup,
+                                   vector<vector<string>> & ladder_vec_ret) {
+    if (curr_ladder.size() > max_ladder_len) { return; }
 
-  static vector<vector<string>> all_shortest_ladder(const string & start_str,
-                                                    const string & target_str,
-                                                    const vector<string>& dict){
+    string curr_str = curr_ladder.back();
+    if (curr_ladder.size() == max_ladder_len && target_str == curr_str) {
+      ladder_vec_ret.push_back(vector<string>(curr_ladder.begin(), curr_ladder.end()));
+      return;
+    }
+    for (int i = 0; i < dict.size(); i++) {
+      if (1 != str_char_diff_cnt(dict[i], curr_str)) { continue; }
+      if (visited_lookup.end() != visited_lookup.find(dict[i])) { continue; }
+      curr_ladder.push_back(dict[i]);
+      visited_lookup.insert(dict[i]);
+      dfs_find_all_ladders(max_ladder_len, target_str, curr_ladder,
+                           dict, visited_lookup, ladder_vec_ret);
+      visited_lookup.erase(dict[i]);
+      curr_ladder.pop_back();
+    }
+  }
+
+  static vector<vector<string>> find_all_shortest_ladder(const string & start_str,
+                                                         const string & target_str,
+                                                         vector<string> dict){
+    dict.push_back(start_str); dict.push_back(target_str);
+
+    /* BFS here to calc the depth of all shortest ladders. */
+    int ladder_len = -1, curr_lvl = 1, target_str_id = dict.size() - 1;
+    unordered_set<string> visited_lookup;
+    deque<pair<string, int>> search_buffer;
+    search_buffer.push_back(pair<string, int>(start_str, 1));
+    bool is_target_str_reached = false; string curr_str;
+    while (false == search_buffer.empty() && -1 == ladder_len) {
+      curr_lvl = search_buffer.front().second;
+      curr_str = search_buffer.front().first;
+      search_buffer.pop_front();
+      if (visited_lookup.end() != visited_lookup.find(curr_str)) { continue; }
+      for (int i = 0; i < dict.size(); i++) {
+        if (1 != str_char_diff_cnt(dict[i], curr_str)) { continue; }
+        if (i == target_str_id) { ladder_len = curr_lvl + 1; break; }
+        search_buffer.push_back(pair<string, int>(dict[i], curr_lvl + 1));
+      }
+      visited_lookup.insert(curr_str);
+    }
+
+    /* DFS here to calc all real ladders */
+    visited_lookup.clear();
     vector<vector<string>> ladder_vec_ret;
+    vector<string> curr_ladder({ start_str });
+    visited_lookup.insert(start_str);
+    dfs_find_all_ladders(ladder_len, target_str, curr_ladder,
+                         dict, visited_lookup, ladder_vec_ret);
     return ladder_vec_ret;
   }
 
@@ -377,7 +406,7 @@ int main(void) {
   using search_util::print_all_elem;
   using search_util::print_all_elem_vec;
   using search_util::find_shortest_ladder;
-  using search_util::all_shortest_ladder;
+  using search_util::find_all_shortest_ladder;
   using search_util::find_nsum;
   using search_util::find_sum_paths;
   using search_util::is_word_existed;
@@ -400,7 +429,7 @@ int main(void) {
   cout << "-->> hit [ hot dot dog lot log ] cog" << endl;
   cout << "[" << endl << "  [ hit hot dot dog cog ]" << endl
        << "  [ hit hot lot log cog ]" << endl << "] <=>" << endl;
-  print_all_elem_vec<string>(all_shortest_ladder("hit", "cog", d0));
+  print_all_elem_vec<string>(find_all_shortest_ladder("hit", "cog", d0));
 
   cout << "3. find_nsum" << endl;
   cout << "[ [ 7 ] [ 2, 2, 3 ] ] <=>" << endl;
