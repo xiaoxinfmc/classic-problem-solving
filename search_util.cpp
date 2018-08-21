@@ -27,6 +27,7 @@ namespace search_util{
     for (auto & arr : input){ cout << "  "; print_all_elem<type>(arr); }
     cout << "]" << endl;
   }
+
   /**
    * 9.1 Word Ladder
    * Given two words (start and end), and a dictionary, find the length of
@@ -40,12 +41,68 @@ namespace search_util{
    * Return 0 if there is no such transformation sequence.
    * All words have the same length.
    * All words contain only lowercase alphabetic characters.
+   *
+   * Observation:
+   * - each word could be seen as a vertex with edges connected to another word
+   * - all edges are equal weights, to get its shortest len, bfs will be a good
+   *   way once we buildup the graph.
    */
-  static vector<string> find_shortest_ladder(const string & start_str,
-                                             const string & target_str,
-                                             const vector<string> & dict){
-    vector<string> shortest_ladder;
-    return shortest_ladder;
+  static int str_char_diff_cnt(const string & str_l, const string & str_r) {
+    if (str_l.size() != str_r.size()) { return -1; }
+    int diff_char_cnt = 0;
+    for (int i = 0; i < str_l.size(); i++) {
+      if (str_l[i] != str_r[i]) { diff_char_cnt++; }
+    }
+    return diff_char_cnt;
+  }
+
+  static int find_shortest_ladder(const string start_str,
+                                  const string target_str,
+                                  vector<string> dict) {
+    if (1 == str_char_diff_cnt(start_str, target_str)) { return 2; }
+
+    dict.push_back(start_str); dict.push_back(target_str);
+
+    unordered_map<string, int> str_to_idx_map;
+    for (int i = 0; i < dict.size(); i++) { str_to_idx_map[dict[i]] = i; }
+
+    vector<vector<bool>> char_diff_graph(dict.size(), vector<bool>(dict.size(), false));
+    for (int i = 0; i < dict.size(); i++) {
+      for (int j = i + 1; j < dict.size(); j++) {
+        if (1 == str_char_diff_cnt(dict[i], dict[j])) {
+          char_diff_graph[i][j] = true; char_diff_graph[j][i] = true;
+        }
+      }
+    }
+
+    unordered_map<string, bool> node_visited_lookup;
+
+    bool is_target_str_found = false;
+    deque<pair<string, int>> ladder_buffer;
+    ladder_buffer.push_back(pair<string, int>(start_str, 1));
+
+    int ladder_len = 0, target_str_id = dict.size() - 1;
+
+    while (!ladder_buffer.empty() && !is_target_str_found) {
+      string curr_str = ladder_buffer.front().first;
+      int    curr_lvl = ladder_buffer.front().second;
+      ladder_buffer.pop_front();
+      if (node_visited_lookup.end() != node_visited_lookup.find(curr_str)) { continue; }
+
+      for (int i = 0; i < char_diff_graph[str_to_idx_map[curr_str]].size(); i++) {
+        if (false == char_diff_graph[str_to_idx_map[curr_str]][i]) { continue; }
+        if (target_str_id == i) {
+          is_target_str_found = true;
+          ladder_len = curr_lvl + 1;
+          break;
+        } else {
+          ladder_buffer.push_back(pair<string, int>(dict[i], curr_lvl + 1));
+        }
+      }
+      node_visited_lookup[curr_str] = true;
+    }
+
+    return ladder_len;
   }
 
   /**
@@ -337,8 +394,7 @@ int main(void) {
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
   cout << "-->> hit [ hot dot dog lot log ] cog" << endl;
-  cout << "[ hit hot dot dog cog ] <=>" << endl;
-  print_all_elem<string>(find_shortest_ladder("hit", "cog", d0));
+  cout << "[ hit hot dot dog cog ] <=> " << find_shortest_ladder("hit", "cog", d0) << endl;
 
   cout << "2. find_all_shortest_ladder" << endl;
   cout << "-->> hit [ hot dot dog lot log ] cog" << endl;
