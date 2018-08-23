@@ -365,8 +365,46 @@ namespace search_util{
    * For example, given s = "aab", Return [ ["aa","b"], ["a","a","b"] ]
    * based on current index each step, either not partition or partition.
    */
+  static void search_all_palindromes(const string & input,
+                                     string curr_token, int curr_idx,
+                                     vector<string> & curr_plain_arr,
+                                     vector<vector<bool>> & palin_lookup,
+                                     vector<vector<string>> & all_palin_groups) {
+    if (curr_idx >= input.size()) {
+      if (true == curr_token.empty()) {
+        all_palin_groups.push_back(
+          vector<string>(curr_plain_arr.begin(), curr_plain_arr.end())
+        );
+      }
+      return;
+    }
+    // given existing partition [ x, xx, xxx ] & y,
+    // if xxxy is a palin, then either [ x, xx, xxxy ] or [ x, xx, xxx, y ]
+    // else [ x, xx, xxx, y ]
+    int token_start_pos = curr_idx - curr_token.size();
+    if (true == palin_lookup[token_start_pos][curr_idx]) {
+      curr_plain_arr.push_back(curr_token + input[curr_idx]);
+      search_all_palindromes(input, "", curr_idx + 1, curr_plain_arr,
+                             palin_lookup, all_palin_groups);
+      curr_plain_arr.pop_back();
+    }
+    search_all_palindromes(input, curr_token + input[curr_idx],
+                           curr_idx + 1, curr_plain_arr,
+                           palin_lookup, all_palin_groups);
+  }
+
   static vector<vector<string>> get_all_palindrome_partition(const string input) {
+    vector<string> curr_plain_arr;
     vector<vector<string>> partition_set;
+    vector<vector<bool>> palin_lookup(input.size(), vector<bool>(input.size(), false));
+    for (int i = 0; i < input.size(); i++) { palin_lookup[i][i] = true; }
+    for (int i = input.size() - 1; i >= 0; i--) {
+      for (int j = i + 1; j < input.size(); j++) {
+        if (j == i + 1) { palin_lookup[i][j] = (input[i] == input[j]); continue; }
+        palin_lookup[i][j] = ((input[i] == input[j]) && palin_lookup[i + 1][j - 1]);
+      }
+    }
+    search_all_palindromes(input, "", 0, curr_plain_arr, palin_lookup, partition_set);
     return partition_set;
   }
 
