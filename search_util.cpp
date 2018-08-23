@@ -328,7 +328,13 @@ namespace search_util{
    * 11.1 calc_pow(x, n) = { calc_pow(x, 2/n)^2, n > 1 | x, n == 1 }
    */
   static int calc_pow(int base, int p) {
-    return 0;
+    if (0 == p) { return 1; }
+    if (0 == p % 2) {
+      int half = calc_pow(base, p / 2);
+      return half * half;
+    } else {
+      return base * calc_pow(base, p - 1);
+    }
   }
 
   /**
@@ -337,9 +343,18 @@ namespace search_util{
    * Compute and return the square root of x.
    */
   static double calc_sqrt(int base) {
-    double sqrt_low = 0, sqrt_high = base;
-    double sqrt_val = (sqrt_low + sqrt_high) / 2;
+    double sqrt_low = 0, sqrt_high = base, sqrt_val = 0, curr_val = 0;
     double margin_of_error_limit = 0.0000001, margin_of_error = 0.0;
+    do {
+      sqrt_val = (sqrt_low + sqrt_high) / 2;
+      curr_val = sqrt_val * sqrt_val;
+      if (curr_val - base > margin_of_error_limit) {
+        sqrt_high = sqrt_val;
+      } else {
+        sqrt_low = sqrt_val;
+      }
+      margin_of_error = abs(curr_val - base);
+    } while (margin_of_error > margin_of_error_limit);
     return sqrt_val;
   }
 
