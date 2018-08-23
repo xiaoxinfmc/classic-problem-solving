@@ -281,9 +281,47 @@ namespace search_util{
    * else keep moving left first, try expend for any position of (row, col...n)
    * each expanding will move either right or down as no cell reuse.
    */
-  static bool is_word_existed(vector<string> board, string input) {
+  static bool search_word_recur(const string & input, int curr_idx,
+                                int curr_row, int curr_col,
+                                unordered_set<string> visited_lookup,
+                                const vector<string> & board) {
+    // if all input point been checked, then true
+    if (curr_idx >= input.size()) { return true; }
+
+    // if curr point is out of range, then false
+    if (curr_row >= board.size() || curr_row < 0 ||
+        curr_col >= board[curr_row].size() || curr_col < 0) { return false; }
+
+    // if curr point does not match the value, then false;
+    if (input[curr_idx] != board[curr_row][curr_col]) { return false; }
+
+    // if curr point already been included in the path, then false
+    string curr_point_key = to_string(curr_row) + "$" + to_string(curr_col);
+    if (visited_lookup.end() != visited_lookup.find(curr_point_key)) { return false; }
+    visited_lookup.insert(curr_point_key);
+
     bool is_word_existed = false;
+
+    is_word_existed = search_word_recur(input, curr_idx + 1, curr_row + 1, curr_col, visited_lookup, board);
+    if (true == is_word_existed) { return is_word_existed; }
+    is_word_existed = search_word_recur(input, curr_idx + 1, curr_row, curr_col + 1, visited_lookup, board);
+    if (true == is_word_existed) { return is_word_existed; }
+    is_word_existed = search_word_recur(input, curr_idx + 1, curr_row - 1, curr_col, visited_lookup, board);
+    if (true == is_word_existed) { return is_word_existed; }
+    is_word_existed = search_word_recur(input, curr_idx + 1, curr_row, curr_col - 1, visited_lookup, board);
+
     return is_word_existed;
+  }
+
+  static bool is_word_existed(vector<string> board, string input) {
+    unordered_set<string> visited_lookup;
+    for (int i = 0; i < board.size(); i++) {
+      for (int j = 0; j < board[i].size(); j++) {
+        visited_lookup.clear();
+        if (true == search_word_recur(input, 0, i, j, visited_lookup, board)) { return true; }
+      }
+    }
+    return false;
   }
 
   /**
