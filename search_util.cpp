@@ -538,6 +538,36 @@ namespace search_util{
     vector<string> ip_arr;
     return ip_arr;
   }
+
+  /*
+   * Find the smallest positive number missing from an unsorted array
+   * You are given an unsorted array with both positive and negative elements.
+   * You have to find the smallest positive number missing from the array in
+   * O(n) time using constant extra space. You can modify the original array.
+   * Examples
+   * - Input:  {2, 3, 7, 6, 8, -1, -10, 15}
+   * - Output: 1
+   * - Input:  { 2, 3, -7, 6, 8, 1, -10, 15 }
+   * - Output: 4
+   * - Input: {1, 1, 0, -1, -2}
+   * - Output: 2 
+   */
+  static int find_first_missing_positive(vector<int> input) {
+    for (int i = 0, j = input.size() - 1; i < j;) {
+      if (input[j] < 0) { j--; continue; }
+      if (input[i] > 0) { i++; continue; }
+      swap(input[i], input[j]);
+    }
+    for (int i = 0; i < input.size(); i++) {
+      if (input[i] > 0 && input[i] < input.size()) {
+        input[input[i]] = input[input[i]] * -1;
+      }
+    }
+    for (int i = 1; i < input.size(); i++) {
+      if (input[i] >= 0) { return i; }
+    }
+    return false;
+  }
 };
 
 int main(void) {
@@ -557,6 +587,7 @@ int main(void) {
   using search_util::print_board_vec;
   using search_util::print_board;
   using search_util::restore_ips;
+  using search_util::find_first_missing_positive;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -630,6 +661,11 @@ int main(void) {
   cout << "12. restore_ips" << endl;
   cout << "[ 255.255.11.135, 255.255.111.35 ] <=>" << endl;
   print_all_elem<string>(restore_ips("25525511135"));
+
+  cout << "13. find_first_missing_positive" << endl;
+  cout << "1 <=> " << find_first_missing_positive(vector<int>({ 2, 3, 7, 6, 8, -1, -10, 15 })) << endl;
+  cout << "4 <=> " << find_first_missing_positive(vector<int>({ 2, 3, -7, 6, 8, 1, -10, 15 })) << endl;
+  cout << "2 <=> " << find_first_missing_positive(vector<int>({ 1, 1, 0, -1, -2 })) << endl;
 
   return 0;
 }
