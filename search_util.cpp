@@ -427,7 +427,17 @@ namespace search_util{
    *                   0 if j == n - 1 && i == n - 1
    */
   static int calc_unique_paths(int row, int col) {
-    return 0;
+    vector<vector<int>> path_cnt_lookup(row, vector<int>(col, 0));
+    /* once reach the far right, then only downward */
+    for (int i = 0; i < row; i++) { path_cnt_lookup[i][col - 1] = 1; }
+    /* once reach the bottom, then only right */
+    for (int i = 0; i < col; i++) { path_cnt_lookup[row - 1][i] = 1; }
+    for (int i = row - 2; i >= 0; i--) {
+      for (int j = col - 2; j >= 0; j--) {
+        path_cnt_lookup[i][j] = path_cnt_lookup[i + 1][j] + path_cnt_lookup[i][j + 1];
+      }
+    }
+    return path_cnt_lookup[0][0];
   }
 
   /**
@@ -444,7 +454,29 @@ namespace search_util{
    * The total number of unique paths is 2. Note: m and n will be at most 100.
    */
   static int calc_unique_paths_by_board(vector<vector<int>> input) {
-    return 0;
+    int row = input.size(), col = input.back().size();
+    vector<vector<int>> path_cnt_lookup(row, vector<int>(col, 0));
+
+    /* once reach the far right, then only downward */
+    for (int i = row - 1; i >= 0; i--) {
+      if (input[i][col - 1] == 1) { path_cnt_lookup[i][col - 1] = 0; break; }
+      path_cnt_lookup[i][col - 1] = 1;
+    }
+    /* once reach the bottom, then only right */
+    for (int i = col - 1; i >= 0; i--) {
+      if (input[row - 1][i] == 1) { path_cnt_lookup[row - 1][i] = 0; break; }
+      path_cnt_lookup[row - 1][i] = 1;
+    }
+
+    for (int i = row - 2; i >= 0; i--) {
+      for (int j = col - 2; j >= 0; j--) {
+        if (input[i][j] == 1) { path_cnt_lookup[i][j] = 0; continue; }
+        if (input[i + 1][j] == 0) { path_cnt_lookup[i][j] += path_cnt_lookup[i + 1][j]; }
+        if (input[i][j + 1] == 0) { path_cnt_lookup[i][j] += path_cnt_lookup[i][j + 1]; }
+      }
+    }
+    return path_cnt_lookup[0][0];
+
   }
 
   /**
@@ -534,8 +566,36 @@ namespace search_util{
    * valid IP address combinations. For example: Given "25525511135",
    * return ["255.255.11.135", "255.255.111.35"]. (Order does not matter)
    */
+  static void restore_ips_recur(const string & ipstr,
+                                int curr_idx, int token_cnt,
+                                string curr_token, string & curr_ip,
+                                vector<string> & ip_arr) {
+    if (curr_idx >= ipstr.size() && 4 == token_cnt &&
+        true == curr_token.empty()) {
+      ip_arr.push_back(string(curr_ip.begin(), curr_ip.end()));
+      return;
+    }
+    if (curr_idx > ipstr.size() || 4 < token_cnt) { return; }
+
+    if (!curr_token.empty() && atoi(curr_token.c_str()) <= 255) {
+      int curr_token_size = curr_token.size();
+      curr_ip.append(curr_token);
+      if (false == curr_ip.empty() && 3 != token_cnt) { curr_ip.append("."); curr_token_size++; }
+      string new_token = (curr_idx < ipstr.size()) ? string("") + ipstr[curr_idx] : string("");
+      restore_ips_recur(ipstr, curr_idx + 1, token_cnt + 1,
+                        new_token, curr_ip, ip_arr);
+      for (int i = 0; i < curr_token_size; i++) { curr_ip.pop_back(); }
+    }
+
+    if (atoi((curr_token + ipstr[curr_idx]).c_str()) <= 255 && curr_idx < ipstr.size()) {
+      restore_ips_recur(ipstr, curr_idx + 1, token_cnt,
+                        curr_token + ipstr[curr_idx], curr_ip, ip_arr);
+    }
+  }
+
   static vector<string> restore_ips(const string ipstr) {
-    vector<string> ip_arr;
+    vector<string> ip_arr; string curr_ip;
+    restore_ips_recur(ipstr, 0, 0, "", curr_ip, ip_arr);
     return ip_arr;
   }
 
@@ -659,7 +719,7 @@ int main(void) {
   cout << "724 <=> " << search_n_queens(10).size() << endl;
 
   cout << "12. restore_ips" << endl;
-  cout << "[ 255.255.11.135, 255.255.111.35 ] <=>" << endl;
+  cout << "[ 255.255.11.135 255.255.111.35 ] <=>" << endl;
   print_all_elem<string>(restore_ips("25525511135"));
 
   cout << "13. find_first_missing_positive" << endl;
