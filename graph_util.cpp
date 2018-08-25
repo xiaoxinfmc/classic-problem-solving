@@ -446,6 +446,128 @@ namespace graph_util {
     }
     return links_to_confirm_map.empty();
   }
+
+  /**
+   * 207 Course Schedule
+   * There are a total of n courses you have to take, labeled from 0 to n-1.
+   * Some courses may have prerequisites, for example to take course 0 you have
+   * to first take course 1, which is expressed as a pair: [0,1]
+   * Given the total number of courses and a list of prerequisite pairs, is it
+   * possible for you to finish all courses?
+   * Example 1:
+   * - Input: 2, [[1,0]] 
+   *   Output: true
+   *   Explanation: There are a total of 2 courses to take. 
+   *   To take course 1 you should have finished course 0. So it is possible.
+   * Example 2:
+   * - Input: 2, [[1,0],[0,1]]
+   *   Output: false
+   *   Explanation: There are a total of 2 courses to take. 
+   *   To take course 1 you should have finished course 0, and to take course 0
+   *   you should also have finished course 1. So it is impossible.
+   * Observation:
+   * - each course may have its own requirement of coures needs to be taken 1st
+   *   essentailly viewed as an vertex within a DAG with incoming edges.
+   * - in the meantime, it can also be a pre-requisite for other courses, then
+   *   for this same vertex, we have a bunch of outgoing edges.
+   * - to be able to take all courses, we want to see if we can have topological
+   *   ordering of the whole graph, such that there may be more than 1 courses
+   *   does not require any courses (vertex with no incoming edges), and rest of
+   *   them can be scheduled on some certain order.
+   * - if we can sort whole DAG, then true, otherwise(not DAG, with cycle) false
+   */
+  class dag_vertex {
+  public:
+    dag_vertex(int id = 0) : vid(id) {}
+    virtual ~dag_vertex() {}
+
+    int vid;
+    unordered_set<int> incoming_vids;
+    unordered_set<int> outgoing_vids;
+  };
+
+  static bool can_all_courses_be_taken(int n, vector<pair<int, int>> prerequisites) {
+    /* build the graph based on input */
+    int total_edges_cnt = 0;
+    vector<dag_vertex> graph_vertices(n, dag_vertex());
+    for (int i = 0; i < n; i++) { graph_vertices[i].vid = i; }
+    for (auto & pair_ref : prerequisites) {
+      if (pair_ref.first == pair_ref.second) { return false; }
+      graph_vertices[pair_ref.second].outgoing_vids.insert(pair_ref.first);
+      graph_vertices[pair_ref.first].incoming_vids.insert(pair_ref.second);
+      total_edges_cnt += 1;
+    }
+
+    /* start topological sort */
+    vector<int> vertex_id_buffer;  // used here as a stack
+    vector<bool> visited_vid_lookup(n, false);
+
+    for (auto & vertex_ref : graph_vertices) {
+      if (true == vertex_ref.incoming_vids.empty()) {
+        vertex_id_buffer.push_back(vertex_ref.vid);
+      }
+    }
+    int curr_vid = -1;
+    while (false == vertex_id_buffer.empty()) {
+      curr_vid = vertex_id_buffer.back();
+      dag_vertex & curr_vertex = graph_vertices[curr_vid];
+      vertex_id_buffer.pop_back();
+
+      if (true == visited_vid_lookup[curr_vid]) { continue; }
+
+      visited_vid_lookup[curr_vid] = true;
+
+      for (auto & outgoing_vid : curr_vertex.outgoing_vids) {
+        graph_vertices[outgoing_vid].incoming_vids.erase(curr_vid);
+        if (true == graph_vertices[outgoing_vid].incoming_vids.empty()) {
+          vertex_id_buffer.push_back(outgoing_vid);
+        }
+        total_edges_cnt -= 1;
+      }
+    }
+
+    return (total_edges_cnt == 0);
+  }
+
+  static vector<int> plan_courses_to_take(int n, vector<pair<int, int>> prerequisites) {
+    /* build the graph based on input */
+    vector<int> course_planing;
+    vector<dag_vertex> graph_vertices(n, dag_vertex());
+    for (int i = 0; i < n; i++) { graph_vertices[i].vid = i; }
+    for (auto & pair_ref : prerequisites) {
+      if (pair_ref.first == pair_ref.second) { return course_planing; }
+      graph_vertices[pair_ref.second].outgoing_vids.insert(pair_ref.first);
+      graph_vertices[pair_ref.first].incoming_vids.insert(pair_ref.second);
+    }
+
+    /* start topological sort */
+    vector<int> vertex_id_buffer;  // used here as a stack
+    vector<bool> visited_vid_lookup(n, false);
+    for (auto & vertex_ref : graph_vertices) {
+      if (true == vertex_ref.incoming_vids.empty()) {
+        vertex_id_buffer.push_back(vertex_ref.vid);
+      }
+    }
+    int curr_vid = -1;
+    while (false == vertex_id_buffer.empty()) {
+      curr_vid = vertex_id_buffer.back();
+      dag_vertex & curr_vertex = graph_vertices[curr_vid];
+      vertex_id_buffer.pop_back();
+      if (true == visited_vid_lookup[curr_vid]) { continue; }
+      course_planing.push_back(curr_vid);
+      visited_vid_lookup[curr_vid] = true;
+      for (auto & outgoing_vid : curr_vertex.outgoing_vids) {
+        graph_vertices[outgoing_vid].incoming_vids.erase(curr_vid);
+        if (true == graph_vertices[outgoing_vid].incoming_vids.empty()) {
+          vertex_id_buffer.push_back(outgoing_vid);
+        }
+      }
+    }
+    if (course_planing.size() != n){ course_planing.clear(); }
+    return course_planing;
+  }
+
+
 };
 
 int main(void) {
@@ -461,9 +583,19 @@ int main(void) {
            / \
            \_/
   */
+  using graph_util::print_all_elem;
+  using graph_util::print_all_elem_vec;
+
   using graph_util::undirected_graph_vertex;
   using graph_util::graph_vertex;
   using graph_util::graph_edge;
+
+  using graph_util::clone_undirected_graph;
+  using graph_util::calc_shortest_paths;
+  using graph_util::calc_minimum_spanning_tree;
+  using graph_util::is_sequence_unique;
+  using graph_util::can_all_courses_be_taken;
+  using graph_util::plan_courses_to_take;
 
   undirected_graph_vertex * a_ptr = new undirected_graph_vertex(0);
   undirected_graph_vertex * b_ptr = new undirected_graph_vertex(1);
@@ -474,16 +606,16 @@ int main(void) {
   c_ptr->neighbors.push_back(a_ptr); c_ptr->neighbors.push_back(b_ptr);
   c_ptr->neighbors.push_back(c_ptr);
 
-  cout << "1. clone undirected graph:" << endl;
-  graph_util::print_undirected_graph(a_ptr);
-  graph_util::print_undirected_graph(b_ptr);
-  graph_util::print_undirected_graph(c_ptr);
+  cout << "1. clone_undirected_graph:" << endl;
+  print_undirected_graph(a_ptr);
+  print_undirected_graph(b_ptr);
+  print_undirected_graph(c_ptr);
   cout << "<<==>>" << endl;
-  graph_util::print_undirected_graph(graph_util::clone_undirected_graph(a_ptr));
-  graph_util::print_undirected_graph(graph_util::clone_undirected_graph(b_ptr));
-	graph_util::print_undirected_graph(graph_util::clone_undirected_graph(c_ptr));
+  print_undirected_graph(clone_undirected_graph(a_ptr));
+  print_undirected_graph(clone_undirected_graph(b_ptr));
+	print_undirected_graph(clone_undirected_graph(c_ptr));
 
-  cout << "2. gen shortest paths:" << endl;
+  cout << "2. calc_shortest_paths:" << endl;
   /* V D 0 0 1 4 2 12 3 19 4 21 5 11 6 9 7 8 8 14 */
   vector<vector<int>> sp_graph_metrix({
     vector<int>({0, 4, 0, 0, 0, 0, 0, 8, 0}),
@@ -496,30 +628,28 @@ int main(void) {
     vector<int>({8, 11, 0, 0, 0, 0, 1, 0, 7}),
     vector<int>({0, 0, 2, 0, 0, 0, 6, 7, 0}),
   });
-  graph_util::print_all_elem<graph_vertex>(vector<graph_vertex>({
+  print_all_elem<graph_vertex>(vector<graph_vertex>({
     graph_vertex(0, 0),  graph_vertex(1, 4), graph_vertex(2, 12),
     graph_vertex(3, 19), graph_vertex(4, 21), graph_vertex(5, 11),
     graph_vertex(6, 9),  graph_vertex(7, 8), graph_vertex(8, 14)
   }));
-  graph_util::print_all_elem<graph_vertex>(
-    graph_util::calc_shortest_paths(sp_graph_metrix, 0)
-  );
+  print_all_elem<graph_vertex>(calc_shortest_paths(sp_graph_metrix, 0));
 
-  cout << "3. gen minimum spanning tree:" << endl;
+  cout << "3. calc_minimum_spanning_tree:" << endl;
   vector<vector<int>> mst_graph_metrix({
     vector<int>({0, 2, 0, 6, 0}), vector<int>({2, 0, 3, 8, 5}),
     vector<int>({0, 3, 0, 0, 7}), vector<int>({6, 8, 0, 0, 9}),
     vector<int>({0, 5, 7, 9, 0}),
   });
-  graph_util::print_all_elem<graph_edge>(vector<graph_edge>({
+  print_all_elem<graph_edge>(vector<graph_edge>({
     graph_edge(0, 1, 2), graph_edge(1, 2, 3),
     graph_edge(0, 3, 6), graph_edge(1, 4, 5),
   }));
-  graph_util::print_all_elem<graph_edge>(
-    graph_util::calc_minimum_spanning_tree(mst_graph_metrix)
+  print_all_elem<graph_edge>(
+    calc_minimum_spanning_tree(mst_graph_metrix)
   );
 
-  cout << "4. can sequence be uniquely re-constructed:" << endl;
+  cout << "4. is_sequence_unique:" << endl;
   vector<int> av({ 1, 2, 3 }); vector<int> av1({ 1, 2 });
   vector<int> av2({ 1, 3 });   vector<int> av3({ 2, 3 });
   vector<vector<int>> avv1; avv1.push_back(av1);
@@ -534,22 +664,37 @@ int main(void) {
   vector<vector<int>> bvv; bvv.push_back(bv1);
                            bvv.push_back(bv2);
 
-  graph_util::print_all_elem<int>(av);
-  graph_util::print_all_elem_vec<int>(avv1);
+  print_all_elem<int>(av);
+  print_all_elem_vec<int>(avv1);
   cout << false << endl;
-  assert(false == graph_util::is_sequence_unique(av, avv1));
-  graph_util::print_all_elem<int>(av);
-  graph_util::print_all_elem_vec<int>(avv2);
+  assert(false == is_sequence_unique(av, avv1));
+  print_all_elem<int>(av);
+  print_all_elem_vec<int>(avv2);
   cout << false << endl;
-  assert(false == graph_util::is_sequence_unique(av, avv2));
-  graph_util::print_all_elem<int>(av);
-  graph_util::print_all_elem_vec<int>(avv3);
+  assert(false == is_sequence_unique(av, avv2));
+  print_all_elem<int>(av);
+  print_all_elem_vec<int>(avv3);
   cout << true << endl;
-  assert(true == graph_util::is_sequence_unique(av, avv3));
-  graph_util::print_all_elem<int>(bv);
-  graph_util::print_all_elem_vec<int>(bvv);
+  assert(true == is_sequence_unique(av, avv3));
+  print_all_elem<int>(bv);
+  print_all_elem_vec<int>(bvv);
   cout << true << endl;
-  assert(true == graph_util::is_sequence_unique(bv, bvv));
+  assert(true == is_sequence_unique(bv, bvv));
 
+  cout << "5. can_all_courses_be_taken:" << endl;
+  cout << "1 <=> " << can_all_courses_be_taken(2, vector<pair<int, int>>({ pair<int, int>(1, 0) })) << endl;
+  cout << "0 <=> " << can_all_courses_be_taken(2, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(0, 1) })) << endl;
+  cout << "1 <=> " << can_all_courses_be_taken(6, vector<pair<int, int>>({ pair<int, int>(5, 2), pair<int, int>(5, 0),
+                                                                           pair<int, int>(4, 0), pair<int, int>(4, 1),
+                                                                           pair<int, int>(2, 3), pair<int, int>(3, 1) })) << endl;
+
+  cout << "6. plan_courses_to_take:" << endl;
+  cout << "[ 0 1 ] <=> "; print_all_elem<int>(plan_courses_to_take(2, vector<pair<int, int>>({ pair<int, int>(1, 0) })));
+  cout << "[ ] <=> "; print_all_elem<int>(plan_courses_to_take(2, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(0, 1) })));
+  cout << "[ 1 3 2 0 5 4 ] <=> "; print_all_elem<int>(plan_courses_to_take(6, vector<pair<int, int>>({ pair<int, int>(5, 2), pair<int, int>(5, 0),
+                                                                                                       pair<int, int>(4, 0), pair<int, int>(4, 1),
+                                                                                                       pair<int, int>(2, 3), pair<int, int>(3, 1) })));
+  cout << "[ 0 1 2 3 ] <=> "; print_all_elem<int>(plan_courses_to_take(4, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(2, 0),
+                                                                                                   pair<int, int>(3, 1), pair<int, int>(3, 2) })));
   return 0;
 }
