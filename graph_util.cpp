@@ -39,7 +39,7 @@ namespace graph_util {
     virtual ~graph_vertex(){}
     // default stl heap is max heap, by inverting the < we got min heap.
     friend bool operator< (const graph_vertex & lv, const graph_vertex & rv) {
-      return (lv.priority * -1 < rv.priority * -1);
+      return (lv.priority > rv.priority);
     }
     friend bool operator== (const graph_vertex & lv, const graph_vertex & rv) {
       return (lv.priority == rv.priority);
@@ -59,7 +59,7 @@ namespace graph_util {
       os << "(" << e.from << " -> " << e.to << " : " << e.weight << ")"; return os;
     }
     friend bool operator< (const graph_edge & le, const graph_edge & re) {
-      return (le.weight * -1 < re.weight);
+      return (le.weight > re.weight);
     }
     friend bool operator== (const graph_edge & le, const graph_edge & re) {
       return (le.weight == re.weight);
@@ -125,233 +125,104 @@ namespace graph_util {
    * 1, (0, 2)
    * 1 | [ 0, 2 ]    < 1 >
    */
-  static undirected_graph_vertex * clone_undirected_graph(
-    undirected_graph_vertex * udag_start_ptr
-  ) {
-    undirected_graph_vertex * new_graph_ptr = NULL,
-                            * tmp_graph_ptr = NULL,
-                            * cur_graph_ptr = NULL;
-    deque<undirected_graph_vertex *> graph_ptr_buffer;
-    unordered_map<int, undirected_graph_vertex *> lookup;
 
-    graph_ptr_buffer.push_back(udag_start_ptr);
-    while (false == graph_ptr_buffer.empty()) {
-      cur_graph_ptr = graph_ptr_buffer.front();
-      graph_ptr_buffer.pop_front();
-      if (lookup.end() != lookup.find(cur_graph_ptr->label)) { continue; }
+  static undirected_graph_vertex * clone_undirected_graph(undirected_graph_vertex * udag_start_ptr) {
+    undirected_graph_vertex * udag_copy_ptr = NULL,
+                            * curr_udag_ptr = NULL,
+                            * temp_udag_ptr = NULL;
+    if (NULL == udag_start_ptr) { return udag_copy_ptr; }
 
-      tmp_graph_ptr = new undirected_graph_vertex(cur_graph_ptr->label);
-      lookup[cur_graph_ptr->label] = tmp_graph_ptr;
-      if (NULL == new_graph_ptr) { new_graph_ptr = tmp_graph_ptr; }
+    vector<undirected_graph_vertex *> udag_ptr_buffer;
+    unordered_set<undirected_graph_vertex *> udag_visited_lookup;
+    unordered_map<int, undirected_graph_vertex *> udag_vid_to_ptr_map;
 
-      for (undirected_graph_vertex * vertex_ptr : cur_graph_ptr->neighbors) {
-        graph_ptr_buffer.push_back(vertex_ptr);
-        if (lookup.end() != lookup.find(vertex_ptr->label)) {
-          tmp_graph_ptr->neighbors.push_back(lookup[vertex_ptr->label]);
-          if (vertex_ptr->label != tmp_graph_ptr->label) {
-            lookup[vertex_ptr->label]->neighbors.push_back(tmp_graph_ptr);
+    udag_ptr_buffer.push_back(udag_start_ptr);
+    while (false == udag_ptr_buffer.empty()) {
+      curr_udag_ptr = udag_ptr_buffer.back();
+      udag_ptr_buffer.pop_back();
+      if (udag_visited_lookup.end() != udag_visited_lookup.find(curr_udag_ptr)) { continue; }
+      temp_udag_ptr = new undirected_graph_vertex(curr_udag_ptr->label);
+      if (NULL == udag_copy_ptr) { udag_copy_ptr = temp_udag_ptr; }
+      udag_vid_to_ptr_map[temp_udag_ptr->label] = temp_udag_ptr;
+      udag_visited_lookup.insert(curr_udag_ptr);
+      for (undirected_graph_vertex * vptr : curr_udag_ptr->neighbors) {
+        udag_ptr_buffer.push_back(vptr);
+        if (udag_visited_lookup.end() != udag_visited_lookup.find(vptr)) {
+          temp_udag_ptr->neighbors.push_back(udag_vid_to_ptr_map[vptr->label]);
+          if (temp_udag_ptr->label != vptr->label) {
+            udag_vid_to_ptr_map[vptr->label]->neighbors.push_back(temp_udag_ptr);
           }
         }
       }
     }
-    return new_graph_ptr;
+    return udag_copy_ptr;
   }
 
-  static undirected_graph_vertex * _clone_undirected_graph(
-    undirected_graph_vertex * udag_start_ptr
-  ) {
-    undirected_graph_vertex * cpy_graph_ptr = NULL,
-                           * tmp_graph_ptr = NULL,
-                           * cur_graph_ptr = udag_start_ptr;
-
-    if (NULL == udag_start_ptr) { return cpy_graph_ptr; }
-
-    deque<undirected_graph_vertex *> graph_path_buffer;
-    unordered_map<int, undirected_graph_vertex *> visited_node_ptr_map;
-
-    graph_path_buffer.push_back(cur_graph_ptr);
-    while (false == graph_path_buffer.empty()) {
-      cur_graph_ptr = graph_path_buffer.front();
-      graph_path_buffer.pop_front();
-      if (visited_node_ptr_map.find(cur_graph_ptr->label) !=
-          visited_node_ptr_map.end()) { continue; }
-
-      tmp_graph_ptr = new undirected_graph_vertex(cur_graph_ptr->label);
-      if (cur_graph_ptr == udag_start_ptr) { cpy_graph_ptr = tmp_graph_ptr; }
-
-      visited_node_ptr_map[tmp_graph_ptr->label] = tmp_graph_ptr;
-
-      for (undirected_graph_vertex * neighbor_itr : cur_graph_ptr->neighbors) {
-        graph_path_buffer.push_back(neighbor_itr);
-        /* one note is that for a udag, child also has a link back
-         * going back to its parent, such that we can create the node
-         * first, then create the link when actually reaching the child */
-        if (visited_node_ptr_map.find(neighbor_itr->label) !=
-            visited_node_ptr_map.end()) {
-          tmp_graph_ptr->neighbors.push_back(
-            visited_node_ptr_map[neighbor_itr->label]
-          );
-          if (neighbor_itr->label != tmp_graph_ptr->label) {
-            visited_node_ptr_map[neighbor_itr->label]->neighbors
-              .push_back(tmp_graph_ptr);
-          }
-        }
-      }
-    }
-
-    return cpy_graph_ptr;
-  }
-
+  /* graph_vertex(int vid, int vpriority, int vfrom = -1) */
   static vector<graph_vertex> calc_shortest_paths(
     const vector<vector<int>> & sp_graph_matrix, int start_vid
   ) {
-    int vertex_cnt = sp_graph_matrix.size();
-    vector<graph_vertex> shortest_path_distance_vec, vertex_heap;
-    vector<bool> is_vertex_visited_lookup(vertex_cnt, false);
-
-    for (int i = 0; i < vertex_cnt; i++) {
-      shortest_path_distance_vec.push_back(graph_vertex(i, INT_MAX));
-      if (i == start_vid) { shortest_path_distance_vec.back().priority = 0; }
+    /* store all shortest path info, store parent of each v. */
+    vector<graph_vertex> shortest_path_vec;
+    for (int i = 0; i < sp_graph_matrix.size(); i++) {
+      shortest_path_vec.push_back(graph_vertex(i, INT_MAX));
     }
+    shortest_path_vec[start_vid].priority = 0;
 
-    vertex_heap.push_back(graph_vertex(start_vid, 0));
+    /* dist vector store all dist from start_v to curr_node */
+    vector<graph_vertex> vertex_min_heap;
+    unordered_set<int> visited_lookup;
 
-    while (false == vertex_heap.empty()) {
-      graph_vertex pending_vertex = vertex_heap.front();
-      pop_heap(vertex_heap.begin(), vertex_heap.end());
-      vertex_heap.pop_back();
-
-      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
-
-      for (int i = 0; i < vertex_cnt; i++) {
-        if (0 == sp_graph_matrix[pending_vertex.id][i]) { continue; }
-        int tentative_distance = (
-          shortest_path_distance_vec[pending_vertex.id].priority +
-          sp_graph_matrix[pending_vertex.id][i]
-        );
-        if (tentative_distance < shortest_path_distance_vec[i].priority) {
-          shortest_path_distance_vec[i].priority = tentative_distance;
-          shortest_path_distance_vec[i].id_from  = pending_vertex.id;
-          vertex_heap.push_back(graph_vertex(i, tentative_distance));
-          push_heap(vertex_heap.begin(), vertex_heap.end());
+    vertex_min_heap.push_back(shortest_path_vec[start_vid]);
+    while (false == vertex_min_heap.empty()) {
+      /* each time adding the closest node to the buffer */
+      graph_vertex curr_vertex = vertex_min_heap.front();
+      pop_heap(vertex_min_heap.begin(), vertex_min_heap.end());
+      vertex_min_heap.pop_back();
+      if (visited_lookup.end() != visited_lookup.find(curr_vertex.id)) { continue; }
+      visited_lookup.insert(curr_vertex.id);
+      for (int i = 0; i < sp_graph_matrix[curr_vertex.id].size(); i++) {
+        if ((curr_vertex.id == i) || (0 == sp_graph_matrix[curr_vertex.id][i])) { continue; }
+        /* update distance vector, push to heap if we see a shorter dist */
+        int tentative_dist_from_src = curr_vertex.priority + sp_graph_matrix[curr_vertex.id][i];
+        if (tentative_dist_from_src < shortest_path_vec[i].priority) {
+          shortest_path_vec[i].priority = tentative_dist_from_src;
+          shortest_path_vec[i].id_from = curr_vertex.id;
+          vertex_min_heap.push_back(shortest_path_vec[i]);
+          push_heap(vertex_min_heap.begin(), vertex_min_heap.end());
         }
       }
-      is_vertex_visited_lookup[pending_vertex.id] = true;
     }
-
-    return shortest_path_distance_vec;
+    return shortest_path_vec;
   }
 
-  static vector<graph_vertex> _calc_shortest_paths(
-    const vector<vector<int>> & sp_graph_metrix, int start_vid
-  ) {
-    int vertex_cnt = sp_graph_metrix.size();
-    vector<graph_vertex> shortest_path_distance_vec, vertex_heap;
-    vector<bool> is_vertex_visited_lookup(vertex_cnt, false);
+  /* graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {} */
+  /* graph_vertex(int vid, int vpriority, int vfrom = -1) */
+  static vector<graph_edge> calc_minimum_spanning_tree(const vector<vector<int>> & mst_graph_metrix) {
+    vector<graph_edge> mst_edges;
 
-    for (int i = 0; i < vertex_cnt; i++) {
-      shortest_path_distance_vec.push_back(graph_vertex(i, INT_MAX));
-      if (i == start_vid) { shortest_path_distance_vec.back().priority = 0; }
-    }
-
-    vertex_heap.push_back(graph_vertex(start_vid, 0));
-
-    while (false == vertex_heap.empty()) {
-      graph_vertex pending_vertex = vertex_heap.front();
-      pop_heap(vertex_heap.begin(), vertex_heap.end());
-      vertex_heap.pop_back();
-
-      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
-
-      /* for every vertex connected by outgoing edges, update dist if smaller */
-      for (int i = 0; i < vertex_cnt; i++) {
-        if (0 == sp_graph_metrix[pending_vertex.id][i]) { continue; }
-        int tentative_distance = (
-          shortest_path_distance_vec[pending_vertex.id].priority +
-          sp_graph_metrix[pending_vertex.id][i]
+    vector<graph_vertex> mst_vertices_min_heap;
+    unordered_set<int> visited_lookup;
+    mst_vertices_min_heap.push_back(graph_vertex(0, 0, -1));
+    while (false == mst_vertices_min_heap.empty()) {
+      graph_vertex curr_vertex = mst_vertices_min_heap.front();
+      pop_heap(mst_vertices_min_heap.begin(), mst_vertices_min_heap.end());
+      mst_vertices_min_heap.pop_back();
+      if (visited_lookup.end() != visited_lookup.find(curr_vertex.id)) { continue; }
+      visited_lookup.insert(curr_vertex.id);
+      if (-1 != curr_vertex.id_from) {
+        mst_edges.push_back(graph_edge(curr_vertex.id_from, curr_vertex.id, curr_vertex.priority));
+      }
+      for (int i = 0; i < mst_graph_metrix[curr_vertex.id].size(); i++) {
+        if (0 == mst_graph_metrix[curr_vertex.id][i] || curr_vertex.id == i) { continue; }
+        mst_vertices_min_heap.push_back(
+          graph_vertex(i, mst_graph_metrix[curr_vertex.id][i], curr_vertex.id)
         );
-        if (tentative_distance < shortest_path_distance_vec[i].priority) {
-          shortest_path_distance_vec[i].priority = tentative_distance;
-          shortest_path_distance_vec[i].id_from  = pending_vertex.id;
-          vertex_heap.push_back(graph_vertex(i, tentative_distance));
-          push_heap(vertex_heap.begin(), vertex_heap.end());
-        }
-      }
-      is_vertex_visited_lookup[pending_vertex.id] = true;
-    }
-
-    return shortest_path_distance_vec;
-  }
-
-  static vector<graph_edge> calc_minimum_spanning_tree(
-    const vector<vector<int>> & mst_graph_metrix
-  ) {
-    int total_vertex_cnt = mst_graph_metrix.size();
-
-    vector<graph_edge> mst_edeges;
-    vector<graph_vertex> vertex_heap;
-    vector<bool> is_vertex_visited_lookup(total_vertex_cnt, false);
-
-    vertex_heap.push_back(graph_vertex(0, 0));
-    while (false == vertex_heap.empty()) {
-      graph_vertex pending_vertex = vertex_heap.front();
-      pop_heap(vertex_heap.begin(), vertex_heap.end());
-      vertex_heap.pop_back();
-
-      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
-
-      /* for every connected outgoing edges, push its vertex to min heap */
-      for (int i = 0; i < total_vertex_cnt; i++) {
-        if (0 == mst_graph_metrix[pending_vertex.id][i]) { continue; }
-        vertex_heap.push_back(graph_vertex(
-          i, mst_graph_metrix[pending_vertex.id][i], pending_vertex.id)
-        );
-        push_heap(vertex_heap.begin(), vertex_heap.end());
-      }
-
-      is_vertex_visited_lookup[pending_vertex.id] = true;
-      if (-1 != pending_vertex.id_from) {
-        mst_edeges.push_back(graph_edge(
-          pending_vertex.id_from, pending_vertex.id, pending_vertex.priority)
-        );
+        push_heap(mst_vertices_min_heap.begin(), mst_vertices_min_heap.end());
       }
     }
 
-    return mst_edeges;
-  }
-
-  static vector<graph_edge> _calc_minimum_spanning_tree(
-    const vector<vector<int>> & mst_graph_metrix
-  ) {
-    int total_vertex_cnt = mst_graph_metrix.size();
-
-    vector<graph_edge> mst_edeges;
-    vector<graph_vertex> vertex_heap;
-    vector<bool> is_vertex_visited_lookup(total_vertex_cnt, false);
-
-    /* by default, we start from picking edges outgoing from vertex 0 */
-    vertex_heap.push_back(graph_vertex(0, 0));
-    while (false == vertex_heap.empty()) {
-      graph_vertex pending_vertex = vertex_heap.front();
-      pop_heap(vertex_heap.begin(), vertex_heap.end());
-      vertex_heap.pop_back();
-      if (true == is_vertex_visited_lookup[pending_vertex.id]) { continue; }
-      if (-1 != pending_vertex.id_from) {
-        mst_edeges.push_back(graph_edge(
-          pending_vertex.id_from, pending_vertex.id, pending_vertex.priority
-        ));
-      }
-      for (int i = 0; i < total_vertex_cnt; i++) {
-        if (0 == mst_graph_metrix[pending_vertex.id][i]) { continue; }
-        vertex_heap.push_back(graph_vertex(
-          i, mst_graph_metrix[pending_vertex.id][i], pending_vertex.id
-        ));
-        push_heap(vertex_heap.begin(), vertex_heap.end());
-      }
-      is_vertex_visited_lookup[pending_vertex.id] = true;
-    }
-
-    return mst_edeges;
+    return mst_edges;
   }
 
   /*
