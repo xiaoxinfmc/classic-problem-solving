@@ -114,6 +114,25 @@ public:
    * Given two strings s1 and s2 of the same length, determine if s2 is a
    * scrambled string of s1.
    *
+   * Observation:
+   * - s1 & s2 are scramble-pair iff exisit at least an i, such that
+   *   s1[0..i] is-scramble-of s2[0..i] &&
+   *   s1[i + 1..n] is-scramble-of s2[i + 1..n]
+   *
+   * - Let scramble_lookup[i][j] denotes s1[i..j] is-scramble-of s2[i..j]
+   *   goal is to calc. true|false for scramble_lookup[0][n - 1]
+   * - to calc. scramble_lookup[i][j], we have
+   * - (i == j) iff s1 == s2 => scramble_lookup[i][i] => true
+   * - (j - i == 1) iff s1 == s2 || s1.reverse == s2.reverse
+   * - (j - i >= 2) iff s1 == s2 || { exists i <= k < j | scramble_lookup[i][k] && scramble_lookup[k + 1][j]
+   * - O(n^3)
+   *
+   * - Or let scramble_lookup[i] denotes s1[i..n - 1] is-scramble-of s2[i..n - 1]
+   *   Goal is to calc. the value of scramble_lookup[0].
+   * - to calc. scramble_lookup[i], we already know scramble_lookup[i + 1] ... scramble_lookup[n - 1]
+   * - scramble_lookup[i] is true iff
+   *   1. exists an j such that { i <= j < n | scramble_lookup[k] && scramble_lookup[j + 1] }
+   *
    * true if s1 == s2
    * if str.size > 2 {
    *   is_scramble(s1[0..n], s2[0..n]) <=> any {
@@ -126,8 +145,33 @@ public:
    *   s1.reverse == s2.reverse
    * }
    */
-  enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
+  /*
   static bool is_input_via_scramble(const string & base,const string & str_chk){
+    if (base.size() != str_chk.size()) { return false; }
+    if (base.empty() && str_chk.empty()) { return true; }
+    int str_len = base.size();
+    vector<vector<bool>> scramble_lookup(str_len, vector<bool>(str_len, false));
+    for (int i = 0; i < str_len; i++) { scramble_lookup[i][i] = (base[i] == str_chk[i]); }
+    for (int i = str_len - 1; i >= 0; i--) {
+      for (int j = i + 1; j < str_len; j++) {
+        if (j == i + 1) {
+          scramble_lookup[i][j] = ((base[i] == str_chk[i] && base[j] == str_chk[j]) ||
+                                   (base[i] == str_chk[j] && base[j] == str_chk[i]));
+        } else {
+          // - (j - i >= 2) iff s1 == s2 || { exists i <= k < j | scramble_lookup[i][k] && scramble_lookup[k + 1][j]
+          for (int k = i; k < j; k++) {
+            scramble_lookup[i][j] = ((scramble_lookup[i][k] && scramble_lookup[k + 1][j]) ||
+                                     (scramble_lookup[i][k] && scramble_lookup[k + 1][j]))
+            if (true == scramble_lookup[i][j]) { break; }
+          }
+        }
+      }
+    }
+    return scramble_lookup.front().back();
+  }
+  */
+  enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
+  static bool _is_input_via_scramble(const string & base,const string & str_chk){
     if (base.size() != str_chk.size()) { return false; }
     unordered_map<string, int> strategy_lookup;
     bool is_scramble = check_scramble(base, str_chk, strategy_lookup);
@@ -1349,9 +1393,9 @@ int main(void) {
   }
 
   cout << "2. dp_util::is_input_via_scramble" << endl;
-  assert(true == dp_util::is_input_via_scramble("great", "rgeat"));
-  assert(true == dp_util::is_input_via_scramble("great", "rgtae"));
-  assert(false == dp_util::is_input_via_scramble("great", "rtage"));
+  cout << "1 <=> " << dp_util::is_input_via_scramble("great", "rgeat") << endl;
+  cout << "1 <=> " << dp_util::is_input_via_scramble("great", "rgtae") << endl;
+  cout << "0 <=> " << dp_util::is_input_via_scramble("great", "rtage") << endl;
 
   cout << "3. dp_util::is_input_via_interleave" << endl;
   assert(true == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
