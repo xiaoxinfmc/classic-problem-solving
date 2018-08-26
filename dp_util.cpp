@@ -33,49 +33,49 @@ public:
    * - For example, given s = "aab",
    *   Return 1 since the palindrome partitioning ["aa","b"] could be produced
    *   using 1 cut.
-   * - min_palin_cut[j] -> min palin cuts to break str[0..j] {
-   *   1. j == 0, => 0
-   *   2. j == 1, => 0 | 1
-   *   3. j >= 2, => {
-   *        for i in (0 ... j - 1)
-   *          if str[i..j] is a palindrome,
-   *            min_palin_cut[j] <= min(min_palin_cut[j], min_palin_cut[i - 1] + 1)
-   *          else
-   *            min_palin_cut[j] <= min(min_palin_cut[j], min_palin_cut[j - 1] + 1)
-   *          end
-   *      }
+   * Obvervation:
+   * - Only need to get the min cuts instead of actual plan, min-cut of s[0..i]
+   *   can be seen as a sub-problem of s[0..n], then considering DP.
+   * - Let min_plain_cnt[i] denotes the # of palindromes produced by opt. cutting
+   *   based on input of s[0..i], then s[0..i + 1] depends on: {
+   *   - if (s[0..i + 1] is a palindrome) => 1
+   *   - if (s[0..i + 1] not a palindrom) =>
+   *       min{ 0 < k <= i | s[0..k] + 1 if (s[k + 1..i + 1] is a palindrome) }
+   *       we won't discuss the case where s[k + 1..i + 1] is not a palindrome
+   *       due to the fact that
+   *       1. always a base case of s[0..i] + 1
+   *       2. more refined partition of s[k + 1..i + 1] is part of subproblem
+   *          xxx xxx xxx | kk yyy z => xxx xxx xxx kk yyy | z
    */
   static int get_min_palindrome_cnt(const string & input_str) {
-    const int input_str_len = input_str.size();
-    if (0 >= input_str_len) { return 0; }
-    int min_palindrome_cuts[input_str_len];
-    bool is_token_palindrome[input_str_len][input_str_len];
-    for (int i = 0; i < input_str_len; i++) {
-      min_palindrome_cuts[i] = i;
-      for (int c = 0; c < input_str_len; c++) {
-        if (i == c) { is_token_palindrome[i][c] = true; }
-        else { is_token_palindrome[i][c] = false; }
+    int str_len = input_str.size();
+    if (str_len <= 0) { return 0; }
+    vector<int> min_palin_token_cnt(str_len, INT_MAX);
+
+    /* pre-calc all plaindrome check for lookup for every substr */
+    vector<vector<bool>> plaindrome_check_lookup(str_len, vector<bool>(str_len, false));
+    for (int i = 0; i < str_len; i++) { plaindrome_check_lookup[i][i] = true; }
+    for (int i = str_len - 1; i >= 0; i--) {
+      for (int j = i + 1; j < str_len; j++) {
+        plaindrome_check_lookup[i][j] = (input_str[i] == input_str[j]);
+        if (j > i + 1) { plaindrome_check_lookup[i][j] = ((true == plaindrome_check_lookup[i][j]) &&
+                                                          (true == plaindrome_check_lookup[i + 1][j - 1])); }
       }
     }
-    /* i from 1 -> last */
-    for (int i = 1; i < input_str_len; i++) {
-      /* c from i - 1 to 0 */
-      for (int c = i - 1; c >= 0; c--) {
-        if ((input_str[c] == input_str[i]) &&
-            ((c == i - 1) || (is_token_palindrome[c + 1][i - 1]))) {
-          is_token_palindrome[c][i] = true;
-          if (c - 1 >= 0) {
-            min_palindrome_cuts[i] = min(min_palindrome_cuts[i],
-                                         min_palindrome_cuts[c - 1] + 1);
-          } else { // whole piece is a palindrome, no cut needed.
-            min_palindrome_cuts[i] = min(min_palindrome_cuts[i], 0);
-          }
+    /* start dp, if (s[0..i + 1] is a palindrome) => 1
+     *           else min{ 0 < k <= i | s[0..k] + 1 if (s[k + 1..i + 1] is a palindrome) } */
+    for (int i = 0; i < str_len; i++) {
+      if (0 == i) { min_palin_token_cnt[0] = 1; continue; }
+      if (true == plaindrome_check_lookup[0][i]) { min_palin_token_cnt[i] = 1; continue; }
+      for (int k = 0; k < i; k++) {
+        if (true == plaindrome_check_lookup[k + 1][i]) {
+          min_palin_token_cnt[i] = min(min_palin_token_cnt[i], min_palin_token_cnt[k] + 1);
         }
       }
-      min_palindrome_cuts[i] = min(min_palindrome_cuts[i],
-                                   min_palindrome_cuts[i - 1] + 1);
     }
-    return min_palindrome_cuts[input_str_len - 1];
+
+    /* 5 palindrome tokens means 4 cuts */
+    return min_palin_token_cnt.back() - 1;
   }
 
   /**
