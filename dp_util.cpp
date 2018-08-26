@@ -171,7 +171,7 @@ public:
   }
   */
   enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
-  static bool _is_input_via_scramble(const string & base,const string & str_chk){
+  static bool is_input_via_scramble(const string & base,const string & str_chk){
     if (base.size() != str_chk.size()) { return false; }
     unordered_map<string, int> strategy_lookup;
     bool is_scramble = check_scramble(base, str_chk, strategy_lookup);
