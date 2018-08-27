@@ -225,6 +225,10 @@ public:
    *   P(i, j) {
    *   - true if (((T1[i] == P[i + j]) && P(i - 1, j)) ||
    *              ((T2[j] == P[i + j]) && P(i, j - 1)))
+   * - chk(i, j) => p[i + j ... n] is an interleave of t[i..n - 1] & s[j..n - 1]
+   * - chk(i, j) => {
+   *   - t[i] == p[i + j] && chk(i + 1, j) || s[j] == p[i + j] && chk(i, j + 1);
+   *   }
    */
   static string get_check_signature(int pos_l, int pos_r, int pos_s) {
     return to_string(pos_l) + "$" + to_string(pos_r) + "$" + to_string(pos_s);
@@ -355,6 +359,12 @@ public:
    * For example, given s = "leetcode", dict = ["leet", "code"].
    * Return true because "leetcode" can be segmented as "leet code".
    *
+   * Observation:
+   * - break-lookup[i] => denotes s[0..i] is breakable, then we have
+   *   goal is to calc. break-lookup[n - 1]
+   * - break-lookup[i] is true iff exists an j, such that
+   *   { 0 <= j < i | break-lookup[j] && s[j..i] is in our dict }
+   *
    * for w[0..n], assume w[0..n - 1] is breakable, then good if w[n] in dict
    * w[0..n] can be break up if exist j, where w[0..j] is breakable and
    * w[j + 1..n] form a token found in a dict. => calc. w[0..n]
@@ -382,40 +392,6 @@ public:
     return break_lookup.back();
   }
 
-  static bool _is_word_breakable(const unordered_set<string> dict,
-                                const string word) {
-    if (true == word.empty()) { return true; }
-    vector<vector<int>> break_lookup(
-      word.size(), vector<int>(word.size(), STRATEGY_UNDEF)
-    );
-    return _check_word_breakable(dict, word, 0, word.size() - 1, break_lookup);
-  }
-
-  static bool _check_word_breakable(const unordered_set<string> & dict,
-                                    const string & word,
-                                    int start_pos, int end_pos,
-                                    vector<vector<int>> & break_lookup) {
-    if (STRATEGY_UNDEF != break_lookup[start_pos][end_pos]) {
-      return (STRATEGY_SUCCESS == break_lookup[start_pos][end_pos]);
-    }
-    bool is_word_breakable = false;
-    if (dict.find(word.substr(start_pos, end_pos - start_pos + 1)) != dict.end()) {
-      is_word_breakable = true;
-    } else {
-      for (int i = start_pos; i < end_pos; i++) {
-        is_word_breakable = (
-          _check_word_breakable(dict, word, start_pos, i, break_lookup) &&
-          _check_word_breakable(dict, word, i + 1, end_pos, break_lookup)
-        );
-        if (true == is_word_breakable) { break; }
-      }
-    }
-    break_lookup[start_pos][end_pos] = (
-      (true == is_word_breakable) ? STRATEGY_SUCCESS : STRATEGY_FAIL
-    );
-    return is_word_breakable;
-  }
-
   /**
    * 13.11 Distinct Subsequences
    * Given a string S and a string T, count the number of distinct subsequences
@@ -430,6 +406,12 @@ public:
    *     else            => F[n - 1, m]
    *   rabbbit
    *   rabbit
+   * Observation:
+   * - seq-cnt(i, j) => dist seq cnt for t[0..i] in s[0..j], then
+   *   goal is to calc seq-cnt(m - 1, n - 1);
+   * - say i from 0 ~ m - 1, j from i ~ n - 1;
+   *   if t[i] == s[j], seq-cnt(i, j) == seq-cnt(i, j - 1) + seq-cnt(i - 1, j - 1)
+   *   if t[i] != s[j], seq-cnt(i, j) == seq-cnt(i, j - 1)
    */
   static int count_distinct_subseq(const string text, const string seq) {
     int text_len = text.size(), seq_len = seq.size();
@@ -465,6 +447,14 @@ public:
    *   if token[n-1..n] is valid, T[n] = T[n - 2];
    *   if token[n..n] is valid, T[n] += T[n - 1];
    *   return 0 if none of them is good
+   *
+   * Observation:
+   * - Only total # of decoding plans are needed, with subproblem nature, dp.
+   * - let s -> input digits of n, decode-cnt(i) => # of ways to decode s[0..i]
+   * - decode-cnt(i) = {
+   *     if (last-2 digit valid) { decode-cnt(i - 1) + decode-cnt(i - 2) }
+   *     else { decode-cnt(i - 1) }
+   *   }
    */
   static int get_decoding_count(const string & number_str) {
     vector<int> decode_cnt_lookup(number_str.size(), 0);
@@ -1398,8 +1388,8 @@ int main(void) {
   cout << "0 <=> " << dp_util::is_input_via_scramble("great", "rtage") << endl;
 
   cout << "3. dp_util::is_input_via_interleave" << endl;
-  assert(true == dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac"));
-  assert(false == dp_util::check_input_via_interleave("aabcc","dbbca","aadbbbaccc"));
+  cout << "1 <=> " << dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac") << endl;
+  cout << "0 <=> " << dp_util::check_input_via_interleave("aabcc","dbbca","aadbbbaccc") << endl;
 
   cout << "4. dp_util::calc_max_sum_triangle" << endl;
   cout << "21 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
