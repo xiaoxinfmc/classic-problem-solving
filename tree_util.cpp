@@ -88,7 +88,51 @@ namespace tree_util {
    * [ (1, -2, 2, 0) (4, -1, 1, 0) (2, -1, 3, 1) (6, 0, 0, 0) (5, 0, 2, 1)
    *   (7, 0, 2, 0) (3, 0, 4, 1) (8, 1, 1, 1) (9, 1, 3, 0) (10, 2, 2, 1)
    *   (11, 3, 3, 1) ]
+  class binary_tree_node {
+  public:
+    binary_tree_node(int val) {
+      value = val; column_id = 0; level_id = 0;
+      is_visited = false; is_right_child = false;
+      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+    }
+  }
    */
+  static vector<binary_tree_node> bst_in_column_order(binary_tree_node * root){
+    vector<binary_tree_node> tree_node_arr;
+    unordered_map<int, vector<binary_tree_node *>> column_id_to_node_ptr_arr;
+    int min_column_id = 0, max_column_id = 0;
+
+    if (NULL == root) { return tree_node_arr; }
+
+    deque<pair<binary_tree_node *, int>> treverse_buffer;
+    treverse_buffer.push_back(pair<binary_tree_node *, int>(root, 0));
+
+    while (false == treverse_buffer.empty()) {
+      pair<binary_tree_node *, int> ptr_id_pair = treverse_buffer.front();
+      min_column_id = min(min_column_id, ptr_id_pair.second);
+      max_column_id = max(max_column_id, ptr_id_pair.second);
+      treverse_buffer.pop_front();
+      if (column_id_to_node_ptr_arr.end() == column_id_to_node_ptr_arr.find(ptr_id_pair.second)) {
+        column_id_to_node_ptr_arr[ptr_id_pair.second] = vector<binary_tree_node *>();
+      }
+      column_id_to_node_ptr_arr[ptr_id_pair.second].push_back(ptr_id_pair.first);
+      if (NULL != ptr_id_pair.first->left_ptr) {
+        treverse_buffer.push_back(
+          pair<binary_tree_node *, int>(ptr_id_pair.first->left_ptr, ptr_id_pair.second - 1)
+        );
+      }
+      if (NULL != ptr_id_pair.first->right_ptr) {
+        treverse_buffer.push_back(
+          pair<binary_tree_node *, int>(ptr_id_pair.first->right_ptr, ptr_id_pair.second + 1)
+        );
+      }
+    }
+    for (int i = min_column_id; i <= max_column_id; i++) {
+      if (column_id_to_node_ptr_arr.end() == column_id_to_node_ptr_arr.find(i)) { continue; }
+      for (auto ptr : column_id_to_node_ptr_arr[i]) { tree_node_arr.push_back(* ptr); }
+    }
+    return tree_node_arr;
+  }
 
   static void _flag_coord_scan_bst(binary_tree_node * root,
                                    int col, int lvl, bool is_right,
@@ -99,7 +143,7 @@ namespace tree_util {
     _flag_coord_scan_bst(root->left_ptr, col - 1, lvl + 1, false, bst_node_arr);
     _flag_coord_scan_bst(root->right_ptr, col + 1, lvl + 1, true, bst_node_arr);
   }
-  static vector<binary_tree_node> bst_in_column_order(binary_tree_node * root){
+  static vector<binary_tree_node> _bst_in_column_order(binary_tree_node * root){
     vector<binary_tree_node> bst_node_arr;
     _flag_coord_scan_bst(root, 0, 0, false, bst_node_arr);
     sort(bst_node_arr.begin(), bst_node_arr.end());
