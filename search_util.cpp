@@ -599,7 +599,7 @@ namespace search_util{
     return ip_arr;
   }
 
-  /*
+  /**
    * Find the smallest positive number missing from an unsorted array
    * You are given an unsorted array with both positive and negative elements.
    * You have to find the smallest positive number missing from the array in
@@ -628,6 +628,68 @@ namespace search_util{
     }
     return false;
   }
+
+  /**
+   * 200. Number of Islands
+   * Given a 2d grid map of '1's (land) and '0's (water), count the number of
+   * islands. An island is surrounded by water and is formed by connecting
+   * adjacent lands horizontally or vertically. You may assume all four edges
+   * of the grid are all surrounded by water.
+   * Example 1:
+   * - Input:
+   *   11110
+   *   11010
+   *   11000
+   *   00000
+   * - Output: 1
+   * Example 2:
+   * - Input:
+   *   11000
+   *   11000
+   *   00100
+   *   00011
+   * - Output: 3
+   * Observation:
+   * - scope: the full grid, O(n) is no less than O(mn)
+   * - def: an island <=> 1s connected each other horiz / vertically
+   * - goal: count all different islands.
+   * - for each point, keep expanding 1s, & mark all points visited.
+   * - needs to use a buffer to log all points visited, islands id.
+   * - 1s => island id, 0s => 0, un-visited => -1
+   * - when to incr. island_seq? when no expansion in any direction.
+   */
+  static void search_islands_recur(vector<vector<char>> & grid,
+                                   int curr_row, int curr_col, int * curr_area_ptr,
+                                   vector<vector<int>> & islands_mark) {
+    if (curr_row < 0 || curr_row >= grid.size() ||
+        curr_col < 0 || curr_col >= grid[curr_row].size()) { return; }
+    if (-1 != islands_mark[curr_row][curr_col]) { return; }
+
+    if ('1' == grid[curr_row][curr_col]) {
+      islands_mark[curr_row][curr_col] = 1;
+      * curr_area_ptr += 1;
+      search_islands_recur(grid, curr_row + 1, curr_col, curr_area_ptr, islands_mark);
+      search_islands_recur(grid, curr_row, curr_col + 1, curr_area_ptr, islands_mark);
+      search_islands_recur(grid, curr_row - 1, curr_col, curr_area_ptr, islands_mark);
+      search_islands_recur(grid, curr_row, curr_col - 1, curr_area_ptr, islands_mark);
+    } else {
+      islands_mark[curr_row][curr_col] = 0;
+    }
+  }
+
+  static int calc_num_of_islands(vector<vector<char>> grid) {
+    int curr_area = 0, islands_cnt = 0;
+    if (grid.empty()) { return islands_cnt; }
+    vector<vector<int>> islands_mark(grid.size(), vector<int>(grid.front().size(), -1));
+    for (int i = 0; i < grid.size(); i++) {
+      for (int j = 0; j < grid[i].size(); j++) {
+        curr_area = 0;
+        search_islands_recur(grid, i, j, & curr_area, islands_mark);
+        if (curr_area > 0) { islands_cnt += 1; }
+      }
+    }
+    return islands_cnt;
+  }
 };
 
 int main(void) {
@@ -648,6 +710,7 @@ int main(void) {
   using search_util::print_board;
   using search_util::restore_ips;
   using search_util::find_first_missing_positive;
+  using search_util::calc_num_of_islands;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -727,5 +790,22 @@ int main(void) {
   cout << "4 <=> " << find_first_missing_positive(vector<int>({ 2, 3, -7, 6, 8, 1, -10, 15 })) << endl;
   cout << "2 <=> " << find_first_missing_positive(vector<int>({ 1, 1, 0, -1, -2 })) << endl;
 
+  cout << "14. calc_num_of_islands" << endl;
+  cout << "1 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '1', '1', '0'}),
+                                                                 vector<char>({'1', '1', '0', '1', '0'}),
+                                                                 vector<char>({'1', '1', '0', '0', '0'}),
+                                                                 vector<char>({'0', '0', '0', '0', '0'})})) << endl;
+  cout << "3 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '0', '0', '0'}),
+                                                                 vector<char>({'1', '1', '0', '0', '0'}),
+                                                                 vector<char>({'0', '0', '1', '0', '0'}),
+                                                                 vector<char>({'0', '0', '0', '1', '1'})})) << endl;
+  cout << "1 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '1'}),
+                                                                 vector<char>({'0', '1', '0'}),
+                                                                 vector<char>({'0', '1', '0'})})) << endl;
+  cout << "3 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '0', '0', '0', '0'}),
+                                                                 vector<char>({'0', '1', '1', '0', '0'}),
+                                                                 vector<char>({'0', '1', '1', '0', '0'}),
+                                                                 vector<char>({'0', '0', '0', '1', '1'})})) << endl;
+ 
   return 0;
 }
