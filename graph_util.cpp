@@ -438,7 +438,128 @@ namespace graph_util {
     return course_planing;
   }
 
+  /**
+   * 785. Is Graph Bipartite?
+   *
+   * Given an undirected graph, return true if and only if it is bipartite.
+   * Recall that a graph is bipartite if we can split it's set of nodes into two
+   * independent subsets A and B such that every edge in the graph has one node
+   * in A and another node in B.
+   *
+   * The graph is given in the following form: graph[i] is a list of indexes j
+   * for which the edge between nodes i and j exists. Each node is an integer
+   * between 0 and graph.length - 1.  There are no self edges or parallel edges:
+   * graph[i] does not contain i, and it doesn't contain any element twice.
+   *
+   * Example 1:
+   * - Input: [[1,3], [0,2], [1,3], [0,2]]
+   *   Output: true
+   * - Explanation: 
+   *   The graph looks like this:
+   *   0----1
+   *   |    |
+   *   |    |
+   *   3----2
+   *   We can divide the vertices into two groups: {0, 2} and {1, 3}.
+   * Example 2:
+   * - Input: [[1,2,3], [0,2], [0,1,3], [0,2]]
+   *   Output: false
+   * - Explanation: 
+   *   The graph looks like this:
+   *   0----1
+   *   | \  |
+   *   |  \ |
+   *   3----2
+   * - We cannot find a way to divide nodes into two independent subsets.
+   * Note:
+   * - graph will have length in range [1, 100].
+   * - graph[i] will contain integers in range [0, graph.length - 1].
+   * - graph[i] will not contain i or duplicate values.
+   * - The graph is udg: if element j is in graph[i], then i in graph[j].
+   * Observation:
+   * - bipartite basically means we can color the graph in 2 such that any
+   *   two nodes connected has different color
+   * - then bfs/dfs & check color of existing connected nodes.
+   */
+  static bool is_forest_bipartite(vector<vector<int>> graph) {
+    enum { COLOR_NONE = 0, COLOR_BLACK = -1, COLOR_WHITE = 1 };
+    bool is_udg_bipartite = true;
+    if (true == graph.empty()) { return is_udg_bipartite; }
 
+    unordered_set<int> forest_vid_set;
+    for (int i = 0; i < graph.size(); i++) { forest_vid_set.insert(i); }
+
+    /* used as stack for graph traversing, pair -> <vid, parent_vid> */
+    vector<pair<int, int>> vertex_id_buffer;
+    /* used as color lookup for visited nodes, default to color-none */
+    vector<int> vertex_color_lookup(graph.size(), COLOR_NONE);
+    int curr_vertex_id = -1, curr_vertex_pid = -1, vertex_id_to_chk = -1;
+
+    while (!forest_vid_set.empty()) {
+      vertex_id_buffer.push_back(pair<int, int>(* forest_vid_set.begin(), 0));
+      while(false == vertex_id_buffer.empty()) {
+        curr_vertex_id = vertex_id_buffer.back().first;
+        curr_vertex_pid = vertex_id_buffer.back().second;
+        vertex_id_buffer.pop_back();
+        forest_vid_set.erase(curr_vertex_id);
+
+        if (COLOR_NONE != vertex_color_lookup[curr_vertex_id]) { continue; }
+
+        if (COLOR_NONE == vertex_color_lookup[curr_vertex_pid]) {
+          vertex_color_lookup[curr_vertex_id] = COLOR_BLACK;
+        } else {
+          vertex_color_lookup[curr_vertex_id] = vertex_color_lookup[curr_vertex_pid] * -1;
+        }
+
+        for (int i = 0; i < graph[curr_vertex_id].size(); i++) {
+          vertex_id_to_chk = graph[curr_vertex_id][i];
+          if (vertex_color_lookup[vertex_id_to_chk] == vertex_color_lookup[curr_vertex_id]) {
+            is_udg_bipartite = false; break;
+          }
+          vertex_id_buffer.push_back(pair<int, int>(vertex_id_to_chk, curr_vertex_id));
+        }
+      }
+      if (false == is_udg_bipartite) { break; }
+    }
+
+    return is_udg_bipartite;
+  }
+
+  static bool is_udg_bipartite(vector<vector<int>> graph) {
+    enum { COLOR_NONE = 0, COLOR_BLACK = -1, COLOR_WHITE = 1 };
+    bool is_udg_bipartite = true;
+    if (true == graph.empty()) { return is_udg_bipartite; }
+
+    /* used as stack for graph traversing, pair -> <vid, parent_vid> */
+    vector<pair<int, int>> vertex_id_buffer;
+    /* used as color lookup for visited nodes, default to color-none */
+    vector<int> vertex_color_lookup(graph.size(), COLOR_NONE);
+
+    int curr_vertex_id = -1, curr_vertex_pid = -1, vertex_id_to_chk = -1;
+    vertex_id_buffer.push_back(pair<int, int>(0, 0));
+
+    while(false == vertex_id_buffer.empty()) {
+      curr_vertex_id = vertex_id_buffer.back().first;
+      curr_vertex_pid = vertex_id_buffer.back().second;
+      vertex_id_buffer.pop_back();
+      if (COLOR_NONE != vertex_color_lookup[curr_vertex_id]) { continue; }
+
+      if (COLOR_NONE == vertex_color_lookup[curr_vertex_pid]) {
+        vertex_color_lookup[curr_vertex_id] = COLOR_BLACK;
+      } else {
+        vertex_color_lookup[curr_vertex_id] = vertex_color_lookup[curr_vertex_pid] * -1;
+      }
+
+      for (int i = 0; i < graph[curr_vertex_id].size(); i++) {
+        vertex_id_to_chk = graph[curr_vertex_id][i];
+        if (vertex_color_lookup[vertex_id_to_chk] == vertex_color_lookup[curr_vertex_id]) {
+          is_udg_bipartite = false; break;
+        }
+        vertex_id_buffer.push_back(pair<int, int>(vertex_id_to_chk, curr_vertex_id));
+      }
+    }
+    return is_udg_bipartite;
+  }
 };
 
 int main(void) {
@@ -467,6 +588,8 @@ int main(void) {
   using graph_util::is_sequence_unique;
   using graph_util::can_all_courses_be_taken;
   using graph_util::plan_courses_to_take;
+  using graph_util::is_udg_bipartite;
+  using graph_util::is_forest_bipartite;
 
   undirected_graph_vertex * a_ptr = new undirected_graph_vertex(0);
   undirected_graph_vertex * b_ptr = new undirected_graph_vertex(1);
@@ -567,5 +690,24 @@ int main(void) {
                                                                                                        pair<int, int>(2, 3), pair<int, int>(3, 1) })));
   cout << "[ 0 1 2 3 ] <=> "; print_all_elem<int>(plan_courses_to_take(4, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(2, 0),
                                                                                                    pair<int, int>(3, 1), pair<int, int>(3, 2) })));
+
+  cout << "7. is_udg_bipartite:" << endl;
+  cout << "1 <=> " << is_forest_bipartite(vector<vector<int>>({
+    vector<int>({ 1, 3 }), vector<int>({ 0, 2 }),
+    vector<int>({ 1, 3 }), vector<int>({ 0, 2 })})) << endl;
+  cout << "0 <=> " << is_forest_bipartite(vector<vector<int>>({
+    vector<int>({ 1, 2, 3 }), vector<int>({ 0, 2 }),
+    vector<int>({ 0, 1, 3 }), vector<int>({ 0, 2 })})) << endl;
+  cout << "0 <=> " << is_forest_bipartite(vector<vector<int>>({
+    vector<int>({}), vector<int>({ 2, 4, 6 }), vector<int>({ 1, 4, 8, 9 }),
+    vector<int>({ 7, 8 }), vector<int>({ 1, 2, 8, 9 }), vector<int>({ 6, 9 }),
+    vector<int>({ 1, 5, 7, 8, 9 }), vector<int>({ 3, 6, 9 }),
+    vector<int>({ 2, 3, 4, 6, 9 }), vector<int>({ 2, 4, 5, 6, 7, 8 })})) << endl;
+  cout << "1 <=> " << is_forest_bipartite(vector<vector<int>>({
+    vector<int>({ 4 }), vector<int>({}), vector<int>({ 4 }),
+    vector<int>({ 4 }), vector<int>({ 0, 2, 3 })})) << endl;
+
+  cout << "1 <=> " << is_forest_bipartite(vector<vector<int>>({})) << endl;
+
   return 0;
 }
