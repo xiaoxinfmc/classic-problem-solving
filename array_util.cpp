@@ -495,6 +495,44 @@ namespace array_util {
     }
     return triplets;
   }
+
+  /**
+   * 75. Sort Colors
+   * Given an array with n objects colored red, white or blue, sort them inplace
+   * so that objects of the same color are adjacent, with the colors in the order
+   * red, white and blue.
+   * Here, we will use the integers 0, 1, and 2 to represent the color red,
+   * white, and blue respectively.
+   * Note: You are not suppose to use the library's sort function for this problem.
+   * Example:                  i  j           k        i  j        k
+   * Input: [2,0,2,1,1,0] -> { 2, 0, 2, 1, 1, 1 } -> { 1, 0, 2, 1, 1, 2 }
+   * Output: [0,0,1,1,2,2]
+   * Follow up:
+   * A rather straight forward solution is 2-pass algorithm using counting sort.
+   * First, iterate the array counting number of 0's, 1's, and 2's, then
+   * overwrite array with total number of 0's, then 1's and followed by 2's.
+   * Could you come up with a one-pass algorithm using only constant space?
+   */
+  static vector<int> sort_colors(vector<int> nums) {
+    int cnt[3] = { 0, 0, 0 };
+    for (int i = 0; i < nums.size(); i++) { cnt[nums[i]]++; }
+    int curr_idx = 0;
+    for (int i = 0; i < sizeof(cnt)/sizeof(cnt[0]); i++) {
+      for (int j = 0; j < cnt[i]; j++) { nums[curr_idx] = i; curr_idx++; }
+    }
+    return nums;
+  }
+
+  static vector<int> fast_sort_colors(vector<int> nums) {
+    for (int i = 0, j = 0, k = nums.size() - 1; j <= k;) {
+      switch(nums[j]) {
+        case 0: { swap(nums[i], nums[j]); i++; j++; break; }
+        case 1: { j++; break; }
+        case 2: { swap(nums[j], nums[k]); k--; break; }
+      }
+    }
+    return nums;
+  }
 };
 
 int main(void) {
@@ -508,6 +546,8 @@ int main(void) {
   using array_util::calc_triplets_by_sum;
   using array_util::calc_quadruplets_by_sum;
   using array_util::calc_max_trapping_water;
+  using array_util::sort_colors;
+  using array_util::fast_sort_colors;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -568,5 +608,18 @@ int main(void) {
   cout << "11 <=> " << calc_max_trapping_water(vector<int>({ 4, 3, 2, 1, 0, 3, 7 })) << endl;
   cout << "2 <=> " << calc_max_trapping_water(vector<int>({ 2, 0, 2 })) << endl;
   cout << "10 <=> " << calc_max_trapping_water(vector<int>({ 3, 0, 0, 2, 0, 4 })) << endl;
+
+  cout << "9. sort_colors" << endl;
+  cout << "[ 0 0 1 1 2 2 ] <=>" << endl;
+  print_all_elem(sort_colors(vector<int>({ 2, 0, 2, 1, 1, 0 })));
+  cout << "[ 0 0 0 0 0 1 1 1 1 1 2 2 ] <=>" << endl;
+  print_all_elem(sort_colors(vector<int>({ 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2 })));
+
+  cout << "10. fast_sort_colors" << endl;
+  cout << "[ 0 0 1 1 2 2 ] <=>" << endl;
+  print_all_elem(fast_sort_colors(vector<int>({ 2, 0, 2, 1, 1, 0 })));
+  cout << "[ 0 0 0 0 0 1 1 1 1 1 2 2 ] <=>" << endl;
+  print_all_elem(fast_sort_colors(vector<int>({ 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2 })));
+
   return 0;
 }
