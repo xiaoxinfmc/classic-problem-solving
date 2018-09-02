@@ -1695,6 +1695,7 @@ int main(void) {
   cout << "20 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5 })) << endl;
   cout << "152 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5, 8 })) << endl;
   cout << "1088290 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
+  cout << "3414 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
 
   return 0;
 }
