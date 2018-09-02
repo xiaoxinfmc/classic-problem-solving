@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <map>
+#include <list>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1373,6 +1374,100 @@ public:
     }
     return min_egg_drops.back().back();
   }
+
+  /**
+   * 312. Burst Balloons
+   *
+   * Given n balloons, indexed from 0 to n-1. Each balloon is painted with a
+   * number on it represented by array nums. You are asked to burst all the
+   * balloons. If the you burst balloon i you will get
+   * - nums[left] * nums[i] * nums[right] coins.
+   * Here left and right are adjacent indices of i. After the burst, the left
+   * and right then becomes adjacent.
+   * Find the maximum coins you can collect by bursting the balloons wisely.
+   *
+   * Note:
+   * - You may imagine nums[-1] = nums[n] = 1. They are not real therefore you
+   *   can not burst them.
+   * - 0 ≤ n ≤ 500, 0 ≤ nums[i] ≤ 100
+   * Example:
+   * - Input: [3,1,5,8]
+   * - Output: 167 
+   * - Explanation: nums  = [3,1,5,8] --> [3,5,8] -->   [3,8]   -->  [8]  --> []
+   *                coins =  3*1*5      +  3*5*8    +   1*3*8     + 1*8*1   = 167
+   * Obvservation:
+   * - we need to burst balloons from 0 -> n - 1, each time we burst any balloon
+   *   we collect coins which is dependent on its nearest un-bursted ballons.
+   * - the goal is to get the max coins by bursting balloons in certain order.
+   * - obvious, ALL balloons needs to be bursted to maximize coins.
+   * - we only need the max coins instead of actual plan, then DP is handy.
+   * Subproblem & Optimal Structure:
+   * - { } { b0 }            { b0 b1 }
+   * -  0    v0    max(v0 * v1 + v1, v0 * v1 + v0)
+   * - reduce to knapsack? pick items in certain order so that values maximized?
+   * - each time we burst a balloon from existing set { b0, ... bi }
+   * - max-coin(ballon-set){ b from ballon-set | max{ v(prev-b) * v(b) * v(next-b) + max-coin(ballon-set exclude b) } }
+   */
+
+  static int maximum_coins_via_burst_ballons_recur(vector<int> & nums,
+                                                   list<int> & unburst_balloons,
+                                                   unordered_map<string, int> & subset_max) {
+    int max_coins = 0, remaining_max_coins = 0, curr_burst_value = 0;
+    int first_balloon_id = 0, last_balloon_id = 0, curr_balloon_id = 0;
+
+    switch (unburst_balloons.size()) {
+      case 0: { break; }
+      case 1: { max_coins = nums[unburst_balloons.front()]; break; }
+      case 2: { max_coins = max(nums[unburst_balloons.front()] * nums[unburst_balloons.back()] +
+                                nums[unburst_balloons.front()],
+                                nums[unburst_balloons.front()] * nums[unburst_balloons.back()] +
+                                nums[unburst_balloons.back()]);
+                break;
+      }
+      default: {
+        string subset_key = "";
+        for (auto & balloon_id : unburst_balloons) { subset_key.append(to_string(balloon_id) + "$"); }
+        if (subset_max.end() != subset_max.find(subset_key)) { max_coins = subset_max[subset_key]; break; }
+
+        list<int>::iterator prev_itr = unburst_balloons.begin(),
+                            next_itr = unburst_balloons.begin();
+        first_balloon_id = unburst_balloons.front(),
+        last_balloon_id  = unburst_balloons.back();
+
+        for (list<int>::iterator itr = unburst_balloons.begin(); itr != unburst_balloons.end(); itr++) {
+
+          curr_balloon_id = * itr;
+          prev_itr = itr; prev_itr--;
+          next_itr = itr; next_itr++;
+
+          if (curr_balloon_id == first_balloon_id) {
+            curr_burst_value = nums[curr_balloon_id] * nums[* next_itr];
+          } else if (curr_balloon_id == last_balloon_id) {
+            curr_burst_value = nums[* prev_itr] * nums[curr_balloon_id];
+          } else {
+            curr_burst_value = nums[* prev_itr] * nums[curr_balloon_id] * nums[* next_itr];
+          }
+
+          itr = unburst_balloons.erase(itr);
+          remaining_max_coins = maximum_coins_via_burst_ballons_recur(nums, unburst_balloons, subset_max);
+          max_coins = max(max_coins, remaining_max_coins + curr_burst_value);
+
+          itr = unburst_balloons.insert(itr, curr_balloon_id);
+        }
+
+        subset_max[subset_key] = max_coins;
+        break;
+      }
+    }
+    return max_coins;
+  }
+
+  static int maximum_coins_via_burst_ballons(vector<int> nums) {
+    unordered_map<string, int> subset_max;
+    list<int> unburst_balloons;
+    for (int i = 0; i < nums.size(); i++) { unburst_balloons.push_back(i); }
+    return maximum_coins_via_burst_ballons_recur(nums, unburst_balloons, subset_max);
+  }
 };
 
 int main(void) {
@@ -1593,5 +1688,13 @@ int main(void) {
   cout << "5 <=> " << dp_util::calc_lcstr_len("GeeksforGeeks", "GeeksQuiz") << endl;
   cout << "4 <=> " << dp_util::calc_lcstr_len("abcdxyz", "xyzabcd") << endl;
   cout << "6 <=> " << dp_util::calc_lcstr_len("zxabcdezy", "yzabcdezx") << endl;
+
+  cout << "20 dp_util::maximum_coins_via_burst_ballons" << endl;
+  cout << "167 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 1, 5, 8 })) << endl;
+  cout << "0 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ })) << endl;
+  cout << "3 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3 })) << endl;
+  cout << "20 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5 })) << endl;
+  cout << "152 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5, 8 })) << endl;
+
   return 0;
 }
