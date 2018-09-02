@@ -1410,11 +1410,10 @@ public:
    */
 
   static int maximum_coins_via_burst_ballons_recur(vector<int> & nums,
-                                                   list<int> & unburst_balloons,
+                                                   list<int> unburst_balloons,
                                                    unordered_map<string, int> & subset_max) {
     int max_coins = 0, remaining_max_coins = 0, curr_burst_value = 0;
     int first_balloon_id = 0, last_balloon_id = 0, curr_balloon_id = 0;
-
     switch (unburst_balloons.size()) {
       case 0: { break; }
       case 1: { max_coins = nums[unburst_balloons.front()]; break; }
@@ -1695,6 +1694,7 @@ int main(void) {
   cout << "3 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3 })) << endl;
   cout << "20 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5 })) << endl;
   cout << "152 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5, 8 })) << endl;
+  cout << "1088290 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
 
   return 0;
 }
