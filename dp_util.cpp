@@ -11,8 +11,7 @@
 
 using namespace std;
 
-class dp_util{
-public:
+namespace dp_util{
   template <class Type>
   static void print_all_elem(const vector<Type> input) {
     cout << "[ ";
@@ -172,12 +171,6 @@ public:
   }
   */
   enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
-  static bool is_input_via_scramble(const string & base,const string & str_chk){
-    if (base.size() != str_chk.size()) { return false; }
-    unordered_map<string, int> strategy_lookup;
-    bool is_scramble = check_scramble(base, str_chk, strategy_lookup);
-    return is_scramble;
-  }
 
   static string get_hash_key(const string & base, const string & str_chk) {
     return (base + "$" + str_chk);
@@ -212,6 +205,13 @@ public:
     }
     strategy_lookup[lookup_key] = is_pair_scramble;
     return is_pair_scramble;
+  }
+
+  static bool is_input_via_scramble(const string & base,const string & str_chk){
+    if (base.size() != str_chk.size()) { return false; }
+    unordered_map<string, int> strategy_lookup;
+    bool is_scramble = check_scramble(base, str_chk, strategy_lookup);
+    return is_scramble;
   }
 
   /**
@@ -317,6 +317,12 @@ public:
    * - i => current row id of input of vectors.
    * - k => current index @ end of the path on row i.
    */
+  static int find_max_elem(const vector<int> & int_vec) {
+    int max_val = int_vec.front();
+    for (auto & val : int_vec) { if (val > max_val ) { max_val = val; } }
+    return max_val;
+  }
+
   static int calc_max_sum_triangle(const vector<vector<int>> input_matrix){
     if (input_matrix.empty()) { return INT_MAX; }
     vector<int> prev_sum_buf(input_matrix.back().size(), INT_MAX);
@@ -345,12 +351,6 @@ public:
     }
 
     return find_max_elem(prev_sum_buf_ref);
-  }
-
-  static int find_max_elem(const vector<int> & int_vec) {
-    int max_val = int_vec.front();
-    for (auto & val : int_vec) { if (val > max_val ) { max_val = val; } }
-    return max_val;
   }
 
   /**
@@ -457,6 +457,18 @@ public:
    *     else { decode-cnt(i - 1) }
    *   }
    */
+  static bool is_single_char_valid(const string & number_str, int start_pos) {
+    return (number_str[start_pos] >= '1' && number_str[start_pos] <= '9');
+  }
+
+  static bool is_double_char_valid(const string & number_str, int start_pos) {
+    return (
+      (number_str[start_pos] == '1' && number_str[start_pos + 1] >= '0'
+                                    && number_str[start_pos + 1] <= '9') ||
+      (number_str[start_pos] == '2' && number_str[start_pos + 1] >= '0'
+                                    && number_str[start_pos + 1] <= '6'));
+  }
+
   static int get_decoding_count(const string & number_str) {
     vector<int> decode_cnt_lookup(number_str.size(), 0);
     int input_len = number_str.size();
@@ -478,18 +490,6 @@ public:
       if (0 == decode_cnt_lookup[i]) { return 0; }
     }
     return decode_cnt_lookup.back();
-  }
-
-  static bool is_single_char_valid(const string & number_str, int start_pos) {
-    return (number_str[start_pos] >= '1' && number_str[start_pos] <= '9');
-  }
-
-  static bool is_double_char_valid(const string & number_str, int start_pos) {
-    return (
-      (number_str[start_pos] == '1' && number_str[start_pos + 1] >= '0'
-                                    && number_str[start_pos + 1] <= '9') ||
-      (number_str[start_pos] == '2' && number_str[start_pos + 1] >= '0'
-                                    && number_str[start_pos + 1] <= '6'));
   }
 
   /**
@@ -535,6 +535,8 @@ public:
    *   else  // a <=> a a && a <=> a * a || b * a
    *     lookup[i][j] = ((* == pattern[j - 1]) && (text[i] == pattern[j]))
    */
+  static bool is_char_pair_match(char l, char r) { return ((l == r) || ('.' == r)); }
+
   static bool is_pattern_matched(const string text, const string pattern) {
     if (!text.empty() && pattern.empty()) { return false; }
     if ( text.empty() && pattern.empty()) { return true; }
@@ -583,8 +585,6 @@ public:
     }
     return lookup.back().back();
   }
-
-  static bool is_char_pair_match(char l, char r) { return ((l == r) || ('.' == r)); }
 
   /**
    * Dynamic Programming | Set 29 (Longest Common Substring)
@@ -1397,19 +1397,66 @@ public:
    *                coins =  3*1*5      +  3*5*8    +   1*3*8     + 1*8*1   = 167
    * Obvservation:
    * - we need to burst balloons from 0 -> n - 1, each time we burst any balloon
-   *   we collect coins which is dependent on its nearest un-bursted ballons.
+   *   we collect coins which is dependent on its nearest un-bursted balloons.
    * - the goal is to get the max coins by bursting balloons in certain order.
    * - obvious, ALL balloons needs to be bursted to maximize coins.
    * - we only need the max coins instead of actual plan, then DP is handy.
-   * Subproblem & Optimal Structure:
+   * Subproblem & Optimal Structure Backtracking:
    * - { } { b0 }            { b0 b1 }
    * -  0    v0    max(v0 * v1 + v1, v0 * v1 + v0)
    * - reduce to knapsack? pick items in certain order so that values maximized?
    * - each time we burst a balloon from existing set { b0, ... bi }
    * - max-coin(ballon-set){ b from ballon-set | max{ v(prev-b) * v(b) * v(next-b) + max-coin(ballon-set exclude b) } }
+   * Subproblem & Optimal Structure DP:
+   * - the hard point been at any stage, balloons may not be next to each other
+   * - howere, we burst at most 1 balloon at a time, such that each time we
+   *   burst a balloon, we break them to 2 parts, and each part is connected.
+   * - Let max-coin(i, j, k) denotes the max coins we can get from connected set
+   *   of balloons bi...bj, then the goal is to calc max-coin(0, n - 1), where
+   *   bk is the last balloon to burst.
+   * - max-coin(i, j) = { i <= k <= j | max{ nums[i] + max(i + 1, j),
+   *                                         nums[j] + max(i, j - 1),
+   *                                         max(i, k - 1) + nums[k - 1] * nums[k] * nums[k + 1] + max(k + 1, j) } }
+   *
+  { (8,2,6,8,9,) 8 (1,4,1,5,3,0,7,7,0,4,2) }
+         ^       ^              ^
+         |       |              |
+  { (8) (2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2) }
+     ^               ^
+     |               |
+20 <=> [
+  [ 3 8 ]
+  [ x 5 ]
+]
    */
+  static int fast_maximum_coins_via_burst_balloons(vector<int> nums) {
+    int balloon_cnt = nums.size();
+    if (0 == balloon_cnt) { return 0; }
+    vector<vector<int>> max_coins_lookup(balloon_cnt, vector<int>(balloon_cnt, INT_MIN));
+    for (int i = 0; i < balloon_cnt; i++) {
+      max_coins_lookup[i][i] = nums[i];
+      if (i - 1 >= 0) { max_coins_lookup[i][i] *= nums[i - 1]; }
+      if (i + 1 <  balloon_cnt) { max_coins_lookup[i][i] *= nums[i + 1]; }
+    }
+    for (int i = balloon_cnt - 1; i >= 0; i--) {
+      for (int j = i + 1; j < balloon_cnt; j++) {
+        for (int k = i; k <= j; k++) {
+          int tentative_value = nums[k];
+          if (i - 1 >= 0) { tentative_value *= nums[i - 1]; }
+          if (j + 1 <  balloon_cnt) { tentative_value *= nums[j + 1]; }
 
-  static int maximum_coins_via_burst_ballons_recur(vector<int> & nums,
+          if (k == i) { max_coins_lookup[i][j] = max(max_coins_lookup[i][j], tentative_value + max_coins_lookup[i + 1][j]); continue; }
+          if (k == j) { max_coins_lookup[i][j] = max(max_coins_lookup[i][j], tentative_value + max_coins_lookup[i][j - 1]); continue; }
+          if (k - 1 >= i) { tentative_value = max_coins_lookup[i][k - 1] + tentative_value; }
+          if (k + 1 <= j) { tentative_value = tentative_value + max_coins_lookup[k + 1][j]; }
+          max_coins_lookup[i][j] = max(max_coins_lookup[i][j], tentative_value);
+        }
+      }
+    }
+    return max_coins_lookup.front().back();
+  }
+
+  static int maximum_coins_via_burst_balloons_recur(vector<int> & nums,
                                                    list<int> unburst_balloons,
                                                    unordered_map<string, int> & subset_max) {
     int max_coins = 0, remaining_max_coins = 0, curr_burst_value = 0;
@@ -1448,7 +1495,7 @@ public:
           }
 
           itr = unburst_balloons.erase(itr);
-          remaining_max_coins = maximum_coins_via_burst_ballons_recur(nums, unburst_balloons, subset_max);
+          remaining_max_coins = maximum_coins_via_burst_balloons_recur(nums, unburst_balloons, subset_max);
           max_coins = max(max_coins, remaining_max_coins + curr_burst_value);
 
           itr = unburst_balloons.insert(itr, curr_balloon_id);
@@ -1461,144 +1508,173 @@ public:
     return max_coins;
   }
 
-  static int maximum_coins_via_burst_ballons(vector<int> nums) {
+  static int maximum_coins_via_burst_balloons(vector<int> nums) {
     unordered_map<string, int> subset_max;
     list<int> unburst_balloons;
     for (int i = 0; i < nums.size(); i++) { unburst_balloons.push_back(i); }
-    return maximum_coins_via_burst_ballons_recur(nums, unburst_balloons, subset_max);
+    return maximum_coins_via_burst_balloons_recur(nums, unburst_balloons, subset_max);
   }
 };
 
 int main(void) {
-  cout << "1. dp_util::get_min_palindrome_cnt" << endl;
+  using dp_util::print_all_elem;
+  using dp_util::print_all_elem_vec;
+
+  using dp_util::get_min_palindrome_cnt;
+  using dp_util::is_input_via_scramble;
+  using dp_util::check_input_via_interleave;
+  using dp_util::calc_max_sum_triangle;
+  using dp_util::is_word_breakable;
+  using dp_util::count_distinct_subseq;
+  using dp_util::get_decoding_count;
+  using dp_util::is_pattern_matched;
+  using dp_util::calc_lcs_len;
+  using dp_util::calc_longest_incr_subseq_len;
+  using dp_util::calc_min_partition_diff;
+  using dp_util::calc_max_incr_path_len;
+  using dp_util::check_subset_sum;
+  using dp_util::calc_min_multiply_ops;
+  using dp_util::is_set_evenly_partitioned;
+  using dp_util::_max_cut_value;
+  using dp_util::max_cut_value;
+  using dp_util::calc_coin_change;
+  using dp_util::calc_max_line_cut;
+  using dp_util::is_text_breakable;
+  using dp_util::calc_sum_of_throws;
+  using dp_util::calc_min_egg_drops_for_critical_floor;
+  using dp_util::calc_lcstr_len;
+  using dp_util::maximum_coins_via_burst_balloons;
+  using dp_util::fast_maximum_coins_via_burst_balloons;
+
+  cout << "1. get_min_palindrome_cnt" << endl;
   string test_input[] = { "", "a", "aab", "aaa", "aaacdfe", "aaacaaafe",
                           "abcde", "abacabaca", "abacakacaba" };
   int test_output[] = { 0, 0, 1, 0, 4, 2, 4, 2, 0 };
-  cout << "dp_util::get_min_palin_cnt" << endl;
+  cout << "get_min_palin_cnt" << endl;
   for (int i = 0; i < sizeof(test_input) / sizeof(string); i++) {
-    int min_palin_cnt = dp_util::get_min_palindrome_cnt(test_input[i]);
+    int min_palin_cnt = get_min_palindrome_cnt(test_input[i]);
     cout << "1-" << i << ": " << test_input[i] << " | min-palin-cuts: "
          << test_output[i] << " vs " << min_palin_cnt << endl;
     assert(min_palin_cnt == test_output[i]);
   }
 
-  cout << "2. dp_util::is_input_via_scramble" << endl;
-  cout << "1 <=> " << dp_util::is_input_via_scramble("great", "rgeat") << endl;
-  cout << "1 <=> " << dp_util::is_input_via_scramble("great", "rgtae") << endl;
-  cout << "0 <=> " << dp_util::is_input_via_scramble("great", "rtage") << endl;
+  cout << "2. is_input_via_scramble" << endl;
+  cout << "1 <=> " << is_input_via_scramble("great", "rgeat") << endl;
+  cout << "1 <=> " << is_input_via_scramble("great", "rgtae") << endl;
+  cout << "0 <=> " << is_input_via_scramble("great", "rtage") << endl;
 
-  cout << "3. dp_util::is_input_via_interleave" << endl;
-  cout << "1 <=> " << dp_util::check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac") << endl;
-  cout << "0 <=> " << dp_util::check_input_via_interleave("aabcc","dbbca","aadbbbaccc") << endl;
+  cout << "3. is_input_via_interleave" << endl;
+  cout << "1 <=> " << check_input_via_interleave("aabcc", "dbbca", "aadbbcbcac") << endl;
+  cout << "0 <=> " << check_input_via_interleave("aabcc","dbbca","aadbbbaccc") << endl;
 
-  cout << "4. dp_util::calc_max_sum_triangle" << endl;
-  cout << "21 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+  cout << "4. calc_max_sum_triangle" << endl;
+  cout << "21 <=> " << calc_max_sum_triangle(vector<vector<int>>(
     { vector<int>({ 2 }), vector<int>({ 3, 4 }), vector<int>({ 6, 5, 7 }),
       vector<int>({ 4, 1, 8, 3 }) })) << endl;
-  cout << "23 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+  cout << "23 <=> " << calc_max_sum_triangle(vector<vector<int>>(
     { vector<int>({ 3 }), vector<int>({ 7, 4 }), vector<int>({ 2, 4, 6 }),
       vector<int>({ 8, 5, 9, 3 }) })) << endl;
-  cout << "19 <=> " << dp_util::calc_max_sum_triangle(vector<vector<int>>(
+  cout << "19 <=> " << calc_max_sum_triangle(vector<vector<int>>(
     { vector<int>({ 8 }), vector<int>({ -4, 4 }), vector<int>({ 2, 2, 6 }),
       vector<int>({ 1, 1, 1, 1 }) })) << endl;
 
-  cout << "5. dp_util::is_word_breakable" << endl;
+  cout << "5. is_word_breakable" << endl;
   unordered_set<string> dict = { "mobile","samsung","sam","sung","man","mango",
                                  "icecream","and","go","i","like","ice","cream" };
-  cout << "1 <=> " << dp_util::is_word_breakable(dict, "") << endl;
-  cout << "1 <=> " << dp_util::is_word_breakable(dict, "iiiiiiii") << endl;
-  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikesamsung") << endl;
-  cout << "1 <=> " << dp_util::is_word_breakable(dict, "ilikelikeimangoiii") << endl;
-  cout << "1 <=> " << dp_util::is_word_breakable(dict, "samsungandmango") << endl;
-  cout << "0 <=> " << dp_util::is_word_breakable(dict, "samsungandmangok") << endl;
+  cout << "1 <=> " << is_word_breakable(dict, "") << endl;
+  cout << "1 <=> " << is_word_breakable(dict, "iiiiiiii") << endl;
+  cout << "1 <=> " << is_word_breakable(dict, "ilikesamsung") << endl;
+  cout << "1 <=> " << is_word_breakable(dict, "ilikelikeimangoiii") << endl;
+  cout << "1 <=> " << is_word_breakable(dict, "samsungandmango") << endl;
+  cout << "0 <=> " << is_word_breakable(dict, "samsungandmangok") << endl;
 
-  cout << "6. dp_util::count_distinct_subseq" << endl;
-  cout << "6 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "ge") << endl;
-  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "xe") << endl;
-  cout << "0 <=> " << dp_util::count_distinct_subseq("geeksforgeeks", "") << endl;
-  cout << "3 <=> " << dp_util::count_distinct_subseq("rabbbit", "rabbit") << endl;
+  cout << "6. count_distinct_subseq" << endl;
+  cout << "6 <=> " << count_distinct_subseq("geeksforgeeks", "ge") << endl;
+  cout << "0 <=> " << count_distinct_subseq("geeksforgeeks", "xe") << endl;
+  cout << "0 <=> " << count_distinct_subseq("geeksforgeeks", "") << endl;
+  cout << "3 <=> " << count_distinct_subseq("rabbbit", "rabbit") << endl;
 
-  cout << "7. dp_util::get_decoding_count" << endl;
-  cout << "4 <=> " << dp_util::get_decoding_count(string("1923")) << endl;
-  cout << "1 <=> " << dp_util::get_decoding_count(string("1")) << endl;
-  cout << "2 <=> " << dp_util::get_decoding_count(string("12")) << endl;
-  cout << "4 <=> " << dp_util::get_decoding_count(string("1072512")) << endl;
-  cout << "1 <=> " << dp_util::get_decoding_count(string("10")) << endl;
-  cout << "0 <=> " << dp_util::get_decoding_count(string("100")) << endl;
-  cout << "0 <=> " << dp_util::get_decoding_count(string("0")) << endl;
-  cout << "0 <=> " << dp_util::get_decoding_count(string("010")) << endl;
-  cout << "1 <=> " << dp_util::get_decoding_count(string("110")) << endl;
-  cout << "3 <=> " << dp_util::get_decoding_count(string("111")) << endl;
-  cout << "3 <=> " << dp_util::get_decoding_count(string("1234")) << endl;
+  cout << "7. get_decoding_count" << endl;
+  cout << "4 <=> " << get_decoding_count(string("1923")) << endl;
+  cout << "1 <=> " << get_decoding_count(string("1")) << endl;
+  cout << "2 <=> " << get_decoding_count(string("12")) << endl;
+  cout << "4 <=> " << get_decoding_count(string("1072512")) << endl;
+  cout << "1 <=> " << get_decoding_count(string("10")) << endl;
+  cout << "0 <=> " << get_decoding_count(string("100")) << endl;
+  cout << "0 <=> " << get_decoding_count(string("0")) << endl;
+  cout << "0 <=> " << get_decoding_count(string("010")) << endl;
+  cout << "1 <=> " << get_decoding_count(string("110")) << endl;
+  cout << "3 <=> " << get_decoding_count(string("111")) << endl;
+  cout << "3 <=> " << get_decoding_count(string("1234")) << endl;
 
-  cout << "8. dp_util::is_pattern_matched" << endl;
+  cout << "8. is_pattern_matched" << endl;
 
-  cout << "1 <=> " << dp_util::is_pattern_matched("", "x*") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("", "x*x*x*") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("", "") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("x", "") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("", "") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("a", "") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("a", "aa") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("aa", "a") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aa", "a*") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aa", ".*") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("ab", ".*") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("mississippi", "mis*is*p*.") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aab", "c*a*b") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aab", "a*b") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("aaa", "ab*a") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aaaa", ".*") << endl;
-  cout << "0 <=> " << dp_util::is_pattern_matched("b", "ab*b") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("aaa", "ab*ac*a") << endl;
-  cout << "1 <=> " << dp_util::is_pattern_matched("a", "..*") << endl;
+  cout << "1 <=> " << is_pattern_matched("", "x*") << endl;
+  cout << "1 <=> " << is_pattern_matched("", "x*x*x*") << endl;
+  cout << "1 <=> " << is_pattern_matched("", "") << endl;
+  cout << "0 <=> " << is_pattern_matched("x", "") << endl;
+  cout << "1 <=> " << is_pattern_matched("", "") << endl;
+  cout << "0 <=> " << is_pattern_matched("a", "") << endl;
+  cout << "0 <=> " << is_pattern_matched("a", "aa") << endl;
+  cout << "0 <=> " << is_pattern_matched("aa", "a") << endl;
+  cout << "1 <=> " << is_pattern_matched("aa", "a*") << endl;
+  cout << "1 <=> " << is_pattern_matched("aa", ".*") << endl;
+  cout << "1 <=> " << is_pattern_matched("ab", ".*") << endl;
+  cout << "0 <=> " << is_pattern_matched("mississippi", "mis*is*p*.") << endl;
+  cout << "1 <=> " << is_pattern_matched("aab", "c*a*b") << endl;
+  cout << "1 <=> " << is_pattern_matched("aab", "a*b") << endl;
+  cout << "0 <=> " << is_pattern_matched("aaa", "ab*a") << endl;
+  cout << "1 <=> " << is_pattern_matched("aaaa", ".*") << endl;
+  cout << "0 <=> " << is_pattern_matched("b", "ab*b") << endl;
+  cout << "1 <=> " << is_pattern_matched("aaa", "ab*ac*a") << endl;
+  cout << "1 <=> " << is_pattern_matched("a", "..*") << endl;
 
-  cout << "9. dp_util::calc_lcs_len" << endl;
-  cout << "4 <=> " << dp_util::calc_lcs_len("AGGTAB", "GXTXAYB") << endl;
-  cout << "3 <=> " << dp_util::calc_lcs_len("ABCDGH", "AEDFHR") << endl;
-  cout << "1 <=> " << dp_util::calc_lcs_len("A", "AEDFHR") << endl;
-  cout << "1 <=> " << dp_util::calc_lcs_len("ABCDGH", "G") << endl;
-  cout << "0 <=> " << dp_util::calc_lcs_len("ABCDGH", "") << endl;
-  cout << "0 <=> " << dp_util::calc_lcs_len("", "AEDFHR") << endl;
-  cout << "0 <=> " << dp_util::calc_lcs_len("", "") << endl;
+  cout << "9. calc_lcs_len" << endl;
+  cout << "4 <=> " << calc_lcs_len("AGGTAB", "GXTXAYB") << endl;
+  cout << "3 <=> " << calc_lcs_len("ABCDGH", "AEDFHR") << endl;
+  cout << "1 <=> " << calc_lcs_len("A", "AEDFHR") << endl;
+  cout << "1 <=> " << calc_lcs_len("ABCDGH", "G") << endl;
+  cout << "0 <=> " << calc_lcs_len("ABCDGH", "") << endl;
+  cout << "0 <=> " << calc_lcs_len("", "AEDFHR") << endl;
+  cout << "0 <=> " << calc_lcs_len("", "") << endl;
 
-  cout << "10. dp_util::calc_longest_incr_subseq_len" << endl;
-  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+  cout << "10. calc_longest_incr_subseq_len" << endl;
+  cout << "6 <=> " << calc_longest_incr_subseq_len(
                         vector<int>({ 2, 5, 3, 7, 11, 8, 10, 13, 6 })
                       ) << endl;
-  cout << "5 <=> " << dp_util::calc_longest_incr_subseq_len(
+  cout << "5 <=> " << calc_longest_incr_subseq_len(
                         vector<int>({ 10, 22, 9, 33, 21, 50, 41, 60 })
                       ) << endl;
-  cout << "3 <=> " << dp_util::calc_longest_incr_subseq_len(
+  cout << "3 <=> " << calc_longest_incr_subseq_len(
                         vector<int>({ 4, 10, 4, 3, 8, 9 })
                       ) << endl;
-  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+  cout << "6 <=> " << calc_longest_incr_subseq_len(
                         vector<int>({ -1, 9, 1, 2, 3, 4, 5 })
                       ) << endl;
-  cout << "6 <=> " << dp_util::calc_longest_incr_subseq_len(
+  cout << "6 <=> " << calc_longest_incr_subseq_len(
                         vector<int>({ 3,5,6,2,5,4,19,5,6,7,12 })
                       ) << endl;
 
-  cout << "11. dp_util::calc_min_partition_diff" << endl;
-  cout << "1 <=> " << dp_util::calc_min_partition_diff(
+  cout << "11. calc_min_partition_diff" << endl;
+  cout << "1 <=> " << calc_min_partition_diff(
                         vector<int>({ 3, 1, 4, 2, 2, 1 })
                       ) << endl;
-  cout << "0 <=> " << dp_util::calc_min_partition_diff(
+  cout << "0 <=> " << calc_min_partition_diff(
                         vector<int>({ 4, 5, 6, 8, 10, 11 })
                       ) << endl;
 
-  cout << "12. dp_util::calc_max_incr_path_len" << endl;
-  cout << "4 <=> " << dp_util::calc_max_incr_path_len(
+  cout << "12. calc_max_incr_path_len" << endl;
+  cout << "4 <=> " << calc_max_incr_path_len(
                         vector<vector<int>>({ vector<int>({1, 2, 9}),
                                               vector<int>({5, 3, 8}),
                                               vector<int>({4, 6, 7}) })
                       ) << endl;
-  cout << "8 <=> " << dp_util::calc_max_incr_path_len(
+  cout << "8 <=> " << calc_max_incr_path_len(
                         vector<vector<int>>({ vector<int>({3, 2, 9}),
                                               vector<int>({4, 5, 8}),
                                               vector<int>({4, 6, 7}) })
                       ) << endl;
-  cout << "9 <=> " << dp_util::calc_max_incr_path_len(
+  cout << "9 <=> " << calc_max_incr_path_len(
                         vector<vector<int>>({ vector<int>({40, 30, 20, 25, 90}),
                                               vector<int>({40, 3, 2, 1, 90}),
                                               vector<int>({40, 4, 9, 8, 90}),
@@ -1606,96 +1682,105 @@ int main(void) {
                                               vector<int>({40, 30, 20, 25, 90}) })
                       ) << endl;
 
-  cout << "13 dp_util::check_subset_sum" << endl;
-  cout << "1 <=> " << dp_util::check_subset_sum(vector<int>({3, 34, 4, 12, 5, 2}), 9) << endl;
+  cout << "13. check_subset_sum" << endl;
+  cout << "1 <=> " << check_subset_sum(vector<int>({3, 34, 4, 12, 5, 2}), 9) << endl;
 
-  cout << "14 dp_util::calc_min_multiply_ops" << endl;
-  cout << "30000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30, 40, 30})) << endl;
-  cout << "26000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({40, 20, 30, 10, 30})) << endl;
-  cout << "6000 <=> " << dp_util::calc_min_multiply_ops(vector<int>({10, 20, 30})) << endl;
-  cout << "18 <=> " << dp_util::calc_min_multiply_ops(vector<int>({1, 2, 3, 4})) << endl;
+  cout << "14. calc_min_multiply_ops" << endl;
+  cout << "30000 <=> " << calc_min_multiply_ops(vector<int>({10, 20, 30, 40, 30})) << endl;
+  cout << "26000 <=> " << calc_min_multiply_ops(vector<int>({40, 20, 30, 10, 30})) << endl;
+  cout << "6000 <=> " << calc_min_multiply_ops(vector<int>({10, 20, 30})) << endl;
+  cout << "18 <=> " << calc_min_multiply_ops(vector<int>({1, 2, 3, 4})) << endl;
 
-  cout << "14 dp_util::is_set_evenly_partitioned" << endl;
-  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 11, 5})) << endl;
-  cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 3})) << endl;
-  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 5, 4})) << endl;
-  cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 3, 5})) << endl;
-  cout << "0 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
-  cout << "1 <=> " << dp_util::is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
+  cout << "15. is_set_evenly_partitioned" << endl;
+  cout << "1 <=> " << is_set_evenly_partitioned(vector<int>({1, 5, 11, 5})) << endl;
+  cout << "0 <=> " << is_set_evenly_partitioned(vector<int>({1, 5, 3})) << endl;
+  cout << "1 <=> " << is_set_evenly_partitioned(vector<int>({1, 5, 4})) << endl;
+  cout << "0 <=> " << is_set_evenly_partitioned(vector<int>({1, 2, 3, 5})) << endl;
+  cout << "0 <=> " << is_set_evenly_partitioned(vector<int>({1, 2, 5})) << endl;
+  cout << "1 <=> " << is_set_evenly_partitioned(vector<int>({1, 1})) << endl;
 
-  cout << "14 dp_util::max_cut_value" << endl;
-  cout << "22 <=> " << dp_util::_max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
-  cout << "22 <=> " << dp_util::max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
-  cout << "24 <=> " << dp_util::_max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
-  cout << "24 <=> " << dp_util::max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "16. max_cut_value" << endl;
+  cout << "22 <=> " << _max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "22 <=> " << max_cut_value(vector<int>({1, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "24 <=> " << _max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
+  cout << "24 <=> " << max_cut_value(vector<int>({3, 5, 8, 9, 10, 17, 17, 20}), 8) << endl;
 
-  cout << "15 dp_util::calc_coin_change" << endl;
-  cout << "2 <=> " << dp_util::calc_coin_change(vector<int>({1, 2, 3}), 3) << endl;
-  cout << "4 <=> " << dp_util::calc_coin_change(vector<int>({1, 2, 3}), 4) << endl;
-  cout << "5 <=> " << dp_util::calc_coin_change(vector<int>({2, 5, 3, 6}), 10) << endl;
+  cout << "17. calc_coin_change" << endl;
+  cout << "2 <=> " << calc_coin_change(vector<int>({1, 2, 3}), 3) << endl;
+  cout << "4 <=> " << calc_coin_change(vector<int>({1, 2, 3}), 4) << endl;
+  cout << "5 <=> " << calc_coin_change(vector<int>({2, 5, 3, 6}), 10) << endl;
 
-  cout << "16 dp_util::calc_max_line_cut" << endl;
-  cout << "1 <=> " << dp_util::calc_max_line_cut(2) << endl;
-  cout << "2 <=> " << dp_util::calc_max_line_cut(3) << endl;
-  cout << "4 <=> " << dp_util::calc_max_line_cut(4) << endl;
-  cout << "6 <=> " << dp_util::calc_max_line_cut(5) << endl;
-  cout << "36 <=> " << dp_util::calc_max_line_cut(10) << endl;
+  cout << "18. calc_max_line_cut" << endl;
+  cout << "1 <=> " << calc_max_line_cut(2) << endl;
+  cout << "2 <=> " << calc_max_line_cut(3) << endl;
+  cout << "4 <=> " << calc_max_line_cut(4) << endl;
+  cout << "6 <=> " << calc_max_line_cut(5) << endl;
+  cout << "36 <=> " << calc_max_line_cut(10) << endl;
 
-  cout << "17 dp_util::is_text_breakable" << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "19. is_text_breakable" << endl;
+  cout << "1 <=> " << is_text_breakable(
     "ilike", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                      "mobile", "ice", "cream", "icecream",
                                      "man", "go", "mango" })) << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << is_text_breakable(
     "ilikesamsung", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                             "mobile", "ice", "cream", "icecream",
                                             "man", "go", "mango" })) << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << is_text_breakable(
     "iiiiiiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                         "mobile", "ice", "cream", "icecream",
                                         "man", "go", "mango" })) << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << is_text_breakable(
     "", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                 "mobile", "ice", "cream", "icecream",
                                 "man", "go", "mango" })) << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << is_text_breakable(
     "ilikelikeimangoiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "man", "go", "mango" })) << endl;
-  cout << "1 <=> " << dp_util::is_text_breakable(
+  cout << "1 <=> " << is_text_breakable(
     "samsungandmango", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "and", "man", "go", "mango" })) << endl;
-  cout << "0 <=> " << dp_util::is_text_breakable(
+  cout << "0 <=> " << is_text_breakable(
     "samsungandmangok", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
                                                 "mobile", "ice", "cream", "icecream",
                                                 "and", "man", "go", "mango" })) << endl;
 
-  cout << "17 dp_util::calc_sum_of_throws" << endl;
-  cout << "0 <=> " << dp_util::calc_sum_of_throws(4, 2, 1) << endl;
-  cout << "2 <=> " << dp_util::calc_sum_of_throws(2, 2, 3) << endl;
-  cout << "21 <=> " << dp_util::calc_sum_of_throws(6, 3, 8) << endl;
-  cout << "4 <=> " << dp_util::calc_sum_of_throws(4, 2, 5) << endl;
-  cout << "6 <=> " << dp_util::calc_sum_of_throws(4, 3, 5) << endl;
+  cout << "20. calc_sum_of_throws" << endl;
+  cout << "0 <=> " << calc_sum_of_throws(4, 2, 1) << endl;
+  cout << "2 <=> " << calc_sum_of_throws(2, 2, 3) << endl;
+  cout << "21 <=> " << calc_sum_of_throws(6, 3, 8) << endl;
+  cout << "4 <=> " << calc_sum_of_throws(4, 2, 5) << endl;
+  cout << "6 <=> " << calc_sum_of_throws(4, 3, 5) << endl;
 
-  cout << "18 dp_util::calc_min_egg_drops_for_critical_floor" << endl;
-  cout << "8 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 36) << endl;
-  cout << "36 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(1, 36) << endl;
-  cout << "1 <=> " << dp_util::calc_min_egg_drops_for_critical_floor(2, 1) << endl;
+  cout << "21. calc_min_egg_drops_for_critical_floor" << endl;
+  cout << "8 <=> " << calc_min_egg_drops_for_critical_floor(2, 36) << endl;
+  cout << "36 <=> " << calc_min_egg_drops_for_critical_floor(1, 36) << endl;
+  cout << "1 <=> " << calc_min_egg_drops_for_critical_floor(2, 1) << endl;
 
-  cout << "19 dp_util::calc_lcstr_len" << endl;
-  cout << "5 <=> " << dp_util::calc_lcstr_len("GeeksforGeeks", "GeeksQuiz") << endl;
-  cout << "4 <=> " << dp_util::calc_lcstr_len("abcdxyz", "xyzabcd") << endl;
-  cout << "6 <=> " << dp_util::calc_lcstr_len("zxabcdezy", "yzabcdezx") << endl;
+  cout << "22. calc_lcstr_len" << endl;
+  cout << "5 <=> " << calc_lcstr_len("GeeksforGeeks", "GeeksQuiz") << endl;
+  cout << "4 <=> " << calc_lcstr_len("abcdxyz", "xyzabcd") << endl;
+  cout << "6 <=> " << calc_lcstr_len("zxabcdezy", "yzabcdezx") << endl;
 
-  cout << "20 dp_util::maximum_coins_via_burst_ballons" << endl;
-  cout << "167 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 1, 5, 8 })) << endl;
-  cout << "0 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ })) << endl;
-  cout << "3 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3 })) << endl;
-  cout << "20 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5 })) << endl;
-  cout << "152 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 3, 5, 8 })) << endl;
-  cout << "1088290 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
-  cout << "3414 <=> " << dp_util::maximum_coins_via_burst_ballons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
+  cout << "23. maximum_coins_via_burst_balloons" << endl;
+  cout << "167 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3, 1, 5, 8 })) << endl;
+  cout << "0 <=> " << maximum_coins_via_burst_balloons(vector<int>({ })) << endl;
+  cout << "3 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3 })) << endl;
+  cout << "20 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3, 5 })) << endl;
+  cout << "152 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3, 5, 8 })) << endl;
+  cout << "1088290 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
+  cout << "3414 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
+
+  cout << "24. fast_maximum_coins_via_burst_balloons" << endl;
+  cout << "167 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3, 1, 5, 8 })) << endl;
+  cout << "0 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ })) << endl;
+  cout << "3 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3 })) << endl;
+  cout << "20 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3, 5 })) << endl;
+  cout << "152 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3, 5, 8 })) << endl;
+  cout << "1088290 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
+  cout << "3414 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
 
   return 0;
 }
