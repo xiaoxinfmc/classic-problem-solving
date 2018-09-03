@@ -88,7 +88,6 @@ namespace array_util {
   int calc_max_trapping_water(vector<int> elevations) {
     int total_water = 0, curr_water = 0, delta = 0, wall_gap = 0;
     vector<pair<int, int>> elevation_stack;
-//print_all_elem<int>(elevations);
     for (int i = 0; i < elevations.size(); i++) {
       if (0 == elevations[i]) { continue; }
       while ((false == elevation_stack.empty()) &&
@@ -105,12 +104,10 @@ namespace array_util {
         if (elevation_stack.back().first > elevations[i]) { break; }
         delta += (elevation_stack.back().first + curr_water);
         total_water += curr_water;
- //cout << "wall: " << elevations[i] << " i: " << i << " delta: " << delta << " curr water: " << curr_water << " <=> "; print_all_pairs<int, int>(elevation_stack);
         elevation_stack.pop_back();
       }
       if (true == elevation_stack.empty()) { delta = 0; }
       elevation_stack.push_back(pair<int, int>(elevations[i], i));
- //print_all_pairs<int, int>(elevation_stack);
     }
     return total_water;
   }
@@ -779,11 +776,11 @@ namespace array_util {
    *                     2x |
    * slow ptr loop { outside cycle, within cycle }
    * (curr_pos | fast => 2 * pos of slow, & live in cycle)
-   *                                              *               *               |<----------------------|
+   *                                              *               *       |-------|<----------------------|
    *      k ----------------- h { fast -> x - f - y - z - h - k - y - z - h - k - y - z - h - k - y - z - h
-   *      |                   | { slow -> x - f - y - z - h - k - y - z - h
-   * x -- y ----------------- z           ^       *               *
-   * ^(reset slow)                                |<----------------------|
+   *      |                   | { slow ->                                 x - f - y - z - h - k - y - z - h
+   * x -- y ----------------- z                                           ^       *               *       ^
+   * ^(reset slow)                                                        |-------|<----------------------|
    */
   static int find_duplicate(vector<int> nums) {
     int fast_ptr = 0, slow_ptr = 0, max_size = nums.size();
@@ -928,6 +925,6 @@ int main(void) {
 
   cout << "13. find_duplicate" << endl;
   cout << "2 <=> " << find_duplicate(vector<int>({ 1, 3, 4, 2, 2 })) << endl;
-  cout << "3 <=> " << find_duplicate(vector<int>({ 3, 1, 3, 4, 2 })) << endl;
+  cout << "3 <=> " << find_duplicate(vector<int>({ 3, 1, 3, 5, 2 })) << endl;
   return 0;
 }
