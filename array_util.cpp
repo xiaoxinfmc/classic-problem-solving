@@ -687,6 +687,118 @@ namespace array_util {
     }
     return solve_sudoku_recur(board, cells_to_fill);
   }
+
+  /**
+   * 287. Find the Duplicate Number
+   * Given an array nums containing n + 1 integers where each integer is
+   * between 1 and n (inclusive), prove that at least one duplicate number must
+   * exist. Assume there is only one duplicate number, find the duplicate one.
+   * Example 1:
+   * - Input: [1,3,4,2,2]
+   * - Output: 2
+   * Example 2:
+   * - Input: [3,1,3,4,2]
+   * - Output: 3
+   * Note:
+   * - You must not modify the array (assume the array is read only).
+   * - You must use only constant, O(1) extra space.
+   * - Your runtime complexity should be less than O(n2).
+   * - There is only one duplicate number in the array, but it could be repeated
+   *   more than once.
+   * Observation:
+   * - an array of size N + 1 of integers, ranging from 1 ... N.
+   * - already know that there exists an number appears more than once.
+   * - input array is immutable -> no sorting, no swapping
+   * - only constant space allowed, -> no hashing/counting.
+   * - only one number has replication, -> constant space/counter needed
+   * - T(n) <= O(n2), O(n) not viable(scan without caching doesnt give anything)
+   * Divide & Conquer -> O(nlogn) ?
+   * - Some tech similar to merge-sort? find the duplicates when doing merge?
+   * - diff is that we do not need huge space to store the sorting, but the dup?
+   * - given that array[0..n/2] no dup & array[n/2 + 1..n] no dup, how to find
+   *   dup number between array-0 & array-1? (at most 1 number)
+   * -           [ 1, 2,        3, 4, 2 ] ?
+   *               v  |         v
+   * -           [ 1, 2 ] <=> [ 3, 4, 2 ] ?
+   * - sum:          3             9       ==>> total-sum 12
+   *     12 - 2 - 9 => 1
+   *
+   *               n1 n2 = y    n0 n3 n2 = x
+   *
+   *        v (uniq-set-0) => 3   v (uniq-set-1) => 9
+   *            all-diff              all-diff
+   *
+   *       2v + ((uniq-set-0) + (uniq-set-1)) => 12 sum <= n2 => logn^2 ?
+   *            ((uniq-set-0) + (uniq-set-1)) <= n^2
+   *       n^2 => 25 & x => 10 ?
+   *       13? | (1 <-> 13) <=> 6 | (7 <=> 13) <=> 10
+   *
+   * - iterate all values from array-left & array-right
+   *   calc. total-sum - 2 * value => (uniq-set-0 + uniq-set-1) -> 10 ?  (3 - 1 => 2 | 9 - 1 => 8)
+   *
+   *
+   *            (uniq-set-0) + (uniq-set-1) => 12
+   *
+   *          (uniq-set-0) => 3     (uniq-set-1) => 9
+   *            all-diff              all-diff
+   *
+   *             x - y ==> n0 + n3 + n2 - n1 - n2 -> 6 == (n0 - n1 + n3)
+   *
+   *             6 == n0 - n1 + n3
+   *             3 == n1 + n2
+   *             9 == n0 + n2 + n3
+   *
+   *             (n0 - n1 + n3) - (n1 + n2) => 3 == n0 - 2n1 + n3 - n2
+   *                                           3 == n1 + n2
+   *
+   *             n2 = (x + y - n0 - n1 - n3) / 2
+   *
+   *          n0 + n1 + 2 * n2 + n3 = x + y
+   *
+   *     if n2 exists, than can be divided without a remaninng
+   * - when dups are 1st found, each of them came from diff. subset of an array
+   *   { a0, a1, ... am } <<==>> { b0, b1, ... bn }
+   *
+   * - algorithm stops when we 1st find a dup -> when 2 n2 1st appears.
+   *
+   * - findi-dup(n) => { 2 * find-dup(n / 2) + O(n) }
+   * - base case:
+   * - 1 elem -> no
+   * - 2 elem -> if array[0] == array[1]
+   * - n elem -> array[n/2](no dup) & array[n/2](no dup), one number be shared?
+   * - [ 1, 2, 3, 4, 2 ]
+   *     ^  ^
+   *     ^
+   *     f    dist-of-slow-in-cycle
+   *     |           |
+   * x + y == 2 (x + z) => x = y - 2z
+   *                           |
+   *                 dist-of-fast-in-cycle
+   *
+   * fast ptr loop { outside cycle, within cycle }
+   *                     2x |
+   * slow ptr loop { outside cycle, within cycle }
+   * (curr_pos | fast => 2 * pos of slow, & live in cycle)
+   *                                              *               *               |<----------------------|
+   *      k ----------------- h { fast -> x - f - y - z - h - k - y - z - h - k - y - z - h - k - y - z - h
+   *      |                   | { slow -> x - f - y - z - h - k - y - z - h
+   * x -- y ----------------- z           ^       *               *
+   * ^(reset slow)                                |<----------------------|
+   */
+  static int find_duplicate(vector<int> nums) {
+    int fast_ptr = 0, slow_ptr = 0, max_size = nums.size();
+    if (1 >= nums.size()){ return -1; }
+    do {
+      slow_ptr = nums[slow_ptr] % max_size;
+      fast_ptr = nums[nums[fast_ptr] % max_size] % max_size;
+    } while (fast_ptr != slow_ptr);
+    slow_ptr = 0;
+    do {
+      slow_ptr = nums[slow_ptr] % max_size;
+      fast_ptr = nums[fast_ptr ] % max_size;
+    } while (fast_ptr != slow_ptr);
+    return slow_ptr;
+  }
 };
 
 int main(void) {
@@ -704,6 +816,7 @@ int main(void) {
   using array_util::fast_sort_colors;
   using array_util::is_sudoku_valid;
   using array_util::solve_sudoku;
+  using array_util::find_duplicate;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -812,5 +925,9 @@ int main(void) {
   cout << "1 <=> " << solve_sudoku(sudoku_0) << " <=> " << is_sudoku_valid(sudoku_0) <<  endl;
   cout << "0 <=> " << solve_sudoku(sudoku_1) << " <=> " << is_sudoku_valid(sudoku_1) << endl;
   cout << "1 <=> " << solve_sudoku(sudoku_2) << " <=> " << is_sudoku_valid(sudoku_2) <<  endl;
+
+  cout << "13. find_duplicate" << endl;
+  cout << "2 <=> " << find_duplicate(vector<int>({ 1, 3, 4, 2, 2 })) << endl;
+  cout << "3 <=> " << find_duplicate(vector<int>({ 3, 1, 3, 4, 2 })) << endl;
   return 0;
 }
