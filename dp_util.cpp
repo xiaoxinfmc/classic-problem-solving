@@ -1414,6 +1414,8 @@ namespace dp_util{
    * - Let max-coin(i, j, k) denotes the max coins we can get from connected set
    *   of balloons bi...bj, then the goal is to calc max-coin(0, n - 1), where
    *   bk is the last balloon to burst.
+   * - Also in the meantime, balloons(0...i - 1) & balloons(k + 1...n - 1) are
+   *   still intact.
    * - max-coin(i, j) = { i <= k <= j | max{ nums[i] + max(i + 1, j),
    *                                         nums[j] + max(i, j - 1),
    *                                         max(i, k - 1) + nums[k - 1] * nums[k] * nums[k + 1] + max(k + 1, j) } }
