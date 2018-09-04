@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include <vector>
 #include <deque>
 #include <cmath>
@@ -29,6 +30,7 @@ namespace tree_util {
       value = val; column_id = 0; level_id = 0;
       is_visited = false; is_right_child = false;
       left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+      prev_ptr = NULL; next_ptr = NULL;
     }
     virtual ~binary_tree_node() {}
     friend bool operator< (const binary_tree_node & lnode,
@@ -59,7 +61,7 @@ namespace tree_util {
     }
     int value, column_id, level_id;
     bool is_visited, is_right_child;
-    binary_tree_node * left_ptr, * right_ptr, * sibling;
+    binary_tree_node * left_ptr, * right_ptr, * sibling, * prev_ptr, * next_ptr;
   };
 
   /**
@@ -313,6 +315,61 @@ namespace tree_util {
     );
     return root_ptr;
   }
+
+  /**
+   * Convert a Binary Tree to a Circular Doubly Link List
+   * Given a Binary Tree, convert it to a Circular Doubly Linked List(In-Place)
+   * - The left and right pointers in nodes are to be used as previous and next
+   *   pointers respectively in converted Circular Linked List.
+   * - The order of nodes in List must be same as Inorder of given Binary Tree.
+   * - The first node of Inorder traversal must be head node of Circular List.
+  class binary_tree_node {
+  public:
+    binary_tree_node(int val) {
+      value = val; column_id = 0; level_id = 0;
+      is_visited = false; is_right_child = false;
+      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+    }
+  }
+   *       6a
+   *      /   \
+   *    4b     c8
+   *    / \   / \
+   *  1d  5e f7  g10
+   *    \       / \
+   *   2.5t    i9   h11
+   *   /  \
+   *  2   3k
+   *  1(4) - 2(2.5) - 2.5(1) - 3(2) - 4(6) - 5(4)
+   * in-order traversal => give us the order of the list, but its parent is not its next-ptr/prev.
+   *                    => we can return the 
+   * - each internal node, prev-ptr -> the right-most node from its left-subtree
+   *                       next-ptr -> the left-most node from its right-subtree
+   * - post-order, for each subtree, return pair of (left most (min) & right most (max) ptr)
+   */
+  static pair<binary_tree_node *, binary_tree_node *> inorder_linked_list_from_bst_recur(binary_tree_node * curr_ptr)
+  {
+    if (NULL == curr_ptr) { return pair<binary_tree_node *, binary_tree_node *>(NULL, NULL); }
+
+    pair<binary_tree_node *, binary_tree_node *>left_tree_pair = inorder_linked_list_from_bst_recur(curr_ptr->left_ptr);
+    pair<binary_tree_node *, binary_tree_node *>right_tree_pair = inorder_linked_list_from_bst_recur(curr_ptr->right_ptr);
+
+    if (NULL != left_tree_pair.second) { curr_ptr->prev_ptr = left_tree_pair.second; left_tree_pair.second->next_ptr = curr_ptr; }
+    if (NULL != right_tree_pair.first) { curr_ptr->next_ptr = right_tree_pair.first; right_tree_pair.first->prev_ptr = curr_ptr; }
+
+    pair<binary_tree_node *, binary_tree_node *>curr_pair(curr_ptr, curr_ptr);
+    if (NULL != left_tree_pair.first) { curr_pair.first = left_tree_pair.first; }
+    if (NULL != right_tree_pair.second) { curr_pair.second = right_tree_pair.second; }
+
+    return curr_pair;
+  }
+
+  static binary_tree_node * inorder_linked_list_from_bst(binary_tree_node * root) {
+    pair<binary_tree_node *, binary_tree_node *> ptr_pair = inorder_linked_list_from_bst_recur(root);
+    ptr_pair.first->prev_ptr = ptr_pair.second;
+    ptr_pair.second->next_ptr = ptr_pair.first;
+    return ptr_pair.first;
+  }
 };
 
 int main(void) {
@@ -328,6 +385,7 @@ int main(void) {
   using tree_util::bst_in_column_order;
   using tree_util::build_bst_via_pre_and_in;
   using tree_util::build_bst_via_post_and_in;
+  using tree_util::inorder_linked_list_from_bst_recur;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -394,6 +452,29 @@ int main(void) {
   );
   cout << "in-order: "; lvr_bst_print(pi_root); cout << endl;
   cout << "pt-order: "; lrv_bst_print(pi_root); cout << endl;
+
+  cout << endl << "6. inorder_linked_list_from_bst_recur" << endl;
+  binary_tree_node * list_ptr = inorder_linked_list_from_bst(pi_root);
+  binary_tree_node * curr_ptr = list_ptr;
+  do {
+    cout << curr_ptr->prev_ptr->value << ":" << curr_ptr->value << " ";
+    curr_ptr = curr_ptr->next_ptr;
+  } while (curr_ptr != list_ptr); cout << endl;
+
+  list_ptr = inorder_linked_list_from_bst(&a);
+  curr_ptr = list_ptr;
+  do {
+    cout << curr_ptr->prev_ptr->value << ":" << curr_ptr->value << " ";
+    curr_ptr = curr_ptr->next_ptr;
+  } while (curr_ptr != list_ptr); cout << endl;
+
+  binary_tree_node aa(6);
+  list_ptr = inorder_linked_list_from_bst(&aa);
+  curr_ptr = list_ptr;
+  do {
+    cout << curr_ptr->prev_ptr->value << ":" << curr_ptr->value << " ";
+    curr_ptr = curr_ptr->next_ptr;
+  } while (curr_ptr != list_ptr); cout << endl;
 
   return 0;
 }
