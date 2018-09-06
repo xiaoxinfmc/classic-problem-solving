@@ -112,47 +112,6 @@ namespace array_util {
     return total_water;
   }
 
-  /**
-   * 2.1.10 4Sum
-   * Given an array S of n integers, are there elements a, b, c, and d in S such
-   * that a + b + c + d = target? Find all unique quadruplets in the array which
-   * gives the sum of target.
-   * Note:
-   * - Elements in a quadruplet (a, b, c, d) must be in non-descending order.
-   *   (ie, a ≤ b ≤ c ≤ d)
-   * - The solution set must not contain duplicate quadruplets.
-   *   For example, given array S = {1 0 -1 0 -2 2}, and target = 0.
-   *   A solution set is:
-   *   (-1,  0, 0, 1)
-   *   (-2, -1, 1, 2)
-   *   (-2,  0, 0, 2)
-   */
-  vector<vector<int>> calc_quadruplets_by_sum(vector<int> input, int target = 0) {
-    vector<vector<int>> quadruplets;
-    sort(input.begin(), input.end());
-    for (int i = 0; i < input.size() - 3; i++) {
-      for (int j = i + 1; j < input.size() - 2; j++) {
-        for (int k = j + 1, l = input.size() - 1; k < l;) {
-          int curr_sum = (input[i] + input[j] + input[k] + input[l]);
-          if (target == curr_sum) {
-            quadruplets.push_back(vector<int>({ input[i], input[j], input[k], input[l]}));
-            k++;
-            l--;
-          } else if (curr_sum > target) {
-            l--;
-          } else {
-            k++;
-          }
-          while (k < l && input[k] == input[k + 1]) { k++; }
-          while (l > k && input[l] == input[l - 1]) { l--; }
-        }
-        while (j < input.size() - 2 && input[j] == input[j + 1]) { j++; }
-      }
-      while (i < input.size() - 3 && input[i] == input[i + 1]) { i++; }
-    }
-    return quadruplets;
-  }
-
   /**     v                              v |
    * ==>> 1 2 7  9 11 15             x x x x x x x (x will come before s -> skip xxx)
    * ==>> 3 4 8 10 14 17 19          s s s s s s s (x will cannot be median if x < s)
@@ -387,20 +346,19 @@ namespace array_util {
    * You may assume that each input would have exactly one solution.
    * Input: numbers={2, 7, 11, 15}, target=9
    * Output: index1=1, index2=2
+   * Observation:
+   * - use a map to store the value of a number & its corresponding id (start_from 1)
    */
   vector<int> calc_two_sum(vector<int> input, int target) {
-    vector<int> index_pair({ -1, -1 });
-    unordered_map<int, int> lookup;
-    for (int i = 0; i < input.size(); i++) { lookup[input[i]] = i + 1; }
-    for (auto & curr_val : input) {
-      if (lookup.end() != lookup.find(target - curr_val) &&
-          lookup[curr_val] != lookup[target - curr_val]) {
-        if (lookup[curr_val] < lookup[target - curr_val]) {
-          index_pair[0] = lookup[curr_val]; index_pair[1] = lookup[target - curr_val];
-        } else {
-          index_pair[1] = lookup[curr_val]; index_pair[0] = lookup[target - curr_val];
-        }
-        break;
+    vector<int> index_pair({});
+    if (true == input.empty()) { return index_pair; }
+    unordered_map<int, int> value_to_id_lookup;
+    for (int i = 0; i < input.size(); i++) { value_to_id_lookup[input[i]] = i; }
+    for (int i = 0; i < input.size(); i++) {
+      if (value_to_id_lookup.end() != value_to_id_lookup.find(target - input[i]) &&
+          i < value_to_id_lookup[target - input[i]]) {
+        index_pair.push_back(i + 1);
+        index_pair.push_back(value_to_id_lookup[target - input[i]] + 1);
       }
     }
     return index_pair;
@@ -417,80 +375,73 @@ namespace array_util {
    * A solution set is: (-1, 0, 1) (-1, -1, 2)
    * - Reduce to 2 sum, as target == elem + sum(elem pair)
    * - use a map to store all possible sum of 2 elem, with sorted values & idx as val.
-   * - Or sort the input in place 1st, then 
+   * - Or sort the input in place 1st, then use 3 pointers to iterate all comb.
+   * - -1 0 1 2 -1 -4
+   *    v  *-->  <--*
+   * - -4 -1 -1 0 1 2
+   * - each time we pick a different number as start point (1st val), then pick
+   *   then rest 2 values by moving pointer around from both ends.
    */
   vector<vector<int>> calc_triplets_by_sum(vector<int> input, int target = 0) {
-    vector<vector<int>> triplets;
+    vector<vector<int>> triplets_arr;
     sort(input.begin(), input.end());
-    int arry_siz = input.size(), target_diff = 0;
-    for (int curr_idx = 0; curr_idx < arry_siz - 2; curr_idx++) {
-      target_diff = target - input[curr_idx];
-      for (int midd_idx = curr_idx + 1, last_idx = arry_siz - 1;
-               midd_idx < last_idx;) {
-        if (input[midd_idx + 1] == input[midd_idx] && midd_idx < last_idx) {
-          while (input[midd_idx + 1] == input[midd_idx] &&
-                 midd_idx < last_idx){ midd_idx++; }
+    int curr_sum = 0;
+    for (int i = 0; i < input.size(); i++) {
+      for (int left_idx = i + 1, right_idx = input.size() - 1; left_idx < right_idx;) {
+        curr_sum = input[i] + input[left_idx] + input[right_idx];
+        if (target == curr_sum) {
+          triplets_arr.push_back({ input[i], input[left_idx], input[right_idx] });
+          while (left_idx < right_idx && input[right_idx] == input[right_idx - 1]) { right_idx--; }
+          while (left_idx < right_idx && input[left_idx] == input[left_idx + 1]) { left_idx++; }
+          right_idx--; left_idx++;
         }
-        if (input[last_idx - 1] == input[last_idx] && midd_idx < last_idx) {
-          while (input[last_idx - 1] == input[last_idx] &&
-                 midd_idx < last_idx){ last_idx--; }
-        }
-        if ((input[midd_idx] + input[last_idx]) == target_diff) {
-          triplets.push_back(vector<int>({ input[curr_idx], input[midd_idx], input[last_idx] }));
-          midd_idx++; last_idx--;
-        } else if ((input[midd_idx] + input[last_idx]) > target_diff) {
-          last_idx--;
-        } else {
-          midd_idx++;
-        }
+        if (curr_sum < target) { left_idx++; }
+        if (curr_sum > target) { right_idx--; }
       }
-      if (input[curr_idx + 1] == input[curr_idx] && curr_idx < arry_siz - 2) {
-        while (input[curr_idx + 1] == input[curr_idx] &&
-               curr_idx < arry_siz - 2) { curr_idx++; }
-      }
+      while (i < input.size() - 1 && input[i] == input[i + 1]) { i++; }
     }
-    return triplets;
+    return triplets_arr;
   }
 
-  vector<vector<int>> _calc_triplets_by_sum(vector<int> input, int target = 0) {
-    vector<vector<int>> triplets;
-    //        sum of 2            smaller #      related idx
-    unordered_map<int, unordered_map<int, unordered_set<int>>> lookup;
+  /**
+   * 2.1.10 4Sum
+   * Given an array S of n integers, are there elements a, b, c, and d in S such
+   * that a + b + c + d = target? Find all unique quadruplets in the array which
+   * gives the sum of target.
+   * Note:
+   * - Elements in a quadruplet (a, b, c, d) must be in non-descending order.
+   *   (ie, a ≤ b ≤ c ≤ d)
+   * - The solution set must not contain duplicate quadruplets.
+   *   For example, given array S = {1 0 -1 0 -2 2}, and target = 0.
+   *   A solution set is:
+   *   (-1,  0, 0, 1)
+   *   (-2, -1, 1, 2)
+   *   (-2,  0, 0, 2)
+   */
+
+  vector<vector<int>> calc_quadruplets_by_sum(vector<int> input, int target = 0) {
+    vector<vector<int>> quadruplets;
+    sort(input.begin(), input.end());
+    int curr_sum = 0;
+    /* <i, j, k, l> */
     for (int i = 0; i < input.size(); i++) {
       for (int j = i + 1; j < input.size(); j++) {
-        int curr_sum = input[i] + input[j];
-        if (lookup.end() == lookup.find(curr_sum)) {
-          lookup[curr_sum] = unordered_map<int, unordered_set<int>>();
+        for (int k = j + 1, l = input.size() - 1; k < l;) {
+          curr_sum = input[i] + input[j] + input[k] + input[l];
+          if (curr_sum == target) {
+            quadruplets.push_back({ input[i], input[j], input[k], input[l] });
+            while (k < l && k + 1 < input.size() && input[k] == input[k + 1]) { k++; }
+            while (k < l && l - 1 > 0 && input[l] == input[l - 1]) { l--; }
+            k++; l--;
+          }
+          if (curr_sum < target) { k++; }
+          if (curr_sum > target) { l--; }
         }
-        int num_to_check = min(input[i], input[j]);
-        if (lookup[curr_sum].end() == lookup[curr_sum].find(num_to_check)) {
-          lookup[curr_sum][num_to_check] = unordered_set<int>();
-        }
-        lookup[curr_sum][num_to_check].insert(i);
-        lookup[curr_sum][num_to_check].insert(j);
+        while (j < input.size() - 1 && input[j] == input[j + 1]) { j++; }
       }
+      while (i < input.size() - 1 && input[i] == input[i + 1]) { i++; }
     }
-
-    for (int i = 0; i < input.size(); i++) {
-      int delta = target - input[i];
-      if (lookup.end() == lookup.find(delta)) { continue; }
-      unordered_map<int, unordered_set<int>> pair_map = lookup[delta];
-      for (auto & sum_pair : pair_map) {
-        if (sum_pair.second.end() != sum_pair.second.find(i)) { continue; }
-        int third_val = delta - sum_pair.first;
-        if (input[i] <= sum_pair.first) {
-          triplets.push_back({ input[i], sum_pair.first, third_val });
-        } else if (input[i] < third_val) {
-          triplets.push_back({ sum_pair.first, input[i], third_val });
-        } else {
-          triplets.push_back({ sum_pair.first, third_val, input[i] });
-        }
-        lookup[input[i] + sum_pair.first].erase(min(input[i], sum_pair.first));
-        lookup[input[i] + third_val].erase(min(input[i], third_val));
-      }
-      lookup.erase(delta);
-    }
-    return triplets;
+    return quadruplets;
   }
 
   /**
