@@ -370,6 +370,92 @@ namespace tree_util {
     ptr_pair.second->next_ptr = ptr_pair.first;
     return ptr_pair.first;
   }
+
+  /**
+   * 236. Lowest Common Ancestor of a Binary Tree
+   * - Given a binary tree, find lowest common ancestor of two nodes in tree.
+   *
+   * - According to the definition of LCA on Wikipedia: "The lowest common
+   *   ancestor is defined between two nodes p and q as the lowest node in T
+   *   that has both p and q as descendants (where we allow a node to be a
+   *   descendant of itself).”
+   *
+   * - Given the following binary tree:  root = [3,5,1,6,2,0,8,null,null,7,4]
+   *
+   *         _______3______
+   *        /              \
+   *     ___5__          ___1__
+   *    /      \        /      \
+   *   6       _2       0       8
+   *          /  \
+   *         7    4
+   * Example 1:
+   *
+   * - Input: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 1
+   * - Output: 3
+   * - Explanation: The LCA of of nodes 5 and 1 is 3.
+   *
+   * Example 2:
+   *
+   * - Input: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4
+   * - Output: 5
+   * - Explanation: The LCA of nodes 5 and 4 is 5, since a node can be a
+   #                descendant of itself according to the LCA definition.
+   * Note:
+   * - All of the nodes values will be unique.
+   * - p and q are different and both values will exist in the binary tree.
+   * Observation:
+   * - DFS for 2 nodes then merge paths from 2, lca will be 1st node diverted
+  class binary_tree_node {
+  public:
+    binary_tree_node(int val) {
+      value = val; column_id = 0; level_id = 0;
+      is_visited = false; is_right_child = false;
+      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+      prev_ptr = NULL; next_ptr = NULL;
+    }
+  };
+   */
+  static void dfs_search_path(binary_tree_node * root_ptr, binary_tree_node * target_ptr,
+                              vector<pair<binary_tree_node *, int>> & dfs_path) {
+    pair<binary_tree_node *, int> curr_pair;
+    vector<pair<binary_tree_node *, int>> dfs_buffer;
+
+    dfs_buffer.push_back(pair<binary_tree_node *, int>(root_ptr, 0));
+    while (false == dfs_buffer.empty()) {
+      curr_pair = dfs_buffer.back();
+      dfs_buffer.pop_back();
+
+      if (NULL == curr_pair.first) { continue; }
+
+      while (false == dfs_path.empty() &&
+             dfs_path.back().second != curr_pair.second - 1) { dfs_path.pop_back(); }
+      dfs_path.push_back(curr_pair);
+      if (curr_pair.first == target_ptr) { break; }
+
+      dfs_buffer.push_back(pair<binary_tree_node *, int>(curr_pair.first->right_ptr, curr_pair.second + 1));
+      dfs_buffer.push_back(pair<binary_tree_node *, int>(curr_pair.first->left_ptr, curr_pair.second + 1));
+    }
+  }
+
+  static binary_tree_node * get_lca(binary_tree_node * root_ptr,
+                                    binary_tree_node * left_ptr,
+                                    binary_tree_node * right_ptr) {
+    binary_tree_node * lca_ptr = NULL;
+    if (NULL == root_ptr || NULL == left_ptr || NULL == right_ptr) { return lca_ptr; }
+    if (left_ptr == right_ptr) { return left_ptr; }
+
+    vector<pair<binary_tree_node *, int>> left_dfs_path, right_dfs_path;
+    dfs_search_path(root_ptr, left_ptr, left_dfs_path);
+    dfs_search_path(root_ptr, right_ptr, right_dfs_path);
+
+    int max_path_len = min(left_dfs_path.size(), left_dfs_path.size());
+    for (int i = 0; i < max_path_len; i++) {
+      if (left_dfs_path[i].first != right_dfs_path[i].first) { break; }
+      lca_ptr = left_dfs_path[i].first;
+    }
+    return lca_ptr;
+  }
 };
 
 int main(void) {
@@ -386,6 +472,7 @@ int main(void) {
   using tree_util::build_bst_via_pre_and_in;
   using tree_util::build_bst_via_post_and_in;
   using tree_util::inorder_linked_list_from_bst_recur;
+  using tree_util::get_lca;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -475,6 +562,15 @@ int main(void) {
     cout << curr_ptr->prev_ptr->value << ":" << curr_ptr->value << " ";
     curr_ptr = curr_ptr->next_ptr;
   } while (curr_ptr != list_ptr); cout << endl;
+
+  cout << endl << "7. get_lca" << endl;
+  cout << "6 <=> " << get_lca(&a, &k, &i)->value << endl;
+  cout << "1 <=> " << get_lca(&a, &d, &k)->value << endl;
+  cout << "1 <=> " << get_lca(&a, &k, &d)->value << endl;
+  cout << "1 <=> " << get_lca(&a, &d, &d)->value << endl;
+  cout << "6 <=> " << get_lca(&a, &a, &a)->value << endl;
+  cout << "4 <=> " << get_lca(&a, &k, &e)->value << endl;
+  cout << "4 <=> " << get_lca(&a, &e, &k)->value << endl;
 
   return 0;
 }
