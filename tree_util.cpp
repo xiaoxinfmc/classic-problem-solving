@@ -382,11 +382,11 @@ namespace tree_util {
    *
    * - Given the following binary tree:  root = [3,5,1,6,2,0,8,null,null,7,4]
    *
-   *         _______3______
-   *        /              \
-   *     ___5__          ___1__
-   *    /      \        /      \
-   *   6       _2       0       8
+   *          _______3______
+   *         /              \
+   *     ___5__           ___1__
+   *    /      \         /      \
+   *   6       _2       0        8
    *          /  \
    *         7    4
    * Example 1:
@@ -406,6 +406,7 @@ namespace tree_util {
    * - p and q are different and both values will exist in the binary tree.
    * Observation:
    * - DFS for 2 nodes then merge paths from 2, lca will be 1st node diverted
+   * - Post-order?
   class binary_tree_node {
   public:
     binary_tree_node(int val) {
@@ -416,6 +417,61 @@ namespace tree_util {
     }
   };
    */
+  static void _fast_lca(binary_tree_node * root_ptr,
+                        binary_tree_node * left_ptr,
+                        binary_tree_node * right_ptr,
+                        bool * is_left_found_ptr,
+                        bool * is_right_found_ptr,
+                        binary_tree_node ** lca_ptr_ptr){
+    if (NULL == root_ptr) { return; }
+    _fast_lca(root_ptr->left_ptr, left_ptr, right_ptr, is_left_found_ptr,
+              is_right_found_ptr, lca_ptr_ptr);
+    _fast_lca(root_ptr->right_ptr, left_ptr, right_ptr, is_left_found_ptr,
+              is_right_found_ptr, lca_ptr_ptr);
+    if (false == * is_left_found_ptr) { * is_left_found_ptr = (root_ptr == left_ptr); }
+    if (false == * is_right_found_ptr) { * is_right_found_ptr = (root_ptr == right_ptr); }
+    if (true == * is_left_found_ptr && true == * is_right_found_ptr && NULL == * lca_ptr_ptr) {
+      * lca_ptr_ptr = root_ptr;
+    }
+  }
+
+  static pair<binary_tree_node *, binary_tree_node *> fast_lca_recur(binary_tree_node * root_ptr,
+                                                                     binary_tree_node * left_ptr,
+                                                                     binary_tree_node * right_ptr,
+                                                                     binary_tree_node ** lca_ptr_ptr){
+    pair<binary_tree_node *, binary_tree_node *> ptr_pair(NULL, NULL), tmp_pair(NULL, NULL);
+
+    if (NULL == root_ptr) { return ptr_pair; }
+
+    if (NULL == ptr_pair.first && root_ptr == left_ptr) { ptr_pair.first = root_ptr; }
+    if (NULL == ptr_pair.second && root_ptr == right_ptr) { ptr_pair.second = root_ptr; }
+
+    if (NULL == ptr_pair.first || NULL == ptr_pair.second) {
+      tmp_pair = fast_lca_recur(root_ptr->left_ptr, left_ptr, right_ptr, lca_ptr_ptr);
+      if (NULL == ptr_pair.first && NULL != tmp_pair.first) { ptr_pair.first = tmp_pair.first; }
+      if (NULL == ptr_pair.second && NULL != tmp_pair.second) { ptr_pair.second = tmp_pair.second; }
+    }
+    if (NULL == ptr_pair.first || NULL == ptr_pair.second) {
+      tmp_pair = fast_lca_recur(root_ptr->right_ptr, left_ptr, right_ptr, lca_ptr_ptr);
+      if (NULL == ptr_pair.first && NULL != tmp_pair.first) { ptr_pair.first = tmp_pair.first; }
+      if (NULL == ptr_pair.second && NULL != tmp_pair.second) { ptr_pair.second = tmp_pair.second; }
+    }
+
+    if (!(NULL == ptr_pair.first) && !(NULL == ptr_pair.second) && (NULL == * lca_ptr_ptr)) {
+      * lca_ptr_ptr = root_ptr;
+    }
+
+    return ptr_pair;
+  }
+
+  static binary_tree_node * fast_lca(binary_tree_node * root_ptr,
+                                     binary_tree_node * left_ptr,
+                                     binary_tree_node * right_ptr) {
+    binary_tree_node * lca_ptr = NULL;
+    fast_lca_recur(root_ptr, left_ptr, right_ptr, &lca_ptr);
+    return lca_ptr;
+  }
+
   static void dfs_search_path(binary_tree_node * root_ptr, binary_tree_node * target_ptr,
                               vector<pair<binary_tree_node *, int>> & dfs_path) {
     pair<binary_tree_node *, int> curr_pair;
@@ -473,6 +529,7 @@ int main(void) {
   using tree_util::build_bst_via_post_and_in;
   using tree_util::inorder_linked_list_from_bst_recur;
   using tree_util::get_lca;
+  using tree_util::fast_lca;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -571,6 +628,25 @@ int main(void) {
   cout << "6 <=> " << get_lca(&a, &a, &a)->value << endl;
   cout << "4 <=> " << get_lca(&a, &k, &e)->value << endl;
   cout << "4 <=> " << get_lca(&a, &e, &k)->value << endl;
+  cout << "8 <=> " << get_lca(&a, &f, &i)->value << endl;
+  cout << "8 <=> " << get_lca(&a, &i, &f)->value << endl;
+  cout << "0 <=> " << get_lca(&a, &i, NULL) << endl;
+  cout << "0 <=> " << get_lca(&a, NULL, NULL) << endl;
+  cout << "0 <=> " << get_lca(NULL, NULL, NULL) << endl;
+
+  cout << endl << "8. fast_lca" << endl;
+  cout << "6 <=> " << fast_lca(&a, &k, &i)->value << endl;
+  cout << "1 <=> " << fast_lca(&a, &d, &k)->value << endl;
+  cout << "1 <=> " << fast_lca(&a, &k, &d)->value << endl;
+  cout << "1 <=> " << fast_lca(&a, &d, &d)->value << endl;
+  cout << "6 <=> " << fast_lca(&a, &a, &a)->value << endl;
+  cout << "4 <=> " << fast_lca(&a, &k, &e)->value << endl;
+  cout << "4 <=> " << fast_lca(&a, &e, &k)->value << endl;
+  cout << "8 <=> " << fast_lca(&a, &f, &i)->value << endl;
+  cout << "8 <=> " << fast_lca(&a, &i, &f)->value << endl;
+  cout << "0 <=> " << fast_lca(&a, &i, NULL) << endl;
+  cout << "0 <=> " << fast_lca(&a, NULL, NULL) << endl;
+  cout << "0 <=> " << fast_lca(NULL, NULL, NULL) << endl;
 
   return 0;
 }
