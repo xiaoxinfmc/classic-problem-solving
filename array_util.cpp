@@ -734,18 +734,18 @@ namespace array_util {
    * ^(reset slow)                                                        |-------|<----------------------|
    */
   static int find_duplicate(vector<int> nums) {
-    int fast_ptr = 0, slow_ptr = 0, max_size = nums.size();
-    if (1 >= nums.size()){ return -1; }
+    int fast_idx = 0, slow_idx = 0, max_size = nums.size();
+    if (1 >= max_size) { return -1; }
     do {
-      slow_ptr = nums[slow_ptr] % max_size;
-      fast_ptr = nums[nums[fast_ptr] % max_size] % max_size;
-    } while (fast_ptr != slow_ptr);
-    slow_ptr = 0;
+      slow_idx = nums[slow_idx] % max_size;
+      fast_idx = nums[nums[fast_idx] % max_size] % max_size;
+    } while (fast_idx != slow_idx);
+    slow_idx = 0;
     do {
-      slow_ptr = nums[slow_ptr] % max_size;
-      fast_ptr = nums[fast_ptr ] % max_size;
-    } while (fast_ptr != slow_ptr);
-    return slow_ptr;
+      slow_idx = nums[slow_idx] % max_size;
+      fast_idx = nums[fast_ptr] % max_size;
+    } while (fast_idx != slow_idx)
+    return slow_idx;
   }
 
   /**
