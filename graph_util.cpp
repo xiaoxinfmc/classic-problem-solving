@@ -560,6 +560,69 @@ namespace graph_util {
     }
     return is_udg_bipartite;
   }
+
+  /**
+   * Ford-Fulkerson Algorithm
+   * The following is simple idea of Ford-Fulkerson algorithm:
+   * 1) Start with initial flow as 0.
+   * 2) While there is a augmenting path from source to sink.
+   *      Add this path-flow to flow.
+   * 3) Return flow.
+   * Time Complexity:
+   * - Time complexity of the above algorithm is O(max_flow * E). We run a loop
+   *   while there is an augmenting path. In worst case, we may add 1 unit flow
+   *   in every iteration. Therefore time complexity becomes O(max_flow * E).
+   */
+  static bool best_effort_dfs_path(int src_vid, int sink_vid,
+                                   vector<int> & src_to_sink_vids,
+                                   vector<vector<int>> & residual_graph) {
+    bool is_path_found = false;
+    vector<int> vid_visit_stack(1, src_vid);
+    vector<bool> vid_visit_lookup(src_to_sink_vids.size(), false);
+
+    while (false == vid_visit_stack.empty()) {
+      int curr_vid = vid_visit_stack.back();
+      vid_visit_stack.pop_back();
+      if (true == vid_visit_lookup[curr_vid]) { continue; }
+      vid_visit_lookup[curr_vid] = true;
+
+      if (sink_vid == curr_vid) { is_path_found = true; break; }
+
+      for (int i = 0; i < residual_graph[curr_vid].size(); i++) {
+        if (vid_visit_lookup[i] || i == curr_vid ||
+            residual_graph[curr_vid][i] <= 0) { continue; }
+        vid_visit_stack.push_back(i);
+        src_to_sink_vids[i] = curr_vid;
+      }
+    }
+
+    return is_path_found;
+  }
+
+  static int calc_max_flow(vector<vector<int>> input_graph, int src_vid, int sink_vid) {
+    int max_flow_val = 0;
+
+    if (src_vid < 0 || sink_vid < 0 || src_vid == sink_vid ||
+        src_vid >= input_graph.size() || sink_vid >= input_graph.size()) {
+      return max_flow_val;
+    }
+    vector<int>src_to_sink_vids(input_graph.size(), -1);
+    vector<vector<int>> residual_graph(input_graph.begin(), input_graph.end());
+
+    while (true == best_effort_dfs_path(src_vid, sink_vid, src_to_sink_vids, residual_graph)) {
+      int curr_flow_to_push = INT_MAX;
+      for (int curr_vid = sink_vid; curr_vid != src_vid; curr_vid = src_to_sink_vids[curr_vid]) {
+        curr_flow_to_push = min(curr_flow_to_push, residual_graph[src_to_sink_vids[curr_vid]][curr_vid]);
+      }
+      for (int curr_vid = sink_vid; curr_vid != src_vid; curr_vid = src_to_sink_vids[curr_vid]) {
+        residual_graph[src_to_sink_vids[curr_vid]][curr_vid] -= curr_flow_to_push;
+        residual_graph[curr_vid][src_to_sink_vids[curr_vid]] += curr_flow_to_push;
+      }
+      max_flow_val += curr_flow_to_push;
+    }
+
+    return max_flow_val;
+  }
 };
 
 int main(void) {
@@ -590,6 +653,7 @@ int main(void) {
   using graph_util::plan_courses_to_take;
   using graph_util::is_udg_bipartite;
   using graph_util::is_forest_bipartite;
+  using graph_util::calc_max_flow;
 
   undirected_graph_vertex * a_ptr = new undirected_graph_vertex(0);
   undirected_graph_vertex * b_ptr = new undirected_graph_vertex(1);
@@ -706,8 +770,12 @@ int main(void) {
   cout << "1 <=> " << is_forest_bipartite(vector<vector<int>>({
     vector<int>({ 4 }), vector<int>({}), vector<int>({ 4 }),
     vector<int>({ 4 }), vector<int>({ 0, 2, 3 })})) << endl;
-
   cout << "1 <=> " << is_forest_bipartite(vector<vector<int>>({})) << endl;
+
+  cout << "8. calc_max_flow:" << endl;
+  cout << "23 <=> " << calc_max_flow(vector<vector<int>>({{0, 16, 13, 0, 0, 0}, {0, 0, 10, 12, 0, 0},
+                                                          {0, 4, 0, 0, 14, 0}, {0, 0, 9, 0, 0, 20},
+                                                          {0, 0, 0, 7, 0, 4}, {0, 0, 0, 0, 0, 0}}), 0, 5) << endl;
 
   return 0;
 }
