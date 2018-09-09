@@ -649,6 +649,86 @@ namespace tree_util {
     for (auto & val : bt_cnt_lookup) { total_bt_cnt += val; }
     return total_bt_cnt % mod_base;
   }
+
+  /**
+   * Print Edge Nodes (Boundary) of a Binary Tree
+   * - Print all edge nodes of a complete binary tree anti-clockwise.
+   * - That is all the left most nodes starting at root, then the leaves left
+   *   to right and finally all the rightmost nodes. In other words, print the
+   *   boundary of the tree.
+   * - Variant: Print the same for a tree that is not complete.
+   *         ______30______
+   *        /              \
+   *     __20__          __40__
+   *    /      \        /      \
+   *   10      25      35      50
+   *  /  \       \            /
+   *  5  15      28          41
+   * The correct solution should print 30, 20, 10, 5, 15, 28, 35, 41, 50, 40.
+   *       6a
+   *      /   \
+   *    4b     c8
+   *    / \   / \
+   *  1d  5e f7  g10
+   *    \       / \
+   *    2t     i9   h11
+   *      \
+   *      3k
+   * [ 6, 4, 1, 2, 3, 5, 7, 9, 11, 10, 8 ]
+   */
+  static vector<int> boundary_traverse_bt(binary_tree_node * root_ptr) {
+    vector<int> boundary;
+    if (NULL == root_ptr) { return boundary; }
+
+    boundary.push_back(root_ptr->value);
+
+    binary_tree_node * curr_ptr = root_ptr->left_ptr;
+    while(NULL != curr_ptr) {
+      boundary.push_back(curr_ptr->value);
+      if (NULL != curr_ptr->left_ptr) {
+        curr_ptr = curr_ptr->left_ptr;
+      } else if (NULL != curr_ptr->right_ptr) {
+        curr_ptr = curr_ptr->right_ptr;
+      } else {
+        boundary.pop_back();
+        curr_ptr = NULL;
+      }
+    }
+
+    curr_ptr = root_ptr;
+    vector<binary_tree_node * > visit_buffer(1, root_ptr);
+    while (false == visit_buffer.empty()) {
+      curr_ptr = visit_buffer.back();
+      visit_buffer.pop_back();
+      if (NULL == curr_ptr){ continue; }
+      if (NULL == curr_ptr->right_ptr && NULL == curr_ptr->left_ptr &&
+          root_ptr != curr_ptr) {
+        boundary.push_back(curr_ptr->value);
+      }
+      visit_buffer.push_back(curr_ptr->right_ptr);
+      visit_buffer.push_back(curr_ptr->left_ptr);
+    }
+
+    curr_ptr = root_ptr->right_ptr;
+    vector<int> right_boundary;
+    while(NULL != curr_ptr) {
+      right_boundary.push_back(curr_ptr->value);
+      if (NULL != curr_ptr->right_ptr) {
+        curr_ptr = curr_ptr->right_ptr;
+      } else if (NULL != curr_ptr->left_ptr) {
+        curr_ptr = curr_ptr->left_ptr;
+      } else {
+        right_boundary.pop_back();
+        curr_ptr = NULL;
+      }
+    }
+
+    for (int i = right_boundary.size() - 1; i >= 0; i--) {
+      boundary.push_back(right_boundary[i]);
+    }
+
+    return boundary;
+  }
 };
 
 int main(void) {
@@ -669,6 +749,7 @@ int main(void) {
   using tree_util::get_lca;
   using tree_util::fast_lca;
   using tree_util::count_diff_bts;
+  using tree_util::boundary_traverse_bt;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -795,5 +876,21 @@ int main(void) {
   cout << "0 <=> " << count_diff_bts(vector<int>({ })) << endl;
   cout << "3 <=> " << count_diff_bts(vector<int>({ 2, 4 })) << endl;
   cout << "7 <=> " << count_diff_bts(vector<int>({ 2, 4, 5, 10 })) << endl;
+
+  cout << endl << "11. boundary_traverse_bt" << endl;
+  cout << "[ 6 4 1 2 3 5 7 9 11 10 8 ] <=> " << endl;
+  print_all_elem<int>(boundary_traverse_bt(&a));
+  // a.left_ptr = &b;  a.right_ptr = &c;
+  a.left_ptr = NULL; a.right_ptr = &c;
+  cout << "[ 6 7 9 11 10 8 ] <=> " << endl;
+  print_all_elem<int>(boundary_traverse_bt(&a));
+  a.left_ptr = &b; a.right_ptr = NULL;
+  cout << "[ 6 4 1 2 3 5 ] <=> " << endl;
+  print_all_elem<int>(boundary_traverse_bt(&a));
+  a.left_ptr = NULL; a.right_ptr = NULL;
+  cout << "[ 6 ] <=> " << endl;
+  print_all_elem<int>(boundary_traverse_bt(&a));
+  cout << "[ ] <=> " << endl;
+  print_all_elem<int>(boundary_traverse_bt(NULL));
   return 0;
 }
