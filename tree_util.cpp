@@ -65,6 +65,61 @@ namespace tree_util {
   };
 
   /**
+   * Inorder Tree Traversal without Recursion
+   * - Using Stack is the obvious way to traverse tree without recursion. Below
+   *   is an algorithm for traversing binary tree using stack. See this for step
+   *   wise step execution of the algorithm.
+   * 1) Create an empty stack S.
+   * 2) Initialize current node as root
+   * 3) Push the current node to S and set current = current->left until current is NULL
+   * 4) If current is NULL and stack is not empty then 
+   *    a) Pop the top item from stack.
+   *    b) Print the popped item, set current = popped_item->right 
+   *    c) Go to step 3.
+   * 5) If current is NULL and stack is empty then we are done.
+   */
+  static void lvr_bst_print_non_recur(binary_tree_node * root_ptr) {
+    binary_tree_node * curr_ptr = root_ptr;
+    vector<binary_tree_node *> visit_buffer;
+
+    while (NULL != curr_ptr || false == visit_buffer.empty()) {
+      while (NULL != curr_ptr) {
+        visit_buffer.push_back(curr_ptr);
+        curr_ptr = curr_ptr->left_ptr;
+      }
+
+      curr_ptr = visit_buffer.back();
+      visit_buffer.pop_back();
+      cout << curr_ptr->value << " ";
+
+      curr_ptr = curr_ptr->right_ptr;
+    }
+  }
+
+  static void _lvr_bst_print_non_recur(binary_tree_node * root_ptr) {
+    binary_tree_node * curr_ptr;
+    vector<binary_tree_node *> visit_buffer(1, root_ptr);
+
+    while (false == visit_buffer.empty()) {
+      curr_ptr = visit_buffer.back();
+      if (NULL == curr_ptr) { visit_buffer.pop_back(); continue; }
+
+      while (NULL !=  curr_ptr->left_ptr &&
+             false == curr_ptr->left_ptr->is_visited) {
+        visit_buffer.push_back(curr_ptr->left_ptr);
+        curr_ptr = curr_ptr->left_ptr;
+      }
+
+      curr_ptr = visit_buffer.back();
+      visit_buffer.pop_back();
+      cout << curr_ptr->value << " ";
+      curr_ptr->is_visited = true;
+
+      visit_buffer.push_back(curr_ptr->right_ptr);
+    }
+  }
+
+  /**
    *
    *            1 (0, 0)
    *          /   \
@@ -522,6 +577,7 @@ int main(void) {
   using tree_util::lvr_bst_print;
   using tree_util::lrv_bst_print;
   using tree_util::vlr_bst_print;
+  using tree_util::lvr_bst_print_non_recur;
 
   using tree_util::bfs_bst_connect;
   using tree_util::bst_in_column_order;
@@ -647,6 +703,10 @@ int main(void) {
   cout << "0 <=> " << fast_lca(&a, &i, NULL) << endl;
   cout << "0 <=> " << fast_lca(&a, NULL, NULL) << endl;
   cout << "0 <=> " << fast_lca(NULL, NULL, NULL) << endl;
+
+  cout << endl << "9. lvr_bst_print_non_recur" << endl;
+  cout << "in-order: 1 2 3 4 5 6 7 8 9 10 11" << endl;
+  cout << "in-order: "; lvr_bst_print_non_recur(&a); cout << endl;
 
   return 0;
 }
