@@ -729,6 +729,62 @@ namespace tree_util {
 
     return boundary;
   }
+
+  /**
+   * 98. Validate Binary Search Tree
+   * - Given a binary tree, determine if it is a valid binary search tree (BST).
+   * Assume a BST is defined as follows:
+   * - The left subtree of a node contains nodes with keys less than node's key.
+   * - The right subtree of a node contains only nodes with keys greater.
+   * - Both the left and right subtrees must also be binary search trees.
+   * Example 1:
+   * Input:
+   *     2
+   *    / \
+   *   1   3
+   * Output: true
+   * Example 2:
+   *
+   *     5
+   *    / \
+   *   1   4
+   *      / \
+   *     3   6
+   * Output: false
+   * Explanation: The input is: [5,1,4,null,null,3,6]. The root node's value
+   *              is 5 but its right child's value is 4.
+   * return: <min-node-for-curr-subtree, max-node-for-curr-subtree>
+   */
+  static pair<binary_tree_node *, binary_tree_node *> is_bst_valid_recur(
+    binary_tree_node * root_ptr, bool * is_bst_valid_ptr)
+  {
+    if (false == * is_bst_valid_ptr || NULL == root_ptr) {
+      return pair<binary_tree_node *, binary_tree_node *>(NULL, NULL);
+    }
+    pair<binary_tree_node *, binary_tree_node *> node_ptr_pair(root_ptr, root_ptr),
+                                                 lsub_ptr_pair(NULL, NULL),
+                                                 rsub_ptr_pair(NULL, NULL);
+    /* min-from-lsub, max-from-lsub */
+    lsub_ptr_pair = is_bst_valid_recur(root_ptr->left_ptr, is_bst_valid_ptr);
+    /* min-from-rsub, max-from-rsub */
+    rsub_ptr_pair = is_bst_valid_recur(root_ptr->right_ptr, is_bst_valid_ptr);
+
+    if ((NULL != lsub_ptr_pair.second) &&
+        (root_ptr->value <= lsub_ptr_pair.second->value)) { * is_bst_valid_ptr = false; }
+    if ((NULL != rsub_ptr_pair.first) &&
+        (root_ptr->value >= rsub_ptr_pair.first->value)) { * is_bst_valid_ptr = false; }
+
+    if (NULL != lsub_ptr_pair.first) { node_ptr_pair.first = lsub_ptr_pair.first; }
+    if (NULL != rsub_ptr_pair.second) { node_ptr_pair.second= rsub_ptr_pair.second; }
+
+    return node_ptr_pair;
+  }
+
+  static bool is_bst_valid(binary_tree_node * root_ptr) {
+    bool is_bst_valid = true;
+    is_bst_valid_recur(root_ptr, &is_bst_valid);
+    return is_bst_valid;
+  }
 };
 
 int main(void) {
@@ -750,6 +806,7 @@ int main(void) {
   using tree_util::fast_lca;
   using tree_util::count_diff_bts;
   using tree_util::boundary_traverse_bt;
+  using tree_util::is_bst_valid;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -892,5 +949,12 @@ int main(void) {
   print_all_elem<int>(boundary_traverse_bt(&a));
   cout << "[ ] <=> " << endl;
   print_all_elem<int>(boundary_traverse_bt(NULL));
+  a.left_ptr = &b;  a.right_ptr = &c;
+
+  cout << endl << "12. is_bst_valid" << endl;
+  cout << "1 <=> " << is_bst_valid(&a) << endl;
+  c.value = 10;
+  cout << "0 <=> " << is_bst_valid(&a) << endl;
+  c.value = 8;
   return 0;
 }
