@@ -567,6 +567,88 @@ namespace tree_util {
     }
     return lca_ptr;
   }
+
+  /**
+   * 823. Binary Trees With Factors
+   * - Given an array of unique integers, each integer is strictly greater than
+   *   1. We make a binary tree using these integers and each number may be
+   *   used for any number of times.
+   * - Each non-leaf node's value should be equal to the product of the values
+   *   of it's children.
+   * - How many binary trees can we make? Return the answer modulo 10**9 + 7.
+   * Example 1:
+   * - Input: A = [2, 4]
+   * - Output: 3
+   * - Explanation: We can make these trees: [2], [4], [4, 2, 2]
+   * Example 2:
+   * - Input: A = [2, 4, 5, 10]
+   * - Output: 7
+   * - Explanation: We can make these trees:
+   *   [2], [4], [5], [10], [4, 2, 2], [10, 2, 5], [10, 5, 2].
+   * Note:
+   * - 1 <= A.length <= 1000.
+   * - 2 <= A[i] <= 10^9.
+   * Observation:
+   * - each subcomponents contains 3 nodes, parent value > children's
+   * - Only need to return count & subproblems may interleave, DP?
+   * - probably sort the input first, then find all possible components?
+   * - every single elem is a diff. bt.
+   * - [2, 4, 5, 10] ==>> { (2, nil, nil), (4, nil, nil), (5, nil, nil), (10, nil, nil) }
+   *                              bt0            bt1           bt2              bt3
+   *   then                           (4, 2, 2) <--> (10, 2, 5) <--> (10, 5, 2)
+   *                                     bt4             bt5             bt6
+   *                                                   NO-NEW bt
+   * - pre-compute: 10 -> 10 * 5 => 50 ? all possible pairs available.
+   * - recursion until no new binary tree found.
+   * - T(n) => T(n/3) + n^2 ?
+   *
+   * Intuition
+   * - The largest value v used must be the root node in the tree.
+   *   Say dp(v) is the number of ways to make a tree with root node v.
+   * - If the root node of the tree (with value v) has children with
+   *   values x and y (and x * y == v), then there are dp(x) * dp(y)
+   *   ways to make this tree.
+   * - In total, there are ∑𝑥∗𝑦=𝑣dp(𝑥)∗dp(𝑦) ways to make a tree with root node v.
+   *
+   * Algorithm
+   * - Let dp[i] be the number of ways to have a root node with value A[i].
+   *   Since in the above example we always have x < v and y < v, we can calc
+   *   the values of dp[i] in increasing order using dynamic programming.
+   * - For some root value A[i], let's try to find candidates for the children
+   *   with values A[j] and A[i] / A[j] so that evidently
+   * - A[j] * (A[i] / A[j]) = A[i]
+   * - To do this quickly, we will need index which looks up this value:
+   *   if A[k] = A[i] / A[j], then index[A[i] / A[j]] = k'.
+   * - After, we'll add all possible dp[j] * dp[k] (with j < i, k < i) to our
+   *   answer dp[i]. In our Java implementation, we carefully used long so avoid
+   *   overflow issues.
+   */
+  static int count_diff_bts(vector<int> values) {
+    long mod_base = 10^9 + 7;
+    long total_bt_cnt = 0;
+
+    if (true == values.empty()) { return total_bt_cnt; }
+
+    vector<long> bt_cnt_lookup(values.size(), 1);
+    sort(values.begin(), values.end());
+
+    unordered_map<int, int> value_to_idx_map;
+    for (int i = 0; i < values.size(); i++) { value_to_idx_map[values[i]] = i; }
+
+    int target_token_val = 0;
+    for (int i = 0; i < values.size(); i++) {
+      for (int j = i - 1; j >= 0; j--) {
+        target_token_val = values[i] / values[j];
+        if (target_token_val * values[j] != values[i]) { continue; }
+        if (value_to_idx_map.end() != value_to_idx_map.find(target_token_val)) {
+          bt_cnt_lookup[i] += (bt_cnt_lookup[j] * bt_cnt_lookup[value_to_idx_map[target_token_val]]);
+        }
+      }
+    }
+
+    for (auto & val : bt_cnt_lookup) { total_bt_cnt += val; }
+    return total_bt_cnt % mod_base;
+  }
 };
 
 int main(void) {
@@ -586,6 +668,7 @@ int main(void) {
   using tree_util::inorder_linked_list_from_bst_recur;
   using tree_util::get_lca;
   using tree_util::fast_lca;
+  using tree_util::count_diff_bts;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -708,5 +791,9 @@ int main(void) {
   cout << "in-order: 1 2 3 4 5 6 7 8 9 10 11" << endl;
   cout << "in-order: "; lvr_bst_print_non_recur(&a); cout << endl;
 
+  cout << endl << "10. count_diff_bts" << endl;
+  cout << "0 <=> " << count_diff_bts(vector<int>({ })) << endl;
+  cout << "3 <=> " << count_diff_bts(vector<int>({ 2, 4 })) << endl;
+  cout << "7 <=> " << count_diff_bts(vector<int>({ 2, 4, 5, 10 })) << endl;
   return 0;
 }
