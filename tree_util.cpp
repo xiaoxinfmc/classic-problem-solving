@@ -785,6 +785,58 @@ namespace tree_util {
     is_bst_valid_recur(root_ptr, &is_bst_valid);
     return is_bst_valid;
   }
+
+  /**
+   * Largest Subtree Which is a Binary Search Tree (BST)
+   * - Given a binary tree, find the largest subtree which is a Binary Search
+   *   Tree (BST), where largest means subtree with largest num of nodes in it.
+   * - the subtree must include all of its descendents.
+   */
+  class max_subtree_ret {
+  public:
+    max_subtree_ret(binary_tree_node * fi = NULL, binary_tree_node * se = NULL, int a = 0) : first(fi), second(se), area(a) {}
+    virtual ~max_subtree_ret() {}
+    binary_tree_node * first, * second;
+    int area;
+  };
+
+  static max_subtree_ret find_largest_sub_bst_recur(
+    binary_tree_node * root_ptr, bool * is_bst_valid_ptr,
+    int * max_area_ptr, binary_tree_node ** subtree_ptr_ptr)
+  {
+    if (NULL == root_ptr) { return max_subtree_ret(); }
+
+    max_subtree_ret node_ptr_pair(root_ptr, root_ptr, 1),
+                    lsub_ptr_pair(NULL, NULL, 0),
+                    rsub_ptr_pair(NULL, NULL, 0);
+    lsub_ptr_pair = find_largest_sub_bst_recur(root_ptr->left_ptr, is_bst_valid_ptr, max_area_ptr, subtree_ptr_ptr);
+    rsub_ptr_pair = find_largest_sub_bst_recur(root_ptr->right_ptr, is_bst_valid_ptr, max_area_ptr, subtree_ptr_ptr);
+
+    if ((NULL != lsub_ptr_pair.second) &&
+        (root_ptr->value <= lsub_ptr_pair.second->value)) { * is_bst_valid_ptr = false; }
+    if ((NULL != rsub_ptr_pair.first) &&
+        (root_ptr->value >= rsub_ptr_pair.first->value)) { * is_bst_valid_ptr = false; }
+
+    if (NULL != lsub_ptr_pair.first) { node_ptr_pair.first = lsub_ptr_pair.first; }
+    if (NULL != rsub_ptr_pair.second) { node_ptr_pair.second= rsub_ptr_pair.second; }
+    if (true == * is_bst_valid_ptr) {
+      node_ptr_pair.area += (lsub_ptr_pair.area + rsub_ptr_pair.area);
+      if (node_ptr_pair.area > * max_area_ptr) { * max_area_ptr = node_ptr_pair.area;
+                                                 * subtree_ptr_ptr = root_ptr; }
+    } else {
+      if (NULL == root_ptr->left_ptr && NULL == root_ptr->right_ptr) { * is_bst_valid_ptr = true; }
+    }
+
+    return node_ptr_pair;
+  }
+
+  static int find_largest_sub_bst(binary_tree_node * root_ptr) {
+    int max_area = 0;
+    bool is_bst_valid = true;
+    binary_tree_node * subtree_ptr;
+    find_largest_sub_bst_recur(root_ptr, &is_bst_valid, &max_area, &subtree_ptr);
+    return max_area;
+  }
 };
 
 int main(void) {
@@ -807,6 +859,7 @@ int main(void) {
   using tree_util::count_diff_bts;
   using tree_util::boundary_traverse_bt;
   using tree_util::is_bst_valid;
+  using tree_util::find_largest_sub_bst;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -956,5 +1009,12 @@ int main(void) {
   c.value = 10;
   cout << "0 <=> " << is_bst_valid(&a) << endl;
   c.value = 8;
+
+  cout << endl << "13. find_largest_sub_bst" << endl;
+  cout << "11 <=> " << find_largest_sub_bst(&a) << endl;
+  c.value = 10;
+  cout << "5 <=> " << find_largest_sub_bst(&a) << endl;
+  c.value = 8;
+
   return 0;
 }
