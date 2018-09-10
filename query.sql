@@ -21,6 +21,35 @@ insert into Users (Users_Id, Banned, Role) values ('11', 'No', 'driver');
 insert into Users (Users_Id, Banned, Role) values ('12', 'No', 'driver');
 insert into Users (Users_Id, Banned, Role) values ('13', 'No', 'driver');
 
+select * from (select client_id, driver_id, status, request_at from trips where (request_at >= '2013-10-01' and request_at <= '2013-10-03' and status <> 'completed')) as all_trips
+join users on (all_trips.client_id = users.users_id) where (users.banned = 'No' and users.role = 'client')
+
+
+select order_cnt_per_day.request_at as Day,
+       FORMAT(COALESCE((cancel_cnt_per_day.cancel_cnt / order_cnt_per_day.order_cnt), 0.00), 2) as 'Cancellation Rate'
+from (
+  select count(*) as cancel_cnt, cancel_trips_info.status, cancel_trips_info.request_at from (
+    select * from (
+      select client_id, driver_id, status, request_at from trips where (request_at>='2013-10-01' and request_at <= '2013-10-03' and status<>'completed')
+    )  as all_trips
+    join users on (all_trips.client_id = users.users_id)
+    where (users.banned = 'No' and users.role = 'client')
+  ) as cancel_trips_info
+  group by request_at
+) as cancel_cnt_per_day
+right join (
+  select count(*) as order_cnt, total_trips_info.request_at from (
+    select * from (
+      select client_id, driver_id, request_at from trips where (request_at >= '2013-10-01' and request_at <= '2013-10-03')
+    ) as all_orders
+    join users on (all_orders.client_id = users.users_id)
+    where (users.banned = 'No' and users.role = 'client')
+  ) as total_trips_info
+  group by request_at
+) as order_cnt_per_day
+on (cancel_cnt_per_day.request_at = order_cnt_per_day.request_at);
+
+
 select x2.request_at as Day, FORMAT(COALESCE((x1.cancel / x2.total), 0.00), 2) as 'Cancellation Rate'from (
   select count(*) as cancel, status, request_at from (
     select * from (select client_id, driver_id, status, request_at from trips where request_at >= '2013-10-01' and request_at <= '2013-10-03') as t1
@@ -54,6 +83,21 @@ select x1.dname as dept, x1.departmentid as deptid, x1.id, x1.name, x1.salary fr
 ) as x1
 where x1.salary >= (
   select x3.salary from employee as x3 where x3.departmentid = x1.departmentid order by x3.salary desc limit 1, 1
+)
+order by x1.departmentid asc, x1.salary desc;
+
+select x1.dname as dept, x1.departmentid as deptid, x1.id, x1.name, x1.salary from (
+  select e.id, d.name as dname, e.departmentid, e.name, e.salary from employee as e join department as d on (e.departmentid = d.id)
+) as x1
+where not exists (
+  select count(*) as total from employee as x3 where x3.departmentid = x1.departmentid and x3.id <> x1.id and x3.salary > x1.salary group by x3.departmentid having total > 0
+)
+
+select x1.dname as dept, x1.departmentid as deptid, x1.id, x1.name, x1.salary from (
+  select e.id, d.name as dname, e.departmentid, e.name, e.salary from employee as e join department as d on (e.departmentid = d.id)
+) as x1
+where not exists (
+  select count(*) as total from employee as x3 where x3.departmentid = x1.departmentid and x3.id <> x1.id and x3.salary > x1.salary group by x3.departmentid having total > 1
 )
 order by x1.departmentid asc, x1.salary desc;
 
