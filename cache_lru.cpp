@@ -3,7 +3,10 @@
 #include <iostream>
 #include <unordered_map>
 
+namespace cache {
+
 const static int DEF_CACHE_MAX_SIZE = 65536;
+
 template<typename key_t, typename value_t>
 class cache_lru {
 public:
@@ -58,7 +61,9 @@ public:
 
   void show_all_kv_pairs() {
     for (auto & kv_pair : items_list) {
-      std::cout << kv_pair.first << ":" << kv_pair.second << ":" << item_key_lookup[kv_pair.first]->second << ":" << item_key_lookup.find(kv_pair.first)->first << " ";
+      std::cout << kv_pair.first << ":" << kv_pair.second << ":"
+                << item_key_lookup[kv_pair.first]->second << ":"
+                << item_key_lookup.find(kv_pair.first)->first << " ";
     } std::cout << std::endl;
   }
 
@@ -67,10 +72,11 @@ private:
   std::list<kv_pair_t> items_list;
   int max_item_cnt;
 };
+};
 
 static void test_cache_lru() {
   const static std::string delim = " ";
-  cache_lru<std::string, std::string> lru_cache_obj(3);
+  cache::cache_lru<std::string, std::string> lru_cache_obj(3);
   std::string curr_line, curr_op, curr_key, curr_value;
   size_t curr_pos = std::string::npos, prev_pos = curr_pos;
   while(std::getline(std::cin, curr_line)) {
