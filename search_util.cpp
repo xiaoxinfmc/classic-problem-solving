@@ -719,14 +719,14 @@ namespace search_util{
       components_cnt = size;
       union_set = vector<int>(size, -1);
     }
+
     virtual ~disjoint_set() {}
 
-    /* un-connected means belongs to itself */
-    int union_find(int id) {
-      if (!is_id_within_range(id)) { return -1; }
-      if (union_set[id] < 0) { return id; }
-      union_set[id] = union_find(union_set[id]);
-      return union_set[id];
+    /* when elem 1st added, reset its component size to 1 <-> 1 */
+    bool add_to_set(int id) {
+      if (!is_id_within_range(id)) { return false; }
+      union_set[id] = -1;
+      return false;
     }
 
     /* merge prev with next to same component */
@@ -746,6 +746,14 @@ namespace search_util{
     int get_max_slots() { return union_set.size(); }
 
   private:
+
+    /* un-connected means belongs to itself */
+    int union_find(int id) {
+      if (!is_id_within_range(id)) { return -1; }
+      if (union_set[id] < 0) { return id; }
+      union_set[id] = union_find(union_set[id]);
+      return union_set[id];
+    }
 
     void union_by_root(int prev_root, int next_root) {
       if (union_set[prev_root] > union_set[next_root]) {
@@ -776,16 +784,16 @@ namespace search_util{
       curr_row = op.front(); curr_col = op.back();
 
       if (1 == board[curr_row][curr_col]) { islands_cnts.push_back(total_islands); continue; }
-
       total_islands += 1;
       board[curr_row][curr_col] = 1;
+
       if (curr_row + 1 < row && board[curr_row + 1][curr_col] == 1) {
         if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row + 1) * col + curr_col)) { total_islands--; }
       }
       if (curr_row - 1 >= 0  && board[curr_row - 1][curr_col] == 1) {
         if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row - 1) * col + curr_col)) { total_islands--; }
       }
-      if (curr_col + 1 < row && board[curr_row][curr_col + 1] == 1) {
+      if (curr_col + 1 < col && board[curr_row][curr_col + 1] == 1) {
         if (true == islands_union.union_sets(curr_row * col + curr_col, curr_row * col + (curr_col + 1))) { total_islands--; }
       }
       if (curr_col - 1 >= 0  && board[curr_row][curr_col - 1] == 1) {
@@ -916,6 +924,8 @@ int main(void) {
   cout << "15. calc_num_of_islands" << endl;
   cout << "[ 1 1 2 2 2 ] <=> " << endl;
   print_all_elem<int>(calc_num_of_islands_adp({ { 0, 0 }, { 0, 1 }, { 2, 2 }, { 2, 2 }, { 2, 1 } }, 3, 3));
+  cout << "[ 1 2 3 4 5 6 7 8 9 10 11 11 12 12 12 12 12 13 13 14 15 16 17 18 18 18 19 19 18 17 16 16 16 16 16 16 17 17 16 16 17 18 18 18 17 17 17 ] <=> " << endl;
+  print_all_elem<int>(calc_num_of_islands_adp({{0,9},{5,4},{0,12},{6,9},{6,5},{0,4},{4,11},{0,0},{3,5},{6,7},{3,12},{0,5},{6,13},{7,5},{3,6},{4,4},{0,8},{3,1},{4,6},{6,1},{5,12},{3,8},{7,0},{2,9},{1,4},{3,0},{1,13},{2,13},{6,0},{6,4},{0,13},{0,3},{7,4},{1,8},{5,5},{5,7},{5,10},{5,3},{6,10},{6,2},{3,10},{2,7},{1,12},{5,0},{4,5},{7,13},{3,2}}, 8, 14));
 
   return 0;
 }
