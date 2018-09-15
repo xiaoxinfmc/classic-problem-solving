@@ -749,12 +749,12 @@ namespace search_util{
 
     void union_by_root(int prev_root, int next_root) {
       if (union_set[prev_root] > union_set[next_root]) {
-        /* size(-2) < size(-3), => merge big to small, merge next to prev */
+        /* size(-2) < size(-3), -2 > -3 => merge small(prev) to big(next), merge next to prev */
+        union_set[next_root] += union_set[prev_root];
+        union_set[prev_root]  = next_root;
+      } else {
         union_set[prev_root] += union_set[next_root];
         union_set[next_root] = prev_root;
-      } else {
-        union_set[next_root] += union_set[prev_root];
-        union_set[prev_root] = next_root;
       }
     }
 
