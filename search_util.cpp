@@ -690,6 +690,111 @@ namespace search_util{
     }
     return islands_cnt;
   }
+
+  /**
+   *
+   * Description
+   * - Given a n,m which means the row and column of the 2D matrix and an array
+   *   of pair A( size k). Originally, the 2D matrix is all 0 which means there
+   *   is only sea in the matrix.
+   * - The list pair has k operator and each operator has two integer A[i].x,
+   *   A[i].y means that you can change the grid matrix[A[i].x][A[i].y] from sea
+   *   to island.
+   * - Return how many island are there in the matrix after each operator.
+   * Notice
+   * - 0 is represented as the sea, 1 is represented as the island. 
+   * - If two 1 is adjacent, we consider them in the same island. 
+   * - We only consider up/down/left/right adjacent.
+   * Example
+   *   0 0 0    1 0 0    1 1 0    1 1 0    1 1 0
+   *   0 0 0 -> 0 0 0 -> 0 0 0 -> 0 0 0 -> 0 0 0
+   *   0 0 0    0 0 0    0 0 0    0 0 1    0 1 1
+   * - Given n = 3, m = 3, array of pair A = [(0,0),(0,1),(2,2),(2,1)].
+   * - return [1,1,2,2].
+   */
+  class disjoint_set {
+  public:
+    disjoint_set(int size) {
+      assert(size > 0);
+      components_cnt = size;
+      union_set = vector<int>(size, -1);
+    }
+    virtual ~disjoint_set() {}
+
+    /* un-connected means belongs to itself */
+    int union_find(int id) {
+      if (!is_id_within_range(id)) { return -1; }
+      if (union_set[id] < 0) { return id; }
+      union_set[id] = union_find(union_set[id]);
+      return union_set[id];
+    }
+
+    /* merge prev with next to same component */
+    bool union_sets(int prev_id, int next_id) {
+      if (!is_id_within_range(prev_id) ||
+          !is_id_within_range(next_id)) { return false; }
+      int prev_src = union_find(prev_id);
+      int next_src = union_find(next_id);
+      if (prev_src == next_src) { return false; }
+      union_by_root(prev_src, next_src);
+      components_cnt--;
+      return true;
+    }
+
+    int get_components_cnt() { return components_cnt; }
+
+    int get_max_slots() { return union_set.size(); }
+
+  private:
+
+    void union_by_root(int prev_root, int next_root) {
+      if (union_set[prev_root] > union_set[next_root]) {
+        /* size(-2) < size(-3), => merge big to small, merge next to prev */
+        union_set[prev_root] += union_set[next_root];
+        union_set[next_root] = prev_root;
+      } else {
+        union_set[next_root] += union_set[prev_root];
+        union_set[prev_root] = next_root;
+      }
+    }
+
+    bool is_id_within_range(int id) {
+      return ((id >= 0) && (id < union_set.size()));
+    }
+
+    vector<int> union_set;
+    int components_cnt;
+  };
+
+  static vector<int> calc_num_of_islands_adp(vector<vector<int>> ops_arr,
+                                             int row, int col) {
+    vector<vector<int>> board(row, vector<int>(col, 0));
+    vector<int> islands_cnts;
+    disjoint_set islands_union(row * col);
+    int curr_row = 0, curr_col = 0, total_islands = 0;
+    for (vector<int> & op : ops_arr) {
+      curr_row = op.front(); curr_col = op.back();
+
+      if (1 == board[curr_row][curr_col]) { islands_cnts.push_back(total_islands); continue; }
+
+      total_islands += 1;
+      board[curr_row][curr_col] = 1;
+      if (curr_row + 1 < row && board[curr_row + 1][curr_col] == 1) {
+        if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row + 1) * col + curr_col)) { total_islands--; }
+      }
+      if (curr_row - 1 >= 0  && board[curr_row - 1][curr_col] == 1) {
+        if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row - 1) * col + curr_col)) { total_islands--; }
+      }
+      if (curr_col + 1 < row && board[curr_row][curr_col + 1] == 1) {
+        if (true == islands_union.union_sets(curr_row * col + curr_col, curr_row * col + (curr_col + 1))) { total_islands--; }
+      }
+      if (curr_col - 1 >= 0  && board[curr_row][curr_col - 1] == 1) {
+        if (true == islands_union.union_sets(curr_row * col + curr_col, curr_row * col + (curr_col - 1))) { total_islands--; }
+      }
+      islands_cnts.push_back(total_islands);
+    }
+    return islands_cnts;
+  }
 };
 
 int main(void) {
@@ -711,6 +816,7 @@ int main(void) {
   using search_util::restore_ips;
   using search_util::find_first_missing_positive;
   using search_util::calc_num_of_islands;
+  using search_util::calc_num_of_islands_adp;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -806,6 +912,10 @@ int main(void) {
                                                                  vector<char>({'0', '1', '1', '0', '0'}),
                                                                  vector<char>({'0', '1', '1', '0', '0'}),
                                                                  vector<char>({'0', '0', '0', '1', '1'})})) << endl;
- 
+
+  cout << "15. calc_num_of_islands" << endl;
+  cout << "[ 1 1 2 2 2 ] <=> " << endl;
+  print_all_elem<int>(calc_num_of_islands_adp({ { 0, 0 }, { 0, 1 }, { 2, 2 }, { 2, 2 }, { 2, 1 } }, 3, 3));
+
   return 0;
 }
