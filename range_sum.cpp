@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 namespace range_sum {
 using std::cout;
@@ -125,10 +126,16 @@ private:
 
 class binary_index_tree {
 public:
+  binary_index_tree() {}
   binary_index_tree(const vector<int> & values) : raw(values), bit(values) {
     initialize_bit();
   }
   virtual ~binary_index_tree() {}
+
+  void initialize_via_input(const vector<int> & values) {
+    raw = values; bit = values;
+    initialize_bit();
+  }
 
   /* 5 -> 0 0 1 0 1 -> 0 0 1 1 0 -> 0 1 0 0 0 -> 1 0 0 0 0 */
   bool update(int id, int value) {
@@ -188,6 +195,112 @@ private:
   vector<int> bit;
   vector<int> raw;
 };
+
+class segment_sum_tree {
+public:
+  segment_sum_tree(const vector<int> & values) { initialize_st(values); }
+  virtual ~segment_sum_tree() {}
+
+  /* 0 1 2 3 4 5 6 7 8 9 -> 19 (0 -> 18) 10 -> ceil(log2(10)) -> 4
+   9 * 10 / 2 => 45
+     [ 45 10 35 3 7 18 17 1 2 3 4 11 7 8 9 0 1 0 0 0 0 0 0 5 6 0 0 0 0 0 0 ]
+            0-9 (9 / 2 -> 4) 0
+            / \
+     1 0-4      2 5-9 ((5+9)/2 -> 7
+       / \        / \
+     0-2  3-4    5-7 8-9 ((8+9)/2 -> 8    6 * 2 + 1 -> 13
+     / \  | |    |  \ \ \                 6 * 2 + 2 -> 14
+ 7 0-1  2 3 4   5-6  7 8 9
+   | |          | |
+   0 1          5 6     11 * 2 + 1 => 23 -> 24
+left -> 15 -> 7 * 2 + 1 => 15
+right-> 16 -> 7 * 2 + 2 => 16
+   */
+  void initialize_st(const vector<int> & values) {
+    raw_values = values;
+    segment_sum_arr = vector<int>(pow(2, 1 + int(ceil(log2(values.size())))), 0);
+    initialize_segment_sum_recur(raw_values, segment_sum_arr, 0, 0, raw_values.size() - 1);
+  }
+
+  bool update(int id, int value) {
+    if (!is_id_within_range(id)) { return false; }
+    update_segment_sum_recur(value - raw_values[id], id, 0, 0, raw_values.size() - 1);
+    raw_values[id] = value;
+    return true;
+  }
+
+  int calc_segment_sum(int id_from, int id_to){
+    if (id_from > id_to || !is_id_within_range(id_from) ||
+                           !is_id_within_range(id_to)) { return INT_MIN; }
+    return get_segment_sum_recur(id_from, id_to, 0, 0, raw_values.size() - 1);
+  }
+
+  vector<int> get_segment_sum_arr() { return segment_sum_arr; }
+  vector<int> get_raw() { return raw_values; }
+
+private:
+  void update_segment_sum_recur(int delta, int updated_id,
+                                int curr_segment_sum_id,
+                                int segment_from, int segment_to) {
+    if (segment_from <= updated_id && updated_id <= segment_to) {
+// cout << "update: " << segment_from << " : " << segment_to << " : " << segment_sum_arr[curr_segment_sum_id] << " : " << segment_sum_arr[curr_segment_sum_id] + delta << endl;
+      segment_sum_arr[curr_segment_sum_id] += delta;
+    } else { return; }
+    if (segment_from >= segment_to) { return; }
+    update_segment_sum_recur(delta, updated_id, curr_segment_sum_id * 2 + 1,
+                             segment_from, (segment_from + segment_to) / 2);
+    update_segment_sum_recur(delta, updated_id, curr_segment_sum_id * 2 + 2,
+                             (segment_from + segment_to) / 2 + 1, segment_to);
+  }
+
+  /* return sum for any segment within searching range & add up all */
+  int get_segment_sum_recur(int id_from, int id_to,
+                            int curr_segment_sum_id,
+                            int segment_from,
+                            int segment_to) {
+    if (segment_from > segment_to) { return 0; }
+    /* segment_from ... segment_to ... id_from ... id_to */
+    if (segment_to < id_from || id_to < segment_from) { return 0; }
+    /* id_from ... segment_from ... segment_to ... id_to */
+    if (segment_from >= id_from && segment_to <= id_to) {
+// cout << "hit: " << segment_from << " : " << segment_to << " : " << segment_sum_arr[curr_segment_sum_id] << endl;
+      return segment_sum_arr[curr_segment_sum_id];
+    }
+    int left_segment_sum  = get_segment_sum_recur(id_from, id_to, curr_segment_sum_id * 2 + 1,
+                                                  segment_from, (segment_from + segment_to) / 2);
+    int right_segment_sum = get_segment_sum_recur(id_from, id_to, curr_segment_sum_id * 2 + 2,
+                                                  (segment_from + segment_to) / 2 + 1, segment_to);
+    return (left_segment_sum + right_segment_sum);
+  }
+
+  int initialize_segment_sum_recur(vector<int> & raw_values,
+                                   vector<int> & segment_sum_arr,
+                                   int curr_segment_sum_id,
+                                   int segment_from,
+                                   int segment_to) {
+    if (segment_from > segment_to) { return 0; }
+    if (segment_from == segment_to) {
+      segment_sum_arr[curr_segment_sum_id] = raw_values[segment_from];
+    } else {
+      int left_seg_sum = initialize_segment_sum_recur(
+        raw_values, segment_sum_arr, curr_segment_sum_id * 2 + 1,
+        segment_from, (segment_from + segment_to) / 2
+      );
+      int right_seg_sum = initialize_segment_sum_recur(
+        raw_values, segment_sum_arr, curr_segment_sum_id * 2 + 2,
+        (segment_from + segment_to) / 2 + 1, segment_to
+      );
+      segment_sum_arr[curr_segment_sum_id] += (left_seg_sum + right_seg_sum);
+    }
+    return segment_sum_arr[curr_segment_sum_id];
+  }
+
+  bool is_id_within_range(int i) { return (i >= 0 && i < raw_values.size()); }
+
+  vector<int> raw_values;
+  vector<int> segment_sum_arr;
+};
+
 };
 
 int main(void) {
@@ -199,6 +312,7 @@ int main(void) {
   using range_sum::range_sum_immutable;
   using range_sum::region_sum_immutable;
   using range_sum::binary_index_tree;
+  using range_sum::segment_sum_tree;
 
   vector<int> values({ -2, 0, 3, -5, 2, -1 });
 
@@ -217,7 +331,7 @@ int main(void) {
   cout << "11 <=> " << region_sum_obj.calc_region_sum(1, 1, 2, 2) << endl;
   cout << "12 <=> " << region_sum_obj.calc_region_sum(1, 2, 2, 4) << endl;
 
-  cout << "3. binary-index-tree" << endl;
+  cout << "3. binary_index_tree" << endl;
   cout << "[ 1 1 2 4 1 4 0 12 2 7 2 11 3 4 0 29 ] <=> " << endl;
   binary_index_tree bit0({ 1, 0, 2, 1, 1, 3, 0, 4, 2, 5, 2, 2, 3, 1, 0, 2 });
   print_all_elem<int>(bit0.get_bits());
@@ -245,5 +359,16 @@ int main(void) {
   }
   print_all_elem<int>(ps1);
 
+  cout << "4. segment_sum_tree" << endl;
+  segment_sum_tree sst({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+  cout << "[ 45 10 35 3 7 18 17 1 2 3 4 11 7 8 9 0 1 0 0 0 0 0 0 5 6 0 0 0 0 0 0 0 ] <=>" << endl;
+  print_all_elem<int>(sst.get_segment_sum_arr());
+  for (int i = 0; i < sst.get_raw().size(); i++) {
+    cout << sst.calc_segment_sum(0, i) << " ";
+  } cout << endl;
+  for (int i = 0; i < sst.get_raw().size(); i++) {
+    sst.update(i, sst.get_raw()[i] + 1);
+  }
+  print_all_elem<int>(sst.get_segment_sum_arr());
   return 0;
 }
