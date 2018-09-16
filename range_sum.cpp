@@ -139,6 +139,7 @@ public:
       bit[remainder - 1] += delta;
       remainder += (remainder & -remainder);
     }
+    raw[id] = value;
     return true;
   }
 
