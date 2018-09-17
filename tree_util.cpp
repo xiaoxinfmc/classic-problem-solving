@@ -839,6 +839,131 @@ namespace tree_util {
     find_largest_sub_bst_recur(root_ptr, &max_area, &subtree_ptr);
     return max_area;
   }
+  /**
+   * 558. Quad Tree Intersection
+   * A quadtree is a tree data in which each internal node has exactly four
+   * children: topLeft, topRight, bottomLeft and bottomRight. Quad trees are
+   * often used to partition a two-dimensional space by recursively subdividing
+   * it into four quadrants or regions.
+   *
+   * We want to store True/False information in our quad tree. The quad tree is
+   * used to represent a N * N boolean grid. For each node, it is subdivided
+   * into four children nodes until the values in the region it represents are
+   * all the same. Each node has another two boolean attributes : isLeaf & val.
+   * isLeaf is true if and only if the node is a leaf node. The val attribute
+   * for a leaf node contains the value of the region it represents.
+   *
+   * For example, below are two quad trees A and B:
+   * A:
+   * +-------+-------+   T: true
+   * |       |       |   F: false
+   * |   T   |   T   |
+   * |       |       |
+   * +-------+-------+
+   * |       |       |
+   * |   F   |   F   |
+   * |       |       |
+   * +-------+-------+
+   * topLeft: T
+   * topRight: T
+   * bottomLeft: F
+   * bottomRight: F
+   *
+   * B:
+   * +-------+---+---+
+   * |       | F | F |
+   * |   T   +---+---+
+   * |       | T | T |
+   * +-------+---+---+
+   * |       |       |
+   * |   T   |   F   |
+   * |       |       |
+   * +-------+-------+
+   * topLeft: T
+   * topRight:
+   *      topLeft: F
+   *      topRight: F
+   *      bottomLeft: T
+   *      bottomRight: T
+   * bottomLeft: T
+   * bottomRight: F
+   *
+   * Your task is to implement a function that will take two quadtrees and
+   * return a quadtree that represents the logical OR (or union) of two trees.
+   * A:                 B:                 C (A or B):
+   * +-------+-------+  +-------+---+---+  +-------+-------+
+   * |       |       |  |       | F | F |  |       |       |
+   * |   T   |   T   |  |   T   +---+---+  |   T   |   T   |
+   * |       |       |  |       | T | T |  |       |       |
+   * +-------+-------+  +-------+---+---+  +-------+-------+
+   * |       |       |  |       |       |  |       |       |
+   * |   F   |   F   |  |   T   |   F   |  |   T   |   F   |
+   * |       |       |  |       |       |  |       |       |
+   * +-------+-------+  +-------+-------+  +-------+-------+
+   * Note:
+   *
+   * Both A and B represent grids of size N * N.
+   * N is guaranteed to be a power of 2.
+   * If you want to know more about the quad tree, you can refer to its wiki.
+   * The logic OR operation is defined as this: "A or B" is true if A is true,
+   * or if B is true, or if both A and B are true
+   */
+/*
+// Definition for a QuadTree node.
+*/
+  class Node {
+  public:
+    bool val;
+    bool isLeaf;
+    Node* topLeft;
+    Node* topRight;
+    Node* bottomLeft;
+    Node* bottomRight;
+
+    Node() {}
+
+    Node(bool _val, bool _isLeaf, Node* _topLeft, Node* _topRight, Node* _bottomLeft, Node* _bottomRight) {
+      val = _val;
+      isLeaf = _isLeaf;
+      topLeft = _topLeft;
+      topRight = _topRight;
+      bottomLeft = _bottomLeft;
+      bottomRight = _bottomRight;
+    }
+  };
+
+  static Node * intersect_recur(Node * root, Node* quadTree1, Node* quadTree2, bool qt1_val, bool qt2_val) {
+    if (NULL == quadTree1 && NULL == quadTree2) { return NULL; }
+
+    bool _val = false;
+    if (NULL != quadTree1 && quadTree1->isLeaf) { _val = _val || quadTree1->val; } else { _val = _val || qt1_val; }
+    if (NULL != quadTree2 && quadTree2->isLeaf) { _val = _val || quadTree2->val; } else { _val = _val || qt2_val; }
+
+    Node * qt1_tl = (quadTree1 == NULL ? NULL : quadTree1->topLeft);
+    Node * qt2_tl = (quadTree2 == NULL ? NULL : quadTree2->topLeft);
+
+    Node * qt1_tr = (quadTree1 == NULL ? NULL : quadTree1->topRight);
+    Node * qt2_tr = (quadTree2 == NULL ? NULL : quadTree2->topRight);
+
+    Node * qt1_bl = (quadTree1 == NULL ? NULL : quadTree1->bottomLeft);
+    Node * qt2_bl = (quadTree2 == NULL ? NULL : quadTree2->bottomLeft);
+
+    Node * qt1_br = (quadTree1 == NULL ? NULL : quadTree1->bottomRight);
+    Node * qt2_br = (quadTree2 == NULL ? NULL : quadTree2->bottomRight);
+
+    bool _qt1_val = (quadTree1 == NULL ? false : quadTree1->isLeaf && quadTree1->val);
+    bool _qt2_val = (quadTree2 == NULL ? false : quadTree2->isLeaf && quadTree2->val);
+
+    return new Node(_val, true, intersect_recur(qt1_tl, qt2_tl, _qt1_val, _qt2_val),
+                                intersect_recur(qt1_tr, qt2_tr, _qt1_val, _qt2_val),
+                                intersect_recur(qt1_bl, qt2_bl, _qt1_val, _qt2_val),
+                                intersect_recur(qt1_br, qt2_br, _qt1_val, _qt2_val));
+  }
+
+  static Node * intersect(Node* quadTree1, Node* quadTree2) {
+    return intersect_recur(quadTree1, quadTree2, quadTree1->val, quadTree2->val);
+  }
+
 };
 
 int main(void) {
