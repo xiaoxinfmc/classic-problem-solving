@@ -51,6 +51,7 @@ namespace string_util {
         adjacent_ptrs[i] = NULL;
       }
       is_visited_flag = false;
+      is_ending_char = false;
     }
 
     virtual ~prefix_trie_node() {}
@@ -72,29 +73,24 @@ namespace string_util {
 
     char get_char_val() { return char_val; }
 
-    bool is_ending_char() {
-      for (int i = 0; i < sizeof(adjacent_ptrs)/sizeof(adjacent_ptrs[0]); i++) {
-        if (adjacent_ptrs[i] != NULL) { return false; }
-      }
-      return true;
-    }
-
-    void mark_as_visited() { is_visited_flag = true; }
+    bool get_is_ending_char() { return is_ending_char; }
+    void mark_as_ending_char() { is_ending_char = true; }
 
     bool is_visited() { return is_visited_flag; }
+    void mark_as_visited() { is_visited_flag = true; }
 
   private:
     char char_val;
     bool is_visited_flag;
+    bool is_ending_char;
     prefix_trie_node * parent_ptr;
     prefix_trie_node * adjacent_ptrs[int('z') - int('a') + 1];
   };
 
   static prefix_trie_node * build_prefix_trie(const vector<string> & words) {
-    prefix_trie_node * trie_root = NULL;
-    if (true == words.empty()) { return trie_root; }
-    trie_root = new prefix_trie_node('$');
+    prefix_trie_node * trie_root = new prefix_trie_node('$');
     assert(NULL != trie_root);
+    if (true == words.empty()) { return trie_root; }
     for (auto & word : words) {
       prefix_trie_node * curr_trie_ptr = trie_root;
       for (auto & chr : word) {
@@ -103,6 +99,7 @@ namespace string_util {
         }
         curr_trie_ptr = curr_trie_ptr->get_adjacent_char_ptr(chr);
       }
+      curr_trie_ptr->mark_as_ending_char();
     }
     return trie_root;
   }
@@ -118,7 +115,8 @@ namespace string_util {
                                    int curr_row, int curr_col,
                                    unordered_set<int> & position_taken) {
     if (NULL == trie_root_ptr) { return; }
-    if (curr_row >= board.size() || curr_col >= board.front().size()) { return; }
+    if (curr_row >= board.size() || curr_col >= board.front().size() ||
+        curr_row < 0 || curr_col < 0) { return; }
 
     int curr_position_key = gen_position_key(curr_row, curr_col, board);
 
@@ -128,12 +126,13 @@ namespace string_util {
 
     position_taken.insert(curr_position_key);
 
-    if (true == trie_root_ptr->is_ending_char() && false == trie_root_ptr->is_visited()) {
+    if (true == trie_root_ptr->get_is_ending_char() &&
+        false == trie_root_ptr->is_visited()) {
       string curr_word;
       trie_root_ptr->mark_as_visited();
-      for (; NULL != trie_root_ptr->get_parent_ptr();
-             trie_root_ptr = trie_root_ptr->get_parent_ptr()) {
-        curr_word.push_back(trie_root_ptr->get_char_val());
+      for (prefix_trie_node * curr_ptr = trie_root_ptr; NULL != curr_ptr->get_parent_ptr();
+           curr_ptr = curr_ptr->get_parent_ptr()) {
+        curr_word.push_back(curr_ptr->get_char_val());
       }
       existing_words.push_back(string(curr_word.rbegin(), curr_word.rend()));
     }
@@ -177,10 +176,93 @@ namespace string_util {
     print_all_elem(find_word_in_batch(vector<vector<char>>({ { 'o','a','a','n' }, { 'e','t','a','e' },
                                                              { 'i','h','k','r' }, { 'i','f','l','v' } }),
                                       vector<string>({ "a" })));
+    cout << "[ ] <=>" << endl;
+    print_all_elem(find_word_in_batch(vector<vector<char>>({ { 'o','a','a','n' }, { 'e','t','a','e' },
+                                                             { 'i','h','k','r' }, { 'i','f','l','v' } }),
+                                      vector<string>({ })));
+
+    cout << "[ ab ac bd ca db ] <=>" << endl;
+    print_all_elem(find_word_in_batch(vector<vector<char>>({ { 'a','b' }, { 'c','d' } }),
+                                      vector<string>({ "ab","cb","ad","bd","ac","ca","da","bc","db","adcb","dabc","abb","acb" })));
+
+    cout << "[ anda anes anesis avener avine bena bend benda besa besan bowl daven embow inerm irene myst nane nanes neem reem reest renew rine riva rive riven sand sane sang seen seer send sise stob stow teil vine viner vire wadna wave wene wots ] <=>" << endl;
+    print_all_elem(find_word_in_batch(vector<vector<char>>({ {'s', 'e', 'e', 'n', 'e', 'w'}, {'t', 'm', 'r', 'i', 'v', 'a'},
+                                                             {'o', 'b', 's', 'i', 'b', 'd'}, {'w', 'm', 'y', 's', 'e', 'n'},
+                                                             {'l', 't', 's', 'n', 's', 'a'}, {'i', 'e', 'z', 'l', 'g', 'n'} }),
+                                      vector<string>({ "anda","anes","anesis","avener","avine","bena","bend","benda","besa","besan","bowl","daven","embow","inerm","irene","myst","nane","nanes","neem","reem","reest","renew","rine","riva","rive","riven","sand","sane","sang","seen","seer","send","sise","stob","stow","teil","vine","viner","vire","wadna","wave","wene","wots" })));
+  }
+
+  /**
+   * 214. Shortest Palindrome
+   * Given a string s, you are allowed to convert it to a palindrome by adding
+   * characters in front of it. Find and return the shortest palindrome you can
+   * find by performing this transformation.
+   * Example 1:
+   * - Input: "aacecaaa"
+   * - Output: "aaacecaaa"
+   * Example 2:
+   * - Input: "abcd"
+   * - Output: "dcbabcd"
+   * Intuition:
+   * - prepend chars to make whole str be a palindrome.
+   * - no matter what the palindrome looks like, it has a pivot, worst case will
+   *   be using 1st char as pivot, and will not exceed the mid chr.
+   *      7
+   *   ---|----
+   * - aacecaaa
+   * - a -> $a$
+   * - a a -> $a$a$
+   * - a b c -> $a$b$c$ -> size -> 5 -> max-pivot -> size / 2
+   * - a a b -> $a$a$b$ -> i -> 2 -> 2 * 2 + 1
+   */
+  static bool is_curr_position_palindrome(const string & text, int pivot) {
+    int text_len = text.size();
+    int left_idx = pivot - 1, right_idx = pivot + 1;
+    bool is_palindrome = true;
+    while (left_idx >= 0 && right_idx < text_len) {
+      if (text[left_idx] != text[right_idx]) { is_palindrome = false; break; }
+      left_idx--; right_idx++;
+    }
+    return is_palindrome;
+  }
+
+  static string get_shortest_palindrome(string text_input) {
+    if (true == text_input.empty()) { return ""; }
+    string text("$");
+    for (auto & chr : text_input) { text.append(1, chr); text.append("$"); }
+
+    int pivot_pos = text.size() / 2;
+    if (true == is_curr_position_palindrome(text, pivot_pos)) { return text_input; }
+
+    for (int i = pivot_pos - 1; i >= 0; i--) {
+      if (false == is_curr_position_palindrome(text, i)) { continue; }
+      string prefix = text.substr(i * 2 + 1, string::npos);
+      text = string(prefix.rbegin(), prefix.rend()) + text;
+      break;
+    }
+
+    string result;
+    for (auto & chr : text) { if ('$' != chr) { result.append(1, chr); } }
+    return result;
+  }
+
+  static void test_get_shortest_palindrome() {
+    cout << "2. test_get_shortest_palindrome" << endl;
+    cout << "aaacecaaa <=>" << endl;
+    cout << get_shortest_palindrome("aacecaaa") << endl;
+    cout << "dcbabcd <=>" << endl;
+    cout << get_shortest_palindrome("abcd") << endl;
+    cout << "a <=>" << endl;
+    cout << get_shortest_palindrome("a") << endl;
+    cout << "<=>" << endl;
+    cout << get_shortest_palindrome("") << endl;
+    cout << "aaacecaaa <=>" << endl;
+    cout << get_shortest_palindrome("aaacecaaa") << endl;
   }
 };
 
 int main(void) {
   string_util::test_find_word_in_batch();
+  string_util::test_get_shortest_palindrome();
   return 0;
 }
