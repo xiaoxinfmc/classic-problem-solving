@@ -402,7 +402,8 @@ namespace string_util {
    * 151. Reverse Words in a String
    * Given an input string, reverse the string word by word.
    * Example:
-   * Input: "the sky is blue",
+   * Input:  "the sky is blue",
+   *         "elub si yks eth",
    * Output: "blue is sky the".
    * Note:
    * - A word is defined as a sequence of non-space characters.
@@ -411,7 +412,50 @@ namespace string_util {
    * - You need to reduce multiple spaces between two words to a single space in
    *   the reversed string.
    * - Follow up: For C programmers, try to solve it in-place in O(1) space.
+   * Intuition:
+   * - reverse the text 1st then reverse each word
    */
+  static void reverse_words_in_place(string & text) {
+    int text_len = text.size();
+    reverse(text.begin(), text.end());
+    /* reverse each word 1st */
+    for (string::iterator start_itr = text.begin(), end_itr = text.begin();
+                                                    end_itr != text.end();) {
+      while (start_itr != text.end() && ' ' == * start_itr) { start_itr++; end_itr = start_itr; }
+      while (end_itr != text.end() && ' ' != * end_itr) { end_itr++; }
+      reverse(start_itr, end_itr);
+      if (end_itr != text.end()) { end_itr++; }
+      start_itr = end_itr;
+    }
+    int token_start_id = 0, token_end_id = 0, curr_id = 0;
+    /* remove redundant space */
+    for (curr_id = 0; curr_id < text_len && token_start_id < text_len; ) {
+      bool is_token_added = false;
+      while (token_start_id < text_len && ' ' == text[token_start_id]) {
+        token_start_id++; token_end_id = token_start_id;
+      }
+      while (token_end_id < text_len && ' ' != text[token_end_id]) { token_end_id++; }
+      for (int k = token_start_id; k < token_end_id; k++) {
+        text[curr_id] = text[k]; curr_id++; is_token_added = true;
+      }
+      if (true == is_token_added && curr_id < text_len) { text[curr_id] = ' '; curr_id++; }
+      token_end_id++; token_start_id = token_end_id;
+    }
+    if (curr_id > 0 && ' ' == text[curr_id]) { curr_id--; }
+    text.erase(curr_id);
+  }
+
+  static void test_reverse_words_in_place() {
+    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf " };
+    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf" };
+    cout << "6. test_reverse_words_in_place" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
+      reverse_words_in_place(test_input[i]);
+      cout << test_output[i] << " <=> " << test_input[i] << endl;
+      assert(test_input[i] == test_output[i]);
+    }
+  }
+
   static string reverse_words(string & text) {
     vector<string> token_arr;
     string result;
@@ -457,5 +501,6 @@ int main(void) {
   string_util::test_get_longest_palindrome();
   string_util::test_gen_shortest_palindrome();
   string_util::test_reverse_words();
+  string_util::test_reverse_words_in_place();
   return 0;
 }
