@@ -397,6 +397,58 @@ namespace string_util {
     cout << " <=> " << gen_shortest_palindrome("") << endl;
     cout << "aaacecaaa <=> " << gen_shortest_palindrome("aaacecaaa") << endl;
   }
+
+  /**
+   * 151. Reverse Words in a String
+   * Given an input string, reverse the string word by word.
+   * Example:
+   * Input: "the sky is blue",
+   * Output: "blue is sky the".
+   * Note:
+   * - A word is defined as a sequence of non-space characters.
+   * - Input string may contain leading or trailing spaces. However, your
+   *   reversed string should not contain leading or trailing spaces.
+   * - You need to reduce multiple spaces between two words to a single space in
+   *   the reversed string.
+   * - Follow up: For C programmers, try to solve it in-place in O(1) space.
+   */
+  static string reverse_words(string & text) {
+    vector<string> token_arr;
+    string result;
+    int token_len = 0;
+
+    for (int token_start_id = 0, token_end_id = 0; token_end_id < text.size();) {
+      if (' ' == text[token_start_id]) {
+        token_start_id++; token_end_id = token_start_id; continue;
+      }
+      if (' ' == text[token_end_id] || token_end_id == text.size() - 1) {
+        token_len = token_end_id - token_start_id;
+        if (' ' != text[token_end_id]) { token_len++; }
+        token_arr.push_back(text.substr(token_start_id, token_len));
+        token_start_id = token_end_id + 1; token_end_id = token_start_id;
+        continue;
+      }
+      token_end_id++;
+    }
+
+    while (false == token_arr.empty()) {
+      result.append(token_arr.back());
+      token_arr.pop_back();
+      if (false == token_arr.empty()) { result.append(" "); }
+    }
+
+    return result;
+  }
+
+  static void test_reverse_words() {
+    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf " };
+    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf" };
+    cout << "5. test_reverse_words" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
+      cout << test_output[i] << " <=> " << reverse_words(test_input[i]) << endl;
+      assert(reverse_words(test_input[i]) == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -404,5 +456,6 @@ int main(void) {
   string_util::test_get_shortest_palindrome();
   string_util::test_get_longest_palindrome();
   string_util::test_gen_shortest_palindrome();
+  string_util::test_reverse_words();
   return 0;
 }
