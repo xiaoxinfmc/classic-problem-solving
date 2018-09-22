@@ -416,18 +416,22 @@ namespace string_util {
    * - reverse the text 1st then reverse each word
    */
   static void reverse_words_in_place(string & text) {
-    int text_len = text.size();
+    int text_len = text.size(), word_cnt = 0;
     reverse(text.begin(), text.end());
+
     /* reverse each word 1st */
     for (string::iterator start_itr = text.begin(), end_itr = text.begin();
                                                     end_itr != text.end();) {
+      bool is_token_added = false;
       while (start_itr != text.end() && ' ' == * start_itr) { start_itr++; end_itr = start_itr; }
-      while (end_itr != text.end() && ' ' != * end_itr) { end_itr++; }
+      while (end_itr != text.end() && ' ' != * end_itr) { is_token_added = true; end_itr++; }
       reverse(start_itr, end_itr);
       if (end_itr != text.end()) { end_itr++; }
       start_itr = end_itr;
+      if (true == is_token_added) { word_cnt++; }
     }
-    int token_start_id = 0, token_end_id = 0, curr_id = 0;
+
+    int token_start_id = 0, token_end_id = 0, curr_id = 0, curr_token_id = 0;
     /* remove redundant space */
     for (curr_id = 0; curr_id < text_len && token_start_id < text_len; ) {
       bool is_token_added = false;
@@ -438,16 +442,17 @@ namespace string_util {
       for (int k = token_start_id; k < token_end_id; k++) {
         text[curr_id] = text[k]; curr_id++; is_token_added = true;
       }
-      if (true == is_token_added && curr_id < text_len) { text[curr_id] = ' '; curr_id++; }
+      if (true == is_token_added && curr_id < text_len &&
+          curr_token_id != word_cnt - 1) { text[curr_id] = ' '; curr_id++; }
       token_end_id++; token_start_id = token_end_id;
+      if (true == is_token_added) { curr_token_id++; }
     }
-    if (curr_id > 0 && ' ' == text[curr_id]) { curr_id--; }
     text.erase(curr_id);
   }
 
   static void test_reverse_words_in_place() {
-    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf " };
-    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf" };
+    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf ", " 1" };
+    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf", "1" };
     cout << "6. test_reverse_words_in_place" << endl;
     for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
       reverse_words_in_place(test_input[i]);
@@ -485,8 +490,8 @@ namespace string_util {
   }
 
   static void test_reverse_words() {
-    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf " };
-    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf" };
+    string test_input[] = { "the sky is blue", " ", "  the    sky is   blue ", "   dfksjf ", " 1" };
+    string test_output[] = { "blue is sky the", "", "blue is sky the", "dfksjf", "1" };
     cout << "5. test_reverse_words" << endl;
     for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
       cout << test_output[i] << " <=> " << reverse_words(test_input[i]) << endl;
