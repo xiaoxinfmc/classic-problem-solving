@@ -300,14 +300,13 @@ namespace string_util {
     return result;
   }
 
-  static string get_longest_palindrome(string input_str) {
-    string text = insert_delim(input_str);
-    vector<int> palin_boundary_lookup(text.size(), 0);
-
-    int curr_radius = 0, curr_pivot = 0, mirror_pivot = 0;
-    int left_boundary = 0, right_boundary = 0;
+  static void calc_boundary_arr(const string & text,
+                                vector<int> & palin_boundary_lookup,
+                                int * max_palin_id, int * max_palin_len) {
+    int curr_radius = 0, curr_pivot = 0, mirror_pivot = 0,
+        left_boundary = 0, right_boundary = 0;
     int left_idx = 0, right_idx = 0;
-    int max_palin_id = 0, max_palin_len = 0;
+
     for (int i = 1; i < text.size() - 1; i++) {
       right_boundary = curr_pivot + curr_radius;
       if (i < right_boundary) {
@@ -340,15 +339,23 @@ namespace string_util {
       if (right_idx >= right_boundary) {
         curr_pivot = i; curr_radius = palin_boundary_lookup[i];
       }
-      if (max_palin_len < palin_boundary_lookup[i]) {
-        max_palin_id = i; max_palin_len = palin_boundary_lookup[i];
+      if (* max_palin_len < palin_boundary_lookup[i]) {
+        * max_palin_id = i; * max_palin_len = palin_boundary_lookup[i];
       }
     }
-    string token = text.substr(max_palin_id + 1, max_palin_len);
-    string result = token;
-    reverse(token.begin(), token.end());
-    result = remove_delim(token + string(1, text[max_palin_id]) + result);
-    return result;
+  }
+
+  static string get_longest_palindrome(string input_str) {
+    string text = insert_delim(input_str);
+
+    vector<int> palin_boundary_lookup(text.size(), 0);
+    int max_palin_id = 0, max_palin_len = 0;
+    calc_boundary_arr(text, palin_boundary_lookup, & max_palin_id, & max_palin_len);
+
+    string token_righ = text.substr(max_palin_id + 1, max_palin_len);
+    string token_left = token_righ; reverse(token_left.begin(), token_left.end());
+
+    return remove_delim(token_left + string(1, text[max_palin_id]) + token_righ);
   }
 
   static void test_get_longest_palindrome() {
@@ -366,11 +373,36 @@ namespace string_util {
       assert(get_longest_palindrome(test_input[i]) == test_output[i]);
     }
   }
+
+  static string gen_shortest_palindrome(string text_input) {
+    string text = insert_delim(text_input);
+
+    vector<int> mirror_len_arr(text.size(), 0);
+    int max_id = 0, max_len = 0, target_id = 0;
+    calc_boundary_arr(text, mirror_len_arr, & max_id, & max_len);
+    for (int i = 0; i < text.size() / 2 + 1; i++) {
+      if (0 == (mirror_len_arr[i] - i)) { target_id = i; }
+    }
+
+    string left_token = text.substr(target_id + mirror_len_arr[target_id] + 1, string::npos);
+    string righ_token = left_token; reverse(righ_token.begin(), righ_token.end());
+    return remove_delim(righ_token + text);
+  }
+
+  static void test_gen_shortest_palindrome() {
+    cout << "4. test_gen_shortest_palindrome" << endl;
+    cout << "aaacecaaa <=> " << gen_shortest_palindrome("aacecaaa") << endl;
+    cout << "dcbabcd <=> " << gen_shortest_palindrome("abcd") << endl;
+    cout << "a <=> " << gen_shortest_palindrome("a") << endl;
+    cout << " <=> " << gen_shortest_palindrome("") << endl;
+    cout << "aaacecaaa <=> " << gen_shortest_palindrome("aaacecaaa") << endl;
+  }
 };
 
 int main(void) {
   string_util::test_find_word_in_batch();
   string_util::test_get_shortest_palindrome();
   string_util::test_get_longest_palindrome();
+  string_util::test_gen_shortest_palindrome();
   return 0;
 }
