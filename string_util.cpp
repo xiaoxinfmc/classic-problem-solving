@@ -248,21 +248,129 @@ namespace string_util {
 
   static void test_get_shortest_palindrome() {
     cout << "2. test_get_shortest_palindrome" << endl;
-    cout << "aaacecaaa <=>" << endl;
-    cout << get_shortest_palindrome("aacecaaa") << endl;
-    cout << "dcbabcd <=>" << endl;
-    cout << get_shortest_palindrome("abcd") << endl;
-    cout << "a <=>" << endl;
-    cout << get_shortest_palindrome("a") << endl;
-    cout << "<=>" << endl;
-    cout << get_shortest_palindrome("") << endl;
-    cout << "aaacecaaa <=>" << endl;
-    cout << get_shortest_palindrome("aaacecaaa") << endl;
+    cout << "aaacecaaa <=> " << get_shortest_palindrome("aacecaaa") << endl;
+    cout << "dcbabcd <=> " << get_shortest_palindrome("abcd") << endl;
+    cout << "a <=> " << get_shortest_palindrome("a") << endl;
+    cout << " <=> " << get_shortest_palindrome("") << endl;
+    cout << "aaacecaaa <=> " << get_shortest_palindrome("aaacecaaa") << endl;
+  }
+
+  /**
+   * s: $  a  $  b  $  a  $  b  $  a  $  b  $  a  $
+   * i:    1  2
+   * r: 0  1  ?
+   *  2-1-1 2-1+1
+   *    0     2
+   *    0  1  2  3
+   *    0  1  0  ?(i=3)
+   *             1
+   *      3-1-0 <=> 3-1+0 ~ 2
+   * s: $  a  $  b  $  a  $  b  $  a  $  b  $  a  $
+   * i: 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14
+   * l: 0  1  0  3  0  5  0  7  0  5  0  3  0  1  0
+   *    |--------------|--?--x--------|
+   *         m       m*
+   *    |<<<<<<<<|>>>>>>>>|
+   *                    m        m*
+	 *             ***|<<<<<<<<|>>>>>>>>|***
+   *    |????????????        ^         ???????????|
+   *
+   *    |<<<<<<<<<<<<<<<<<<<<|>>>>>>>>>>>>>>>>>>>>|
+   *            |-----| r_without_cp
+   *   lbi     c     rbi
+   *    |<<<<<<|>>>>>>|      ^    **|<<<<<<|>>>>>>|**
+   *                  |<<|>>|^|<<|>>|            ==>> case I
+   */
+  const static char DEF_DELIM_CHAR = '$';
+
+  static string insert_delim(const string & input) {
+    string result(1, DEF_DELIM_CHAR);
+    for (auto & chr : input) {
+      result.append(1, chr); result.append(1, DEF_DELIM_CHAR);
+    }
+    return result;
+  }
+
+  static string remove_delim(const string input) {
+    string result;
+    for (auto & chr : input) {
+      if (DEF_DELIM_CHAR == chr) { continue; }
+      result.append(1, chr);
+    }
+    return result;
+  }
+
+  static string get_longest_palindrome(string input_str) {
+    string text = insert_delim(input_str);
+    vector<int> palin_boundary_lookup(text.size(), 0);
+
+    int curr_radius = 0, curr_pivot = 0, mirror_pivot = 0;
+    int left_boundary = 0, right_boundary = 0;
+    int left_idx = 0, right_idx = 0;
+    int max_palin_id = 0, max_palin_len = 0;
+    for (int i = 1; i < text.size() - 1; i++) {
+      right_boundary = curr_pivot + curr_radius;
+      if (i < right_boundary) {
+        /* current pivot is covered by boundary */
+        mirror_pivot = 2 * curr_pivot - i;
+        right_idx = i + palin_boundary_lookup[mirror_pivot];
+        if (right_idx <= right_boundary) {
+          /*            x ... curr-pivot ...  i
+           *   |---------|----------|----------|----------|
+           *      <-------------->     <--------------> */
+          palin_boundary_lookup[i] = palin_boundary_lookup[mirror_pivot];
+          left_idx = i - palin_boundary_lookup[mirror_pivot] - 1;
+          right_idx = i + palin_boundary_lookup[mirror_pivot] + 1;
+        } else {
+          /*            x ... curr-pivot ...  i
+           *   |---------|----------|----------|----------|
+           *                     <--------------------------->
+           * <------------------------> */
+          palin_boundary_lookup[i] = right_boundary - i;
+          right_idx = right_boundary + 1;
+          left_idx = 2 * i - right_boundary - 1;
+        }
+      } else {
+        left_idx = i - 1; right_idx = i + 1;
+      }
+      while (left_idx >= 0 && right_idx < text.size()) {
+        if (text[left_idx] != text[right_idx]) { break; }
+        palin_boundary_lookup[i]++; left_idx--; right_idx++; curr_radius++;
+      }
+      if (right_idx >= right_boundary) {
+        curr_pivot = i; curr_radius = palin_boundary_lookup[i];
+      }
+      if (max_palin_len < palin_boundary_lookup[i]) {
+        max_palin_id = i; max_palin_len = palin_boundary_lookup[i];
+      }
+    }
+    string token = text.substr(max_palin_id + 1, max_palin_len);
+    string result = token;
+    reverse(token.begin(), token.end());
+    result = remove_delim(token + string(1, text[max_palin_id]) + result);
+    return result;
+  }
+
+  static void test_get_longest_palindrome() {
+    cout << "3. test_get_longest_palindrome" << endl;
+    string test_input[] = {
+      "babcbabcbaccba", "abaaba", "abababa", "abcbabcbabcba", "forgeeksskeegfor",
+      "caba", "abacdfgdcaba", "abacdfgdcabba", "abacdedcaba", "a", "aa", "",
+    };
+    string test_output[] = {
+      "abcbabcba", "abaaba", "abababa", "abcbabcbabcba", "geeksskeeg",
+      "aba", "aba", "abba", "abacdedcaba", "a", "aa", "",
+    };
+    for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
+      cout << test_output[i] << " <=> " << get_longest_palindrome(test_input[i]) << endl;
+      assert(get_longest_palindrome(test_input[i]) == test_output[i]);
+    }
   }
 };
 
 int main(void) {
   string_util::test_find_word_in_batch();
   string_util::test_get_shortest_palindrome();
+  string_util::test_get_longest_palindrome();
   return 0;
 }
