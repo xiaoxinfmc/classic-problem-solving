@@ -498,6 +498,83 @@ namespace string_util {
       assert(reverse_words(test_input[i]) == test_output[i]);
     }
   }
+  /**
+   * 97. Interleaving String
+   * - Given s1, s2, s3, find whether s3 formed by interleaving of s1 and s2.
+   * Example 1:
+   * - Input: s1 = "aabcc", s2 = "dbbca", s3 = "aadbbcbcac"
+   * - Output: true
+   * Example 2:
+   * - Input: s1 = "aabcc", s2 = "dbbca", s3 = "aadbbbaccc"
+   * - Output: false
+   * Intuition:
+   * - only true|false needed, not a actual plan, DP?
+   * - let lookup(i, j, k) denotes whether s3[k] is formed by s1[i] & s[j]
+   * - lookup(i, j, k) => {
+   *     lookup(i - 1, j, k - 1) && s1[i] == s3[k] && k == i + j ||
+   *     lookup(i, j - 1, k - 1) && s2[j] == s3[k] && k == i + j
+   *   }
+   * - goal is to calc the last elem
+   */
+  static bool is_interleave(const string & s1, const string & s2,
+                                               const string & s3) {
+    vector<vector<vector<bool>>> lookup(s1.size() + 1,
+      vector<vector<bool>>(s2.size() + 1, vector<bool>(s3.size() + 1, false))
+    );
+    if (s1.size() + s2.size() != s3.size()) { return false; }
+    lookup[0][0][0] = true;
+    for (int i = 0; i <= s1.size(); i++) {
+      for (int j = 0; j <= s2.size(); j++) {
+        for (int k = 1; k <= s3.size(); k++) {
+          if (k != i + j) { continue; }
+          lookup[i][j][k] = ((i - 1 >= 0 && lookup[i - 1][j][k - 1] && s1[i - 1] == s3[k - 1]) ||
+                             (j - 1 >= 0 && lookup[i][j - 1][k - 1] && s2[j - 1] == s3[k - 1]));
+        }
+      }
+    }
+    return lookup.back().back().back();
+  }
+
+  static bool fast_is_interleave(const string & s1, const string & s2,
+                                                    const string & s3) {
+    vector<vector<bool>> lookup(s1.size() + 1, vector<bool>(s2.size() + 1, false));
+    if (s1.size() + s2.size() != s3.size()) { return false; }
+    lookup[0][0] = true;
+    for (int i = 0; i <= s1.size(); i++) {
+      for (int j = 0; j <= s2.size(); j++) {
+        int k = i + j;
+        if (k <= 0) { continue; }
+        lookup[i][j] = ((i - 1 >= 0 && lookup[i - 1][j] && s1[i - 1] == s3[k - 1]) ||
+                        (j - 1 >= 0 && lookup[i][j - 1] && s2[j - 1] == s3[k - 1]));
+      }
+    }
+    return lookup.back().back();
+  }
+
+  static void test_is_interleave() {
+    cout << "7. test_is_interleave" << endl;
+    vector<vector<string>> postive_cases = { { "aabcc", "dbbca", "aadbbcbcac" }, { "aabcc", "", "aabcc" }, { "", "aabcc", "aabcc" }, { "", "a", "a" }, { "", "", "" } };
+    vector<vector<string>> negative_cases = { { "aabcc", "dbbca", "aadbbbaccc" }, { "aabcc", "", "aadbbbaccc" }, { "", "aabcc", "aa" } };
+    for (auto & input_case : postive_cases) {
+      assert(true == is_interleave(input_case[0], input_case[1], input_case[2]));
+    }
+    for (auto & input_case : negative_cases) {
+      assert(false == is_interleave(input_case[0], input_case[1], input_case[2]));
+    }
+  }
+
+  static void test_fast_is_interleave() {
+    cout << "8. test_fast_is_interleave" << endl;
+    vector<vector<string>> postive_cases = { { "aabcc", "dbbca", "aadbbcbcac" }, { "aabcc", "", "aabcc" }, { "", "aabcc", "aabcc" }, { "", "a", "a" }, { "", "", "" } };
+    vector<vector<string>> negative_cases = { { "aabcc", "dbbca", "aadbbbaccc" }, { "aabcc", "", "aadbbbaccc" }, { "", "aabcc", "aa" } };
+    for (auto & input_case : postive_cases) {
+      assert(true == fast_is_interleave(input_case[0], input_case[1], input_case[2]));
+    }
+    for (auto & input_case : negative_cases) {
+      assert(false == fast_is_interleave(input_case[0], input_case[1], input_case[2]));
+    }
+  }
+
 };
 
 int main(void) {
@@ -507,5 +584,7 @@ int main(void) {
   string_util::test_gen_shortest_palindrome();
   string_util::test_reverse_words();
   string_util::test_reverse_words_in_place();
+  string_util::test_is_interleave();
+  string_util::test_fast_is_interleave();
   return 0;
 }
