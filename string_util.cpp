@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <cassert>
 #include <unordered_set>
+#include <cctype>
+#include <list>
+#include <cmath>
 
 namespace string_util {
   using std::cout;
@@ -11,6 +14,8 @@ namespace string_util {
   using std::string;
   using std::vector;
   using std::unordered_set;
+  using std::list;
+  using std::min;
 
   template <class type>
   static void print_all_elem(const vector<type>& input) {
@@ -574,7 +579,123 @@ namespace string_util {
       assert(false == fast_is_interleave(input_case[0], input_case[1], input_case[2]));
     }
   }
+  /**
+   * 76. Minimum Window Substring
+   * Given a string S and a string T, find the minimum window in S which will
+   * contain all the characters in T in complexity O(n).
+   * Example:
+   * - Input: S = "ADOBECODEBANC", T = "ABC"
+   * - Output: "BANC"
+   * Note:
+   * - If there is no such window in S that covers all characters in T, return
+   *   the empty string "".
+   * - If there is such window, you are guaranteed that there will always be
+   *   only one unique minimum window in S.
+   * Intuition:
+   * - a char set contains all chars need to be covered, we keep a lookup
+   * - bf way calc all possible start point & keep matching to the end.
+   * - we only need to cover all chars, order not matter.
+   *     v     v   v       | |   |
+   * - [ A D O B E C O D E B A N C ], T = [ A B C ]
+   *     v     v v   v       | | |   |
+   * - [ A D O B B E C O D E B B A N C ], T = [ A B C ]
+   *     v v   v   v       |
+   *     0 1 2 3 4 5 6 7 8 9 0 1 2
+   * - [ A B O B E C O D E B A B C ] [ A B B C ]
+   *     A B O B E C O
+   *     A B O(B E C O D E B)
+   *           B E C O D E B A B C
+   *               C O D E B A B
+   *               C O D E B A B C -> B A B C
+   *     v v   v v |
+   *     0 1 2 3 4 5 6 7 8 9 0 1 2
+   * - [ A B O B C B A B X ] | [ A B B C ]
+   *     A B O B C
+   *           B C B A
+   *             C B A B
+   * - variable sized window keep sliding.
+   */
+  static void decr_remaining_char_cnt(char chr, vector<int> & curr_buf,
+                                      int curr_pos_id, vector<list<int>> & curr_pos_lookup) {
+    curr_buf[int(toupper(chr)) - int('A')]--;
+    curr_pos_lookup[int(toupper(chr)) - int('A')].push_back(curr_pos_id);
+  }
 
+  static bool is_char_existed(char chr, const vector<int> & lookup) {
+    return (lookup[int(toupper(chr)) - int('A')] > 0);
+  }
+
+  static int get_next_start_id(vector<int> & curr_buf, const vector<int> & lookup,
+                               vector<list<int>> & curr_pos_lookup,
+                               const string & text, int curr_start_id,
+                               int * curr_char_cnt_ptr) {
+    int curr_char_id = int(toupper(text[curr_start_id])) - int('A');
+    int max_id = curr_pos_lookup[curr_char_id].front() + 1;
+    int new_start_pos = INT_MAX;
+    for (int i = 0; i <= int('Z') - int('A'); i++) {
+      while (!curr_pos_lookup[i].empty() && curr_pos_lookup[i].front() < max_id) {
+        curr_pos_lookup[i].pop_front(); curr_buf[i]++; * curr_char_cnt_ptr -= 1;
+      }
+      if (!curr_pos_lookup[i].empty()) { new_start_pos = min(new_start_pos, curr_pos_lookup[i].front()); }
+    }
+    new_start_pos = min(new_start_pos, curr_start_id);
+    return new_start_pos;
+  }
+
+  static int get_buffer_size() { return int('Z') - int('A') + 1; }
+
+  static string get_min_window(const string & text, const string & char_set) {
+    if (text.size() < char_set.size() || text.empty() || char_set.empty()) { return ""; }
+
+    int total_char_cnt = char_set.size();
+    vector<int> lookup(get_buffer_size(), 0 );
+    for (auto & chr : char_set) { lookup[int(toupper(chr)) - int('A')]++; }
+
+    int curr_char_cnt = 0;
+    vector<int> curr_buf = lookup;
+    vector<list<int>> curr_pos_lookup(get_buffer_size(), list<int>());
+
+    int start_id = 0, end_id = INT_MAX;
+    for (int curr_start_id = 0, curr_end_id = 0; curr_end_id < text.size(); ) {
+      while (curr_start_id < text.size() && !is_char_existed(text[curr_start_id], lookup)) {
+        curr_start_id++; curr_end_id = curr_start_id;
+      }
+
+      /* if we already cover all chars in prev window, then we need to adjust it */
+      if (curr_start_id < text.size() && !is_char_existed(text[curr_start_id], curr_buf)) {
+        curr_start_id = get_next_start_id(curr_buf, lookup, curr_pos_lookup, text, curr_start_id, & curr_char_cnt);
+      }
+
+      /* keep expanding until we cover the full char set */
+      int right_idx = curr_end_id; bool is_char_set_covered = false;
+      while (curr_end_id < text.size() && curr_char_cnt != total_char_cnt) {
+        if (is_char_existed(text[curr_end_id], curr_buf)) {
+          decr_remaining_char_cnt(text[curr_end_id], curr_buf, curr_end_id, curr_pos_lookup);
+          curr_char_cnt++; right_idx = curr_end_id;
+          if (curr_char_cnt == total_char_cnt) { is_char_set_covered = true; }
+        }
+        curr_end_id++;
+      }
+      curr_end_id = right_idx;
+      /* log the boundary if we see smaller ones */
+      if ((true == is_char_set_covered) && (curr_end_id - curr_start_id) < (end_id - start_id)) {
+        start_id = curr_start_id; end_id = curr_end_id;
+      }
+      curr_end_id++; curr_start_id = curr_end_id;
+    }
+    return (end_id == INT_MAX) ? "" : text.substr(start_id, end_id - start_id + 1);
+  }
+
+  static void test_get_min_window() {
+    string test_input[] = { "ADOBECODEBANC", "ABC", "ABOBECODEBABC", "ABBC", "ABOBCBABX", "ABBC" };
+    string test_output[] = { "BANC", "BABC", "BCBA" };
+    cout << "9. test_get_min_window" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
+      string resu = get_min_window(test_input[i * 2], test_input[i * 2 + 1]);
+      cout << resu << " <=> " << test_output[i] << " <=> " << test_input[i * 2] << " | " << test_input[i * 2 + 1] << endl;
+      assert(resu == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -586,5 +707,6 @@ int main(void) {
   string_util::test_reverse_words_in_place();
   string_util::test_is_interleave();
   string_util::test_fast_is_interleave();
+  string_util::test_get_min_window();
   return 0;
 }
