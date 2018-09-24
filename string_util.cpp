@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <unordered_set>
+#include <unordered_map>
 #include <cctype>
 #include <list>
 #include <cmath>
@@ -16,6 +17,7 @@ namespace string_util {
   using std::unordered_set;
   using std::list;
   using std::min;
+  using std::unordered_map;
 
   template <class type>
   static void print_all_elem(const vector<type>& input) {
@@ -686,12 +688,54 @@ namespace string_util {
     return (end_id == INT_MAX) ? "" : text.substr(start_id, end_id - start_id + 1);
   }
 
+  static string fast_min_window(const string & text, const string & char_set) {
+    if (text.size() < char_set.size() || text.empty() || char_set.empty()) { return ""; }
+
+    unordered_map<char, int> char_cnt_tot, char_cnt_map;
+    for (auto & chr : char_set) { char_cnt_tot[chr]++; char_cnt_map[chr] = 0; }
+
+    int start_id = 0, end_id = INT_MAX, covered_char_cnt = 0, target_char_cnt = char_set.size();
+
+    for (int curr_start_id = 0, curr_end_id = 0, curr_pos = 0; curr_pos < text.size(); ) {
+      curr_end_id = curr_pos;
+      while (curr_pos < text.size() && covered_char_cnt != target_char_cnt) {
+        if (char_cnt_tot.end() != char_cnt_tot.find(text[curr_pos])) {
+          if (char_cnt_map[text[curr_pos]] < char_cnt_tot[text[curr_pos]]) { covered_char_cnt++; }
+          char_cnt_map[text[curr_pos]]++;
+          if (covered_char_cnt == target_char_cnt) { curr_end_id = curr_pos; }
+        }
+        curr_pos++;
+      }
+
+      while (curr_start_id <= curr_end_id && covered_char_cnt == target_char_cnt) {
+        if (curr_end_id - curr_start_id <= end_id - start_id) { start_id = curr_start_id; end_id = curr_end_id; }
+        if (char_cnt_tot.end() != char_cnt_tot.find(text[curr_start_id])) {
+          if (char_cnt_map[text[curr_start_id]] == char_cnt_tot[text[curr_start_id]]) { covered_char_cnt--; }
+          char_cnt_map[text[curr_start_id]]--;
+        }
+        curr_start_id++;
+      }
+    }
+    return (end_id == INT_MAX) ? "" : text.substr(start_id, end_id - start_id + 1);
+  }
+
   static void test_get_min_window() {
-    string test_input[] = { "ADOBECODEBANC", "ABC", "ABOBECODEBABC", "ABBC", "ABOBCBABX", "ABBC" };
-    string test_output[] = { "BANC", "BABC", "BCBA" };
+    string test_input[] = { "ADOBECODEBANC", "ABC", "ABOBECODEBABC", "ABBC", "ABOBCBABX", "ABBC", "", "", "", "sss" };
+    string test_output[] = { "BANC", "BABC", "BCBA", "", "" };
     cout << "9. test_get_min_window" << endl;
     for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
       string resu = get_min_window(test_input[i * 2], test_input[i * 2 + 1]);
+      cout << resu << " <=> " << test_output[i] << " <=> " << test_input[i * 2] << " | " << test_input[i * 2 + 1] << endl;
+      assert(resu == test_output[i]);
+    }
+  }
+
+  static void test_fast_min_window() {
+    string test_input[] = { "ADOBECODEBANC", "ABC", "ABOBECODEBABC", "ABBC", "ABOBCBABX", "ABBC", "", "", "", "sss" };
+    string test_output[] = { "BANC", "BABC", "CBAB", "", "" };
+    cout << "10. fast_min_window" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(string); i++) {
+      string resu = fast_min_window(test_input[i * 2], test_input[i * 2 + 1]);
       cout << resu << " <=> " << test_output[i] << " <=> " << test_input[i * 2] << " | " << test_input[i * 2 + 1] << endl;
       assert(resu == test_output[i]);
     }
@@ -708,5 +752,6 @@ int main(void) {
   string_util::test_is_interleave();
   string_util::test_fast_is_interleave();
   string_util::test_get_min_window();
+  string_util::test_fast_min_window();
   return 0;
 }
