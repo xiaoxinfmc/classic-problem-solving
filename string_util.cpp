@@ -17,6 +17,7 @@ namespace string_util {
   using std::unordered_set;
   using std::list;
   using std::min;
+  using std::max;
   using std::unordered_map;
 
   template <class type>
@@ -740,6 +741,92 @@ namespace string_util {
       assert(resu == test_output[i]);
     }
   }
+
+  /**
+   * 115. Distinct Subsequences
+   * - Given a string S and a string T, count the number of distinct subseqs
+   *   of S which equals T.
+   * - A subsequence of a string is a new string which is formed from the
+   *   original string by deleting some (can be none) of the characters without
+   *   disturbing the relative positions of the remaining characters.
+   *   (ie, "ACE" is a subsequence of "ABCDE" while "AEC" is not).
+   * Example 1:
+   * - Input: S = "rabbbit", T = "rabbit"
+   * - Output: 3
+   * - Explanation:
+   *   As shown below, there are 3 ways you can generate "rabbit" from S.
+   *   (The caret symbol ^ means the chosen letters)
+   *   rabbbit
+   *   ^^^^ ^^
+   *   rabbbit
+   *   ^^ ^^^^
+   *   rabbbit
+   *   ^^^ ^^^
+   * Example 2:
+   * - Input: S = "babgbag", T = "bag"
+   * - Output: 5
+   * - Explanation:
+   *   As shown below, there are 5 ways you can generate "bag" from S.
+   *   (The caret symbol ^ means the chosen letters)
+   *   babgbag
+   *   ^^ ^
+   *   babgbag
+   *   ^^    ^
+   *   babgbag
+   *   ^    ^^
+   *   babgbag
+   *     ^  ^^
+   *   babgbag
+   *       ^^^
+   * Intuition:
+   * - Let seq-cnt(i, j) be the len of common subseq for t[0..i] & p[0..j]
+   * - seq-cnt(i, j) = {
+   *     if t[i] == p[j]
+   *       seq-cnt(i - 1, j - 1) + 1
+   *     else
+   *       max(seq-cnt(i - 1, j), seq-cnt(i, j - 1));
+   *     end
+   *   }
+   * - # of seq -> # of elems with size == size of pattern.
+[
+  [ 0 0 0 0 0 0 0 ]
+  [ 0 1 1 1 1 1 1 ]
+  [ 0 1 2 2 2 2 2 ]
+  [ 0 1 2 3 3 3 3 ]
+  [ 0 1 2 3 4 4 4 ]
+  [ 0 1 2 3 4 4 4 ]
+  [ 0 1 2 3 4 5 5 ]
+  [ 0 1 2 3 4 5 6 ]
+]
+     - then start from (1, 1) try to reach all nodes where pattern is fully matched.
+     - each step can only move downward (skip text) or diag (matched), then # of
+       uniq paths is the # of seqs.
+   */
+  static int cnt_distinct_subseqs(const string & text, const string & pattern) {
+    vector<vector<int>> lookup(text.size() + 1, vector<int>(pattern.size() + 1, 0));
+    int seq_cnt = 0;
+    for (int i = 1; i <= text.size(); i++) {
+      for (int j = 1; j <= pattern.size(); j++) {
+        if (text[i - 1] == pattern[j - 1]) {
+          lookup[i][j] = lookup[i - 1][j - 1] + 1;
+        } else {
+          lookup[i][j] = max(lookup[i - 1][j], lookup[i][j - 1]);
+        }
+      }
+    }
+    return seq_cnt;
+  }
+
+  static void test_cnt_distinct_subseqs() {
+    string test_input[] = { "rabbbit", "rabbit", "babgbag", "bag" };
+    int test_output[] = { 3, 5 };
+    cout << "10. fast_min_window" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(int); i++) {
+      int resu = cnt_distinct_subseqs(test_input[i * 2], test_input[i * 2 + 1]);
+      cout << resu << " <=> " << test_output[i] << " <=> " << test_input[i * 2] << " | " << test_input[i * 2 + 1] << endl;
+      assert(resu == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -753,5 +840,6 @@ int main(void) {
   string_util::test_fast_is_interleave();
   string_util::test_get_min_window();
   string_util::test_fast_min_window();
+  string_util::test_cnt_distinct_subseqs();
   return 0;
 }
