@@ -788,6 +788,17 @@ namespace string_util {
    *     end
    *   }
    * - # of seq -> # of elems with size == size of pattern.
+   * - actually only 2 cases, as we cannot skip any char from pattern
+   * - let seq-cnt(i, j) denote # of diff matching seq for t[0..i] & p[0..j]
+   *   where p[0..j] is fully matched, & seq-cnt[i][0] == 1 => no need match
+   * - seq-cnt(i, j) = {
+   *     if t[i] == p[j]
+   *       seq-cnt(i - 1, j - 1) + seq-cnt(i - 1, j)
+   *     else
+   *       seq-cnt(i - 1, j)
+   *     end
+   *   }
+   * - return bottom right elem.
 [
   [ 0 0 0 0 0 0 0 ]
   [ 0 1 1 1 1 1 1 ]
@@ -804,17 +815,17 @@ namespace string_util {
    */
   static int cnt_distinct_subseqs(const string & text, const string & pattern) {
     vector<vector<int>> lookup(text.size() + 1, vector<int>(pattern.size() + 1, 0));
-    int seq_cnt = 0;
+    for (int i = 0; i <= text.size(); i++) { lookup[i][0] = 1; }
     for (int i = 1; i <= text.size(); i++) {
       for (int j = 1; j <= pattern.size(); j++) {
         if (text[i - 1] == pattern[j - 1]) {
-          lookup[i][j] = lookup[i - 1][j - 1] + 1;
+          lookup[i][j] = lookup[i - 1][j - 1] + lookup[i - 1][j];
         } else {
-          lookup[i][j] = max(lookup[i - 1][j], lookup[i][j - 1]);
+          lookup[i][j] = lookup[i - 1][j];
         }
       }
     }
-    return seq_cnt;
+    return lookup.back().back();
   }
 
   static void test_cnt_distinct_subseqs() {
