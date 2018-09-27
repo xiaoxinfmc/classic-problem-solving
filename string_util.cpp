@@ -838,6 +838,85 @@ namespace string_util {
       assert(resu == test_output[i]);
     }
   }
+
+  /**
+   * 71. Simplify Path
+   * - Given an absolute path for a file (Unix-style), simplify it.
+   * For example,
+   * - path = "/home/", => "/home"
+   *   path = "/a/./b/../../c/", => "/c"
+   *   path = "/a/../../b/../c//.//", => "/c"
+   *   path = "/a//b////c/d//././/..", => "/a/b/c"
+   *
+   * - In a UNIX-style file system, a period ('.') refers to the current dir,
+   *   so it can be ignored in a simplified path. Additionally, a double period
+   *   ("..") moves up a directory, so it cancels out whatever the last dir was.
+   *   For more information, look here:
+   * - https://en.wikipedia.org/wiki/Path_(computing)#Unix_style
+   *
+   * Corner Cases:
+   *
+   * - Did you consider the case where path = "/../"?
+   * - In this case, you should return "/".
+   * - Another corner case is the path might contain multiple slashes '/'
+   *   together, such as "/home//foo/", In this case, you should ignore
+   *   redundant slashes and return "/home/foo".
+   */
+
+  const static string def_curr_dir = ".";
+  const static string def_prev_dir = "..";
+  const static string def_delim    = "/";
+  static string simplify_path(const string & input) {
+    vector<string> token_stack;
+    string curr_token; char curr_char = 0;
+    if (input.empty() || input[0] != def_delim[0]) { return def_delim; }
+
+    for (int i = 0; i < input.size(); ) {
+      curr_token = "";
+      curr_char = input[i];
+      if (def_curr_dir[0] == input[i] || def_delim[0] == input[i]) {
+        /* special chars, loop until get all same chars */
+        while ((i < input.size()) && (curr_char == input[i])) {
+          curr_token.append(1, input[i]); i++;
+        }
+      }
+      if ((curr_token.empty()) || (curr_token[0] == def_prev_dir[0] && curr_token.size() > 2)) {
+        /* normal chars, loop until get all normal chars */
+        while ((i < input.size()) && !(def_curr_dir[0] == input[i] || def_delim[0] == input[i])) {
+          curr_token.append(1, input[i]); i++;
+        }
+      }
+      if (curr_token != def_prev_dir && curr_token != def_curr_dir && curr_token[0] != def_delim[0]) {
+        token_stack.push_back(curr_token);
+      } else if (curr_token == def_prev_dir) {
+        while (!token_stack.empty() && token_stack.back() == def_delim) { token_stack.pop_back(); }
+        if (!token_stack.empty()) { token_stack.pop_back(); }
+        while (!token_stack.empty() && token_stack.back() == def_delim) { token_stack.pop_back(); }
+      } else if (curr_token[0] == def_delim[0]) {
+        if (!token_stack.empty() && token_stack.back() == def_delim) { token_stack.pop_back(); }
+        token_stack.push_back(def_delim);
+      }
+    }
+    if (!token_stack.empty() && token_stack.back() == def_delim) { token_stack.pop_back(); }
+
+    curr_token = ""; for (auto & token : token_stack) { curr_token.append(token); }
+
+    if (curr_token.empty()) { curr_token = def_delim; }
+
+    return curr_token;
+  }
+
+  static void test_simplify_path() {
+    string test_input[] = { "/home/", "/a/./b/../../c/", "/a/../../b/../c//.//", "/a//b////c/d//././/..", "/../", "/home//foo/", "", "/../../../", "/...", "////home//...ss/foo///" };
+    string test_output[] = { "/home", "/c", "/c", "/a/b/c", "/", "/home/foo", "/", "/", "/...", "/home/...ss/foo" };
+    string path;
+    cout << "11. test_simplify_path" << endl;
+    for (int i = 0; i < sizeof(test_input)/sizeof(string); i++) {
+      path = simplify_path(test_input[i]);
+      cout << test_output[i] << " <=> " << path << endl;
+      assert(test_output[i] == path);
+    }
+  }
 };
 
 int main(void) {
@@ -852,5 +931,6 @@ int main(void) {
   string_util::test_get_min_window();
   string_util::test_fast_min_window();
   string_util::test_cnt_distinct_subseqs();
+  string_util::test_simplify_path();
   return 0;
 }
