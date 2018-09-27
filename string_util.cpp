@@ -1017,12 +1017,10 @@ namespace string_util {
    *   or if we get a '(' then we essentially start a new pair.
    * - lcs-lookup(j) = {
    *     lcs-lookup(j - 1) if (str[j] == '(')
-   *     lcs-lookup(j - 1) + 2 if (str[j] == ')' && str[j - 1 - lcs-lookup(j - 1)] == '(') & subsum
+   *     lcs-lookup(j - 1) + 2 + prev-lcs-size if (str[j] == ')' && str[j - 1 - lcs-lookup(j - 1)] == '(')
    *   }
    * - goal is to calc all elem & calc the max-non-stop-subsum
    * - (()() -> (()()( -> (()()() -> (()()())
-   *
-   * - lcs-lookup(i, j) -> if str[i..j] is valid pair.
    */
   static int calc_longest_valid_parentheses(const string & input) {
     int max_lcs_size = 0;
@@ -1032,6 +1030,7 @@ namespace string_util {
         lcs_lookup[i] = 0;
       } else if (input[i - 1 - lcs_lookup[i - 1]] == '(') {
         lcs_lookup[i] = lcs_lookup[i - 1] + 2;
+        /* check to see if prev-neighboring token are valid, sum it if yes */
         if (i - 2 - lcs_lookup[i - 1] >= 0) {
           lcs_lookup[i] += lcs_lookup[i - 2 - lcs_lookup[i - 1]];
         }
