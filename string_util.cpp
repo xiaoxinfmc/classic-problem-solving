@@ -907,6 +907,148 @@ namespace string_util {
       assert(test_output[i] == path);
     }
   }
+
+  /**
+   * 65. Valid Number
+   * Validate if a given string can be interpreted as a decimal number.
+   * Some examples:
+   * "0" => true
+   * " 0.1 " => true
+   * "abc" => false
+   * "1 a" => false
+   * "2e10" => true
+   * " -90e3   " => true
+   * " 1e" => false
+   * "e3" => false
+   * " 6e-1" => true
+   * " 99e2.5 " => false
+   * "53.5e93" => true
+   * " --6 " => false
+   * "-+3" => false
+   * "95a54e53" => false
+   * Note:
+   * - It is intended for the problem statement to be ambiguous. You should
+   *   gather all requirements up front before implementing one. However, here
+   *   is a list of characters that can be in a valid decimal number:
+   * - Numbers 0-9
+   * - Exponent - "e"
+   * - Positive/negative sign - "+"/"-"
+   * - Decimal point - "."
+   * - Of course, the context of these characters also matters in the input.
+   * - -/+? { 0 | 0.[0-9]*[1-9] | [1-9]+[0-9]* } { e -/+? [1-9]+[0-9]* }?
+   */
+
+  /**
+   * 67. Add Binary
+   * Given two binary strings, return their sum (also a binary string).
+   *
+   * The input strings are both non-empty and contains only characters 1 or 0.
+   *
+   * Example 1:
+   *
+   * Input: a = "11", b = "1"
+   * Output: "100"
+   * Example 2:
+   *
+   * Input: a = "1010", b = "1011"
+   * Output: "10101"
+   *
+   * "1010"
+   * "1011"
+   *    01
+   *   (1)
+   */
+  static string add_binary(const string & str_l, const string & str_r) {
+    string output = ""; int carry = 0, sum = 0;
+    /* a will always points to the longer one */
+    const string & a = (str_l.size() >= str_r.size()) ? str_l : str_r;
+    const string & b = (str_l.size() >= str_r.size()) ? str_r : str_l;
+
+    for (int i = a.size() - 1, j = b.size() - 1; i >= 0; i--, j--) {
+      sum = int(a[i]) - int('0') + carry;
+      if (j >= 0) { sum += (int(b[j]) - int('0')); }
+      switch(sum) {
+        case 0:
+        case 1: { output.append(1, char(sum + int('0'))); carry = 0; break; }
+        case 2:
+        case 3: { output.append(1, char(sum + int('0') - 2)); carry = 1; break; }
+        default: { break; }
+      }
+    }
+    if (carry == 1) { output.append(1, '1'); }
+    reverse(output.begin(), output.end());
+
+    return output;
+  }
+
+  static void test_add_binary() {
+    vector<string> test_input({ "11", "1", "1010", "1011", "110111", "1", "1", "110111", "110111", "" });
+    vector<string> test_output({ "100", "10101", "111000", "111000", "110111" });
+    string result;
+    cout << "12. test_add_binary" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      result = add_binary(test_input[i * 2], test_input[i * 2 + 1]);
+      cout << test_output[i] << " <=> " << result << endl;
+    }
+  }
+
+  /**
+   * 32. Longest Valid Parentheses
+   * Given a string containing just the characters '(' and ')', find the length
+   * of the longest valid (well-formed) parentheses substring.
+   *
+   * Example 1:
+   *
+   * Input: "(()"
+   * Output: 2
+   * Explanation: The longest valid parentheses substring is "()"
+   * Example 2:
+   *
+   * Input: ")()())"
+   * Output: 4
+   * Explanation: The longest valid parentheses substring is "()()"
+   *
+   * Intuition:
+   * - ONLY need # of valid plans, then DP
+   * - goal is to get the size of well formated longest substring
+   * - let lcs-lookup(j) denotes the size of lcs ends at str[j] then
+   * - each time we get check a char ')', we try to close a existing unclosed
+   *   '(' on left side, which should be on the left of lcs[j - 1]
+   *   or if we get a '(' then we essentially start a new pair.
+   * - lcs-lookup(j) = {
+   *     lcs-lookup(j - 1) if (str[j] == '(')
+   *     lcs-lookup(j - 1) + 2 if (str[j] == ')' && str[j - 1 - lcs-lookup(j - 1)] == '(') & subsum
+   *   }
+   * - goal is to calc all elem & calc the max-non-stop-subsum
+   * - (()() -> (()()( -> (()()() -> (()()())
+   *
+   * - lcs-lookup(i, j) -> if str[i..j] is valid pair.
+   */
+  static int calc_longest_valid_parentheses(const string & input) {
+    int max_lcs_size = 0;
+    vector<int> lcs_lookup(input.size(), 0);
+    for (int i = 1; i < input.size(); i++) {
+      if (input[i] == '(') {
+        lcs_lookup[i] = 0;
+      } else if (input[i - 1 - lcs_lookup[i - 1]] == '(') {
+        lcs_lookup[i] = lcs_lookup[i - 1] + 2;
+        if (i - 2 - lcs_lookup[i - 1] >= 0) {
+          lcs_lookup[i] += lcs_lookup[i - 2 - lcs_lookup[i - 1]];
+        }
+      }
+      max_lcs_size = max(max_lcs_size, lcs_lookup[i]);
+    }
+    return max_lcs_size;
+  }
+
+  static void test_calc_longest_valid_parentheses() {
+    cout << "13. test_calc_longest_valid_parentheses" << endl;
+    string test_input[] = { "(()", ")()())", "(()()())", "((((()()())(()", "((())())", "(((())))", "", "((((()()())(()(())((()",  };
+    int test_output[] = { 2, 4, 8, 8, 8, 8, 0, 8 };
+    for (int i = 0; i < sizeof(test_output)/sizeof(int); i++) {
+      cout << test_output[i] << " <=> " << calc_longest_valid_parentheses(test_input[i]) << endl;
+    }
+  }
 };
 
 int main(void) {
@@ -922,5 +1064,7 @@ int main(void) {
   string_util::test_fast_min_window();
   string_util::test_cnt_distinct_subseqs();
   string_util::test_simplify_path();
+  string_util::test_add_binary();
+  string_util::test_calc_longest_valid_parentheses();
   return 0;
 }
