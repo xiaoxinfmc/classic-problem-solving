@@ -1051,19 +1051,35 @@ namespace string_util {
 };
 
 int main(void) {
-  string_util::test_find_word_in_batch();
-  string_util::test_get_shortest_palindrome();
-  string_util::test_get_longest_palindrome();
-  string_util::test_gen_shortest_palindrome();
-  string_util::test_reverse_words();
-  string_util::test_reverse_words_in_place();
-  string_util::test_is_interleave();
-  string_util::test_fast_is_interleave();
-  string_util::test_get_min_window();
-  string_util::test_fast_min_window();
-  string_util::test_cnt_distinct_subseqs();
-  string_util::test_simplify_path();
-  string_util::test_add_binary();
-  string_util::test_calc_longest_valid_parentheses();
+  using string_util::test_find_word_in_batch;
+  using string_util::test_get_shortest_palindrome;
+  using string_util::test_get_longest_palindrome;
+  using string_util::test_gen_shortest_palindrome;
+  using string_util::test_reverse_words;
+  using string_util::test_reverse_words_in_place;
+  using string_util::test_is_interleave;
+  using string_util::test_fast_is_interleave;
+  using string_util::test_get_min_window;
+  using string_util::test_fast_min_window;
+  using string_util::test_cnt_distinct_subseqs;
+  using string_util::test_simplify_path;
+  using string_util::test_add_binary;
+  using string_util::test_calc_longest_valid_parentheses;
+
+  test_find_word_in_batch();
+  test_get_shortest_palindrome();
+  test_get_longest_palindrome();
+  test_gen_shortest_palindrome();
+  test_reverse_words();
+  test_reverse_words_in_place();
+  test_is_interleave();
+  test_fast_is_interleave();
+  test_get_min_window();
+  test_fast_min_window();
+  test_cnt_distinct_subseqs();
+  test_simplify_path();
+  test_add_binary();
+  test_calc_longest_valid_parentheses();
+
   return 0;
 }
