@@ -1048,6 +1048,100 @@ namespace string_util {
       cout << test_output[i] << " <=> " << calc_longest_valid_parentheses(test_input[i]) << endl;
     }
   }
+
+  /**
+   * 44. Wildcard Matching
+   * Given an input string (s) and a pattern (p), implement wildcard pattern matching with support for '?' and '*'.
+   *
+   * '?' Matches any single character.
+   * '*' Matches any sequence of characters (including the empty sequence).
+   * The matching should cover the entire input string (not partial).
+   *
+   * Note:
+   *
+   * s could be empty and contains only lowercase letters a-z.
+   * p could be empty and contains only lowercase letters a-z, and characters like ? or *.
+   * Example 1:
+   *
+   * Input:
+   * s = "aa"
+   * p = "a"
+   * Output: false
+   * Explanation: "a" does not match the entire string "aa".
+   * Example 2:
+   *
+   * Input:
+   * s = "aa"
+   * p = "*"
+   * Output: true
+   * Explanation: '*' matches any sequence.
+   * Example 3:
+   *
+   * Input:
+   * s = "cb"
+   * p = "?a"
+   * Output: false
+   * Explanation: '?' matches 'c', but the second letter is 'a', which does not match 'b'.
+   * Example 4:
+   *
+   * Input:
+   * s = "adceb"
+   * p = "*a*b"
+   * Output: true
+   * Explanation: The first '*' matches the empty sequence, while the second '*' matches the substring "dce".
+   * Example 5:
+   *
+   * Input:
+   * s = "acdcb"
+   * p = "a*c?b"
+   * Output: false
+   * acdcbcxb -> a*c?b -> true
+   *
+   * Intuition:
+   * - the * essentially means .*, which disables the optimization of kmp etc, -> no O(n) then DP??
+   * - Let mlookup(i, j) denotes if text[0..i] matched pattern[0..j], goal is to see bt elem in mlookup
+   * - mlookup(i, j) = {
+   *                                 use like ?             ignore
+   *     if (pattern[j] == *) { mlookup(i - 1, j - 1) || mlookup(i, j - 1) }
+   *     else if (pattern[j] == ?) { mlookup(i - 1, j - 1); }
+   *     else { mlookup(i - 1, j - 1) && (pattern[j] == text[i]); }
+   *   }
+   * - base cases: '' & '' -> true, 'aaaa' & '' false, '' & 'bbb' -> false
+   */
+  static bool is_wild_card_matched(const string & text, const string & pattern) {
+    if (text.empty()) {
+      for (auto & chr : pattern) { if ('*' !=chr) { return false; } } return true;
+    }
+    if (pattern.empty()){ return false; }
+
+    vector<vector<bool>> mlookup(text.size() + 1, vector<bool>(pattern.size() + 1, false));
+    mlookup[0][0] = true;
+    for (int i = 1; i <= pattern.size(); i++) {
+      if ('*' == pattern[i - 1]) { mlookup[0][i] = true; } else { break; }
+    }
+
+    for (int i = 1; i <= text.size(); i++) {
+      for (int j = 1; j <= pattern.size(); j++) {
+        if ('*' == pattern[j - 1]) {
+          /* either curr char from text can be skipped or * been ignored or matched */
+          mlookup[i][j] = mlookup[i - 1][j] || mlookup[i][j - 1] || mlookup[i - 1][j - 1];
+        } else if ('?' == pattern[j - 1] || text[i - 1] == pattern[j - 1]) {
+          mlookup[i][j] = mlookup[i - 1][j - 1];
+        }
+      }
+    }
+    return mlookup.back().back();
+  }
+
+  static void test_is_wild_card_matched() {
+    string test_input[] = { "aa", "a", "aa", "*", "cb", "?a", "adceb", "*a*b", "acdcb", "a*c?b", "acdcbcxb", "a*c?b", "", "**", "", "", "abc", "*", "a", "a*", "b", "*?*?", "ho", "**ho" };
+    bool test_output[] = { false, true, false, true, false, true, true, true, true, true, false, true };
+    cout << "14. test_is_wild_card_matched" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(test_output[0]); i++) {
+      bool resu = is_wild_card_matched(test_input[2 * i], test_input[2 * i + 1]);
+      cout << test_output[i] << " <=> " << resu << " | " << test_input[2 * i] << " : " << test_input[2 * i + 1]<<endl;
+    }
+  }
 };
 
 int main(void) {
@@ -1065,6 +1159,7 @@ int main(void) {
   using string_util::test_simplify_path;
   using string_util::test_add_binary;
   using string_util::test_calc_longest_valid_parentheses;
+  using string_util::test_is_wild_card_matched;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1080,6 +1175,7 @@ int main(void) {
   test_simplify_path();
   test_add_binary();
   test_calc_longest_valid_parentheses();
+  test_is_wild_card_matched();
 
   return 0;
 }
