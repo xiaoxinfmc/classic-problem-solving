@@ -989,6 +989,7 @@ namespace string_util {
     for (int i = 0; i < test_output.size(); i++) {
       result = add_binary(test_input[i * 2], test_input[i * 2 + 1]);
       cout << test_output[i] << " <=> " << result << endl;
+      assert(test_output[i] == result);
     }
   }
 
@@ -1045,7 +1046,9 @@ namespace string_util {
     string test_input[] = { "(()", ")()())", "(()()())", "((((()()())(()", "((())())", "(((())))", "", "((((()()())(()(())((()",  };
     int test_output[] = { 2, 4, 8, 8, 8, 8, 0, 8 };
     for (int i = 0; i < sizeof(test_output)/sizeof(int); i++) {
-      cout << test_output[i] << " <=> " << calc_longest_valid_parentheses(test_input[i]) << endl;
+      int resu = calc_longest_valid_parentheses(test_input[i]);
+      cout << test_output[i] << " <=> " << resu << endl;
+      assert(test_output[i] == resu);
     }
   }
 
@@ -1140,6 +1143,64 @@ namespace string_util {
     for (int i = 0; i < sizeof(test_output) / sizeof(test_output[0]); i++) {
       bool resu = is_wild_card_matched(test_input[2 * i], test_input[2 * i + 1]);
       cout << test_output[i] << " <=> " << resu << " | " << test_input[2 * i] << " : " << test_input[2 * i + 1]<<endl;
+      assert(test_output[i] == resu);
+    }
+  }
+
+  /**
+   * 10. Regular Expression Matching
+   * Given an input string (s) and a pattern (p), implement regular expression
+   * matching with support for '.' and '*'.
+   * '.' Matches any single character.
+   * '*' Matches zero or more of the preceding element.
+   * The matching should cover the entire input string (not partial).
+   * Note:
+   * - s could be empty and contains only lowercase letters a-z.
+   * - p could be empty and contains only lowercase letters a-z, like . or *.
+   *   { "aa", "a", "aa", "a*", "ab", ".*", "aab", "c*a*b", "mississippi", "mis*is*p*." }
+   *   { false, true, true, true, false }
+   */
+  static bool is_regex_matched(const string & text, const string & pattern) {
+    if (pattern.empty()) { return text.empty(); }
+
+    if (text.empty()) {
+      if (pattern.size() % 2 != 0) { return false; }
+      for (int i = 1; i < pattern.size(); i += 2) { if ('*' != pattern[i]) { return false; } }
+      return true;
+    }
+
+    vector<vector<bool>> mlookup(text.size() + 1, vector<bool>(pattern.size() + 1, false));
+    mlookup[0][0] = true;
+    for (int i = 1; i < pattern.size(); i += 2) {
+      if ('*' == pattern[i]) { mlookup[0][i + 1] = true; } else { break; }
+    }
+    for (int i = 1; i <= text.size(); i++) {
+      for (int j = 1; j <= pattern.size(); j++) {
+        if ('*' == pattern[j - 1]) {
+          if (j >= 2) {
+            /* star matches zero or simply do nothing. */
+            mlookup[i][j] = mlookup[i][j] || (mlookup[i][j - 2]) || (mlookup[i][j - 1]);
+            /* start match with one or more of the preceding element, say aa & a*, (a)* == a(a) && a - a* */
+            mlookup[i][j] = mlookup[i][j] || (
+              ((pattern[j - 2] == '.') || (text[i - 1] == pattern[j - 2])) && (mlookup[i - 1][j])
+            );
+          }
+        } else if ('.'== pattern[j - 1] || pattern[j - 1] == text[i - 1]) {
+          mlookup[i][j] = mlookup[i - 1][j - 1];
+        }
+      }
+    }
+    return mlookup.back().back();
+  }
+
+  static void test_is_regex_matched() {
+    string test_input[] = { "b", "ab*b", "aaa", "ab*ac*a", "a", "..*", "", "x*", "", "x*x*x*", "", "", "x", "", "aa", "a", "aa", "a*", "ab", ".*", "aab", "c*a*b", "mississippi", "mis*is*p*.", "ssip", "s*p", "mississ", "mis*is*", "mississi", "mis*is*", "aaa", "ab*a*c*a", "aaa", ".*" };
+    bool test_output[] = { false, true, true, true, true, true, false, false, true, true, true, false, false, true, false, true, true };
+    cout << "15. test_is_regex_matched" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(test_output[0]); i++) {
+      bool resu = is_regex_matched(test_input[2 * i], test_input[2 * i + 1]);
+      cout << test_output[i] << " <=> " << resu << " | " << test_input[2 * i] << " : " << test_input[2 * i + 1]<<endl;
+      assert(test_output[i] == resu);
     }
   }
 };
@@ -1160,6 +1221,7 @@ int main(void) {
   using string_util::test_add_binary;
   using string_util::test_calc_longest_valid_parentheses;
   using string_util::test_is_wild_card_matched;
+  using string_util::test_is_regex_matched;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1176,6 +1238,7 @@ int main(void) {
   test_add_binary();
   test_calc_longest_valid_parentheses();
   test_is_wild_card_matched();
+  test_is_regex_matched();
 
   return 0;
 }
