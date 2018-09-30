@@ -935,8 +935,86 @@ namespace string_util {
    * - Positive/negative sign - "+"/"-"
    * - Decimal point - "."
    * - Of course, the context of these characters also matters in the input.
-   * - -/+? { 0 | 0.[0-9]*[1-9] | [1-9]+[0-9]* } { e -/+? [1-9]+[0-9]* }?
+   * - -/+? ((0(.*[0-9])?)|([1-9]+[0-9]*)) (e -/+? [1-9]+[0-9]*)?
    */
+  static bool is_number_valid(const string & str) {
+    vector<unordered_set<char>> input_arr({
+      unordered_set<char>({ '0' }),
+      unordered_set<char>({ '-', '+' }),
+      unordered_set<char>({ '1', '2', '3', '4', '5', '6', '7', '8', '9' }),
+      unordered_set<char>({ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' }),
+      unordered_set<char>({ '.' }),
+      unordered_set<char>({ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' }),
+      unordered_set<char>({ 'e', 'E' }),
+      unordered_set<char>({ '-', '+' }),
+      unordered_set<char>({ '1', '2', '3', '4', '5', '6', '7', '8', '9' }),
+      unordered_set<char>({ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' })
+    });
+    enum CHAR_TYPE { CHAR_INVALID = -1, CHAR_ZERO = 0, CHAR_VALUE_SIGN, CHAR_VALUE_NON_ZERO, CHAR_VALUE_INT,
+                     CHAR_DOT, CHAR_VALUE_FRACTION_INT, CHAR_EXP_FLAG, CHAR_EXP_SIGN, CHAR_EXP_NON_ZERO, CHAR_EXP_INT };
+
+    vector<int> char_type_mapping({
+      CHAR_ZERO, CHAR_VALUE_SIGN, CHAR_VALUE_NON_ZERO, CHAR_VALUE_INT, CHAR_DOT,
+      CHAR_VALUE_FRACTION_INT, CHAR_EXP_FLAG, CHAR_EXP_SIGN, CHAR_EXP_NON_ZERO, CHAR_EXP_INT });
+
+    unordered_set<int> valid_starting_states({ CHAR_ZERO, CHAR_VALUE_SIGN, CHAR_VALUE_NON_ZERO });
+
+    unordered_set<int> terminated_states({ CHAR_ZERO, CHAR_VALUE_NON_ZERO, CHAR_VALUE_INT,
+                                           CHAR_VALUE_FRACTION_INT, CHAR_EXP_NON_ZERO, CHAR_EXP_INT });
+
+    unordered_map<int, unordered_set<int>> transition_lookup({
+      { CHAR_ZERO, unordered_set<int>({ CHAR_DOT }) },
+      { CHAR_VALUE_SIGN, unordered_set<int>({ CHAR_ZERO, CHAR_VALUE_NON_ZERO }) },
+      { CHAR_VALUE_NON_ZERO, unordered_set<int>({ CHAR_DOT, CHAR_VALUE_INT, CHAR_EXP_FLAG }) },
+      { CHAR_VALUE_INT, unordered_set<int>({ CHAR_VALUE_INT, CHAR_DOT, CHAR_EXP_FLAG }) },
+      { CHAR_DOT, unordered_set<int>({ CHAR_VALUE_FRACTION_INT }) },
+      { CHAR_VALUE_FRACTION_INT, unordered_set<int>({ CHAR_VALUE_FRACTION_INT, CHAR_EXP_FLAG }) },
+      { CHAR_EXP_FLAG, unordered_set<int>({ CHAR_EXP_SIGN, CHAR_EXP_NON_ZERO }) },
+      { CHAR_EXP_SIGN, unordered_set<int>({ CHAR_EXP_NON_ZERO }) },
+      { CHAR_EXP_NON_ZERO, unordered_set<int>({ CHAR_EXP_INT }) },
+      { CHAR_EXP_INT, unordered_set<int>({ CHAR_EXP_INT }) }
+    });
+
+    bool is_number_valid = false;
+    char curr_char;
+    int curr_state = CHAR_INVALID;
+    unordered_set<int> & valid_states_set_ref = valid_starting_states;
+
+    int start_pos = 0, end_pos = str.size() - 1;
+    while (start_pos < str.size() && ' ' == str[start_pos]) { start_pos++; }
+    while (end_pos >= 0 && ' ' == str[end_pos]) { end_pos--; }
+    for (int i = start_pos; i <= end_pos; i++) {
+      curr_char = str[i];
+      curr_state = CHAR_INVALID;
+      for (int j = 0; j < char_type_mapping.size(); j++) {
+        int state = char_type_mapping[j];
+        if (input_arr[state].end() == input_arr[state].find(curr_char)) { continue; }
+        if (valid_states_set_ref.end() == valid_states_set_ref.find(state)) { continue; }
+        valid_states_set_ref = transition_lookup[state];
+        curr_state = state; break;
+      }
+
+      if (CHAR_INVALID == curr_state) { break; }
+      if (end_pos == i && terminated_states.end() !=
+                          terminated_states.find(curr_state)) {
+        is_number_valid = true;
+      }
+    }
+
+    return is_number_valid;
+  }
+
+  static void test_is_number_valid() {
+    string test_input[] = { "-10.0009e+50", "e53", "000", "0", " 0.1 ", "abc", "1 a", "2e10", " -90e3   ", " 1e", "e3", " 6e-1", " 99e2.5 ", "53.5e93", " --6 ", "-+3", "95a54e53" };
+    bool test_output[] = { true, false, false, true, true, false, false, true, true, false, false, true, false, true, false, false, false };
+    bool result = false;
+    cout << "16. test_is_number_valid" << endl;
+    for (int i = 0; i < sizeof(test_output) / sizeof(test_output[0]); i++) {
+      result = is_number_valid(test_input[i]);
+      cout << test_output[i] << " <=> " << result << endl;
+      assert(result == test_output[i]);
+    }
+  }
 
   /**
    * 67. Add Binary
@@ -1222,6 +1300,7 @@ int main(void) {
   using string_util::test_calc_longest_valid_parentheses;
   using string_util::test_is_wild_card_matched;
   using string_util::test_is_regex_matched;
+  using string_util::test_is_number_valid;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1239,6 +1318,7 @@ int main(void) {
   test_calc_longest_valid_parentheses();
   test_is_wild_card_matched();
   test_is_regex_matched();
+  test_is_number_valid();
 
   return 0;
 }
