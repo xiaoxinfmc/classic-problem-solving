@@ -7,6 +7,7 @@
 #include <cassert>
 #include <iostream>
 #include <algorithm>
+#include <iterator>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -743,8 +744,8 @@ namespace array_util {
     slow_idx = 0;
     do {
       slow_idx = nums[slow_idx] % max_size;
-      fast_idx = nums[fast_ptr] % max_size;
-    } while (fast_idx != slow_idx)
+      fast_idx = nums[fast_idx] % max_size;
+    } while (fast_idx != slow_idx);
     return slow_idx;
   }
 
@@ -825,6 +826,75 @@ namespace array_util {
       }
     }
   }
+
+  /**
+   * 729. My Calendar I
+   * Implement a MyCalendar class to store your events. A new event can be added
+   * if adding the event will not cause a double booking.
+   *
+   * Your class will have the method, book(int start, int end). Formally, this
+   * represents a booking on the half open interval [start, end), the range of
+   * real numbers x such that start <= x < end.
+   *
+   * A double booking happens when two events have some non-empty intersection
+   * (ie., there is some time that is common to both events.)
+   *
+   * For each call to the method MyCalendar.book, return true if the event can
+   * be added to the calendar successfully without causing a double booking.
+   * Otherwise, return false and do not add the event to the calendar.
+   *
+   * Your class will be called like this:
+   * - MyCalendar cal = new MyCalendar(); MyCalendar.book(start, end)
+   *
+   * Example 1:
+   * MyCalendar();
+   * MyCalendar.book(10, 20); // returns true
+   * MyCalendar.book(15, 25); // returns false
+   * MyCalendar.book(20, 30); // returns true
+   *
+   * Explanation:
+   * The first event can be booked. The second can't because time 15 is already booked by another event.
+   * The third event can be booked, as the first event takes every time less than 20, but not including 20.
+   *
+   * Note:
+   * The number of calls to MyCalendar.book per test case will be at most 1000.
+   * In calls to MyCalendar.book(start, end), start and end are integers in the range [0, 10^9].
+   */
+  class MyCalendar {
+  public:
+    MyCalendar() {}
+    ~MyCalendar() {}
+    bool book(int start, int end) {
+      if (ledger.end() != ledger.find(end)) { return false; }
+      ledger[end] = start;
+      map<int, int>::iterator curr_itr = ledger.find(end);
+      map<int, int>::iterator temp_itr = curr_itr;
+      temp_itr++;
+      if (ledger.end() != temp_itr && end > temp_itr->second) {
+        ledger.erase(curr_itr); return false;
+      }
+      if (ledger.begin() == curr_itr) { return true; }
+      temp_itr--; temp_itr--;
+      if (temp_itr->first > start) {
+        ledger.erase(curr_itr); return false;
+      }
+      return true;
+    }
+  private:
+    /* <finish time, start time> */
+    map<int, int> ledger;
+  };
+
+  static void test_calendar() {
+    MyCalendar calendar;
+    int test_input[] = { 10, 20, 15, 25, 20, 30, 30, 40 };
+    bool test_output[] = { true, false, true, true }, result = false;
+    cout << "15. test_calendar" << endl;
+    for (int i = 0; i < sizeof(test_output)/sizeof(test_output[0]); i++) {
+      result = calendar.book(test_input[i * 2], test_input[i * 2 + 1]);
+      cout << test_output[i] << " <=> " << result << endl;
+    }
+  }
 };
 
 int main(void) {
@@ -844,6 +914,7 @@ int main(void) {
   using array_util::solve_sudoku;
   using array_util::find_duplicate;
   using array_util::check_and_update_board;
+  using array_util::test_calendar;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -966,5 +1037,7 @@ int main(void) {
   print_all_elem_vec<int>(board);
   check_and_update_board(board);
   print_all_elem_vec<int>(board);
+
+  test_calendar();
   return 0;
 }
