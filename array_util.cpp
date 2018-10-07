@@ -1040,6 +1040,73 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 229. Majority Element II
+   * - Given an integer array of size n, find all elements that appear more
+   *   than n/3 times.
+   * Note: The algorithm should run in linear time and in O(1) space.
+   * Example 1:
+   * - Input: [3,2,3]
+   *   Output: [3]
+   * Example 2:
+   * - Input: [1,1,1,3,3,2,2,2]
+   *   Output: [1,2]
+   */
+  static vector<int> find_major_numbers_ii(const vector<int> & input, int major_weight = 3) {
+
+    vector<int> result;
+    unordered_map<int, int> cnt_lookup, cnt_buff;
+    unordered_map<int, int>::iterator curr_itr = cnt_lookup.end(), itr_to_erase;
+    int max_size = major_weight - 1, min_cnt = input.size() / major_weight + 1;
+
+    for (int i = 0; i < input.size(); i++) {
+      if (cnt_lookup.size() < max_size || cnt_lookup.end() != cnt_lookup.find(input[i])) {
+        /* either buffer is not full or already in cnt */
+        if (cnt_lookup.end() == cnt_lookup.find(input[i])) {
+          cnt_lookup[input[i]] = 1;
+        } else {
+          cnt_lookup[input[i]] += 1;
+        }
+      } else {
+        /* buffer is full && not in cnt */
+        if (curr_itr == cnt_lookup.end()) { curr_itr = cnt_lookup.begin(); }
+        curr_itr->second -= 1;
+        if (curr_itr->second == 0) {
+          itr_to_erase = curr_itr; curr_itr++;
+          cnt_lookup.erase(itr_to_erase);
+          cnt_lookup[input[i]] = 1;
+        } else { curr_itr++; }
+      }
+    }
+
+    for (auto & val : input) {
+      if (cnt_lookup.end() == cnt_lookup.find(val)) { continue; }
+      if (cnt_buff.end() == cnt_buff.find(val)) { cnt_buff[val] = 0; }
+      cnt_buff[val] += 1;
+    }
+
+    for (auto & pair : cnt_buff) {
+      if (pair.second >= min_cnt) { result.push_back(pair.first); }
+    }
+
+    return result;
+  }
+
+  static void test_find_major_numbers_ii() {
+    vector<vector<int>> test_output = {{3}, {2,1}, {1}};
+    vector<vector<int>> test_input = {{ 3,2,3 }, { 1,1,1,3,3,2,2,2 }, {1,1,1,2,2,1,3,4,5,6}};
+    cout << "19. test_find_major_numbers_ii" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      vector<int> result = find_major_numbers_ii(test_input[i]);
+      print_all_elem<int>(test_output[i]);
+      print_all_elem<int>(result);
+      assert(test_output[i].size() == result.size());
+      for (int j = 0; j < result.size(); j++) {
+        assert(test_output[i][j] == result[j]);
+      }
+    }
+  }
 };
 
 int main(void) {
@@ -1063,6 +1130,7 @@ int main(void) {
   using array_util::test_find_dup_number;
   using array_util::test_find_missing_num;
   using array_util::test_find_major_num;
+  using array_util::test_find_major_numbers_ii;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1190,6 +1258,7 @@ int main(void) {
   test_find_dup_number();
   test_find_missing_num();
   test_find_major_num();
+  test_find_major_numbers_ii();
 
   return 0;
 }
