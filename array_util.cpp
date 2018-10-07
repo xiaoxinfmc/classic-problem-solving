@@ -987,6 +987,7 @@ namespace array_util {
    *   as we start from 0, the diff should be the miss
    */
   static int find_missing_num(const vector<int> & input) {
+    if (input.size() < 1) { return -1; }
     /* arr size is n, then exp. cnt is n + 1, with min 0 & max of n */
     int target_sum = (input.size() + 1) * input.size() / 2;
     int curr_sum = 0;
@@ -995,8 +996,8 @@ namespace array_util {
   }
 
   static void test_find_missing_num() {
-    vector<vector<int>> test_input = {{ 3, 0, 1 }, { 9, 6, 4, 2, 3, 5, 7, 0, 1 }};
-    vector<int> test_output = { 2, 8 };
+    vector<vector<int>> test_input = {{}, { 1 }, { 0 }, { 3, 0, 1 }, { 9, 6, 4, 2, 3, 5, 7, 0, 1 }};
+    vector<int> test_output = { -1, 0, 1, 2, 8 };
     int result = -1;
     cout << "17. test_find_missing_num" << endl;
     for (int i = 0; i < test_input.size(); i++) {
