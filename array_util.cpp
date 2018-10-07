@@ -1107,6 +1107,54 @@ namespace array_util {
       }
     }
   }
+
+  /**
+   * 209. Minimum Size Subarray Sum
+   * - Given an array of n positive integers and a positive integer s, find the
+   *   minimal length of a contiguous subarray of which the sum ≥ s. If there
+   *   isn't one, return 0 instead.
+   * Example: 
+   * - Input: s = 7, nums = [2,3,1,2,4,3]
+   *   Output: 2
+   *   Explanation: the subarray [4,3] has the minimal length under constraint.
+   * Follow up:
+   * - If you have figured out the O(n) solution, try coding another solution
+   *   of which the time complexity is O(n log n).
+   * Intuition:
+   * - sliding window to get current sum of sub-arr, i, j & curr_sum
+   * - all num are positive, as curr_sum < target, expand j, incr i otherwise.
+   * - also log the min len of window meet the target sum.
+   * - basically j will always be one step ahead ready to add in next round.
+   */
+  static int find_min_window_exceed_sum(int target, const vector<int> input) {
+    int min_window_size = INT_MAX, curr_window_sum = 0;
+    if (target <= 0 || input.empty()) { return 0; }
+    for (int i = 0, j = 0; j <= input.size(); ) {
+      if (i > j) { j = i; curr_window_sum = 0; }
+      if (curr_window_sum < target) {
+        if (j < input.size()) { curr_window_sum += input[j]; j++; } else { j++; }
+      } else {
+        /* here window sum >= target, & we won't add curr j */
+        min_window_size = min(min_window_size, j - i);
+        curr_window_sum -= input[i]; i++;
+      }
+    }
+    if (INT_MAX == min_window_size) { min_window_size = 0; }
+    return min_window_size;
+  }
+
+  static void test_find_min_window_exceed_sum() {
+    vector<int> test_input_target = { 11, 4, 2, 2, 7, 7, 0, 4, 303 };
+    vector<vector<int>> test_input_arr = { {1,2,3,4,5}, {2,2,2,2}, {2,2,2,2}, {2}, { 2,3,1,2,4,3 }, { 2,3,1,2,4,3,7 }, {}, {9, 99}, {101, 102} };
+    vector<int> test_output = { 3, 2, 1, 1, 2, 1, 0, 1, 0 };
+    int result = -1;
+    cout << "20. test_find_min_window_exceed_sum" << endl;
+    for (int i = 0; i < test_input_target.size(); i++) {
+      result = find_min_window_exceed_sum(test_input_target[i], test_input_arr[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1131,6 +1179,7 @@ int main(void) {
   using array_util::test_find_missing_num;
   using array_util::test_find_major_num;
   using array_util::test_find_major_numbers_ii;
+  using array_util::test_find_min_window_exceed_sum;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1259,6 +1308,7 @@ int main(void) {
   test_find_missing_num();
   test_find_major_num();
   test_find_major_numbers_ii();
+  test_find_min_window_exceed_sum();
 
   return 0;
 }
