@@ -971,6 +971,40 @@ namespace array_util {
       cout << test_output[i] << " <=> " << dup_val << endl;
     }
   }
+
+  /**
+   * 268. Missing Number
+   * Given an array containing n distinct numbers taken from 0, 1, 2, ..., n, find the one that is missing from the array.
+   * Example 1:
+   * - Input: [3,0,1]
+   * - Output: 2
+   * Example 2:
+   * - Input: [9,6,4,2,3,5,7,0,1]
+   * - Output: 8
+   * Intuition:
+   * - input arr size of n -> contains # from { 0..n } - miss
+   *   expected value should be (n + 1) * n / 2, with n + 1 number
+   *   as we start from 0, the diff should be the miss
+   */
+  static int find_missing_num(const vector<int> & input) {
+    /* arr size is n, then exp. cnt is n + 1, with min 0 & max of n */
+    int target_sum = (input.size() + 1) * input.size() / 2;
+    int curr_sum = 0;
+    for (auto & val : input) { curr_sum += val; }
+    return target_sum - curr_sum;
+  }
+
+  static void test_find_missing_num() {
+    vector<vector<int>> test_input = {{ 3, 0, 1 }, { 9, 6, 4, 2, 3, 5, 7, 0, 1 }};
+    vector<int> test_output = { 2, 8 };
+    int result = -1;
+    cout << "17. test_find_missing_num" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_missing_num(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -992,6 +1026,7 @@ int main(void) {
   using array_util::check_and_update_board;
   using array_util::test_calendar;
   using array_util::test_find_dup_number;
+  using array_util::test_find_missing_num;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1117,6 +1152,7 @@ int main(void) {
 
   test_calendar();
   test_find_dup_number();
+  test_find_missing_num();
 
   return 0;
 }
