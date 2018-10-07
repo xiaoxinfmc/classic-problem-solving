@@ -1006,6 +1006,40 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 169. Majority Element
+   * - Given an array of size n, find the majority element. The majority element
+   *   is the element that appears more than n/2 times.
+   * - You may assume that array is non-empty and the majority element always
+   *   exist in the array.
+   * Example 1:
+   * - Input: [3,2,3]
+   * - Output: 3
+   * Example 2:
+   * - Input: [2,2,1,1,1,2,2]
+   * - Output: 2
+   */
+  static int find_major_num(const vector<int> & input) {
+    int major_num = input[0], major_cnt = 0;
+    for (int i = 0; i < input.size(); i++) {
+      if (major_num == input[i]) { major_cnt++; } else { major_cnt--; }
+      if (0 == major_cnt) { major_num = input[i]; major_cnt++; continue; }
+    }
+    return major_num;
+  }
+
+  static void test_find_major_num() {
+    vector<vector<int>> test_input = { { 3, 2, 3 }, { 2, 2, 1, 1, 1, 2, 2 } };
+    vector<int> test_output = { 3, 2 };
+    int result = -1;
+    cout << "18. test_find_major_num" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_major_num(test_input[i]);
+      cout << test_output[i] << " <=> " << result << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1028,6 +1062,7 @@ int main(void) {
   using array_util::test_calendar;
   using array_util::test_find_dup_number;
   using array_util::test_find_missing_num;
+  using array_util::test_find_major_num;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1154,6 +1189,7 @@ int main(void) {
   test_calendar();
   test_find_dup_number();
   test_find_missing_num();
+  test_find_major_num();
 
   return 0;
 }
