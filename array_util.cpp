@@ -453,8 +453,12 @@ namespace array_util {
    * Here, we will use the integers 0, 1, and 2 to represent the color red,
    * white, and blue respectively.
    * Note: You are not suppose to use the library's sort function for this problem.
-   * Example:                  i  j           k        i  j        k
-   * Input: [2,0,2,1,1,0] -> { 2, 0, 2, 1, 1, 1 } -> { 1, 0, 2, 1, 1, 2 }
+   * Example:                 i,j             k        i  j        k
+   * Input: [2,0,2,1,1,0] -> { 2, 0, 2, 1, 1, 0 } -> { 0, 0, 2, 1, 1, 2 }
+   *                                                      i  j     k
+   *                                                 { 0, 0, 2, 1, 1, 2 }
+   *                                                      i    j,k
+   *                                                 { 0, 0, 1, 1, 2, 2 }
    * Output: [0,0,1,1,2,2]
    * Follow up:
    * A rather straight forward solution is 2-pass algorithm using counting sort.
@@ -473,9 +477,9 @@ namespace array_util {
   }
 
   static vector<int> fast_sort_colors(vector<int> nums) {
-    for (int i = 0, j = 0, k = nums.size() - 1; j <= k;) {
+    for (int i = 0, j = 0, k = nums.size() - 1; j <= k;) { 
       switch(nums[j]) {
-        case 0: { swap(nums[i], nums[j]); i++; j++; break; }
+        case 0: { swap(nums[i], nums[j]); j++; i++; break; }
         case 1: { j++; break; }
         case 2: { swap(nums[j], nums[k]); k--; break; }
       }
@@ -895,6 +899,78 @@ namespace array_util {
       cout << test_output[i] << " <=> " << result << endl;
     }
   }
+
+  /**
+   * 287. Find the Duplicate Number
+   * - Given an array nums containing n + 1 integers where each integer is
+   *   between 1 and n (inclusive), prove that at least one duplicate number
+   *   must exist. Assume that there is only one duplicate number, find the
+   *   duplicate one.
+   * Example 1:
+   * - Input: [1,3,4,2,2]
+   *   Output: 2
+   * Example 2:
+   * - Input: [3,1,3,4,2]
+   *   Output: 3
+   * Note:
+   * - You must not modify the array (assume the array is read only).
+   * - You must use only constant, O(1) extra space.
+   * - Your runtime complexity should be less than O(n2).
+   * - There is only one duplicate number in the array, but it could be
+   *   repeated more than once.
+   * Intuition:
+   * - input arr -> size n + 1, & only one # is dupped, & value is in 1 & n
+   * - one value dupped (from 1 ~ n), can appear 1 ~ n + 1 times;
+   * - no change to raw input, -> no sorting, swap.
+   * - O(1) space -> no buffer copy, input is un-ordered.
+   * - < O(n2), O(n) not likely, nlogn for divide-conquer?
+   * - there must be diff. between the sum, & abs(diff)
+   * - sum(arr[0..n]) -> sum(1..n + 1) -> if no dups
+   *   min -> 1, max -> 4 -> 5.. been replaced
+   * - 1, 2, 2, 2, 3, 4 -> 14 -> 2 x 2 (diff -7) -> some n, n + 1 replaced
+   *   1, 2, 3, 4, 5, 6 -> 21
+   *   1, 3, 6, 4, 5, 2 -> 21
+   *   1, 2, 3, 6, 6, 6 -> 24 -> 2 x 6 (diff +3)
+   *   1, 2, 2, 2, 2, 6 -> 15 -> 3 x 2 (diff -6)
+   *
+   *   x 1, 3, 6, 4, 5, 2 -> 21
+   *
+   *   min -> 1, max -> 6 -> arr[i..j] been replaced
+   *   say value of dup is n, & dupped m times
+   *                         (not-replaced)
+   * - sum(arr[0..n]) = n * m + valid-sum + n
+   *   target-sum     = sum(arr[i]) + n + valid-sum
+   *                (m replaced elem)   (not-replaced)
+   *   target-sum     = (n + 1)(n + 2) / 2
+   *
+   * - sum(arr[0..n]) - target-sum = n * m - sum(arr[r])
+   *   sum(arr[0..n]) + target-sum = n * m + 2(n + valid-sum) + sum(arr[r])
+   *   elem not continous, not likely to be solved.
+   */
+  static int find_dup_number(const vector<int> & input) {
+    int slow_idx = 0, fast_idx = 0;
+    do {
+      slow_idx = input[slow_idx];
+      fast_idx = input[input[fast_idx]];
+    } while (slow_idx != fast_idx);
+    slow_idx = 0;
+    do {
+      slow_idx = input[slow_idx];
+      fast_idx = input[input[fast_idx]];
+    } while (slow_idx != fast_idx);
+    return input[slow_idx];
+  }
+
+  static void test_find_dup_number() {
+    vector<vector<int>> test_input = {{ 1, 3, 4, 2, 2, 2 }, { 3, 1, 3, 4, 2 }};
+    vector<int> test_output = { 2, 3 };
+    int dup_val = -1;
+    cout << "16. test_find_dup_number" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      dup_val = find_dup_number(test_input[i]);
+      cout << test_output[i] << " <=> " << dup_val << endl;
+    }
+  }
 };
 
 int main(void) {
@@ -915,6 +991,7 @@ int main(void) {
   using array_util::find_duplicate;
   using array_util::check_and_update_board;
   using array_util::test_calendar;
+  using array_util::test_find_dup_number;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1039,5 +1116,7 @@ int main(void) {
   print_all_elem_vec<int>(board);
 
   test_calendar();
+  test_find_dup_number();
+
   return 0;
 }
