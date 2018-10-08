@@ -1234,6 +1234,38 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * Let min[i] denote the min prod of sub-arr for arr[k..i]
+   *     max[i] denote the max prod of sub-arr for arr[k..i]
+   * min[i] = min(arr[i] * min[i - 1], arr[i], arr[i] * max[i - 1])
+   * max[i] = max(arr[i] * max[i - 1], arr[i], arr[i] * min[i - 1])
+   */
+  static int find_max_product_dp(const vector<int> & input) {
+    if (input.empty()) { return 0; }
+    int curr_min_prod = input[0], curr_max_prod = input[0],
+        prev_min_prod = input[0], max_product = input[0];
+    for (int i = 1; i < input.size(); i++) {
+      prev_min_prod = curr_min_prod;
+      curr_min_prod = min(min(input[i] * curr_min_prod, input[i]), input[i] * curr_max_prod);
+      curr_max_prod = max(max(input[i] * curr_max_prod, input[i]), input[i] * prev_min_prod);
+      max_product = max(max_product, curr_max_prod);
+    }
+    return max_product;
+  }
+
+  static void test_find_max_product_dp() {
+    vector<vector<int>> test_input = { { 1, 0, -1, 2, 3, -5, -2 },  { 3, -1, 4 }, { 1, 2, 3, -1, 99 }, { 1, 0, 1 }, { 1 }, { 2, 3, -2, 4 }, { -2, 0, -1 }, { -2, -3, -4, -5 }, { -2, -3, -4, 0, -5 }, { -2, -3, 2, 3, -4, 1, 3, 0, -5 } };
+    vector<int> test_output = { 60, 4, 99, 1, 1, 6, 0, 120, 12, 216 };
+    int result = 0;
+    cout << "22. test_find_max_product_dp" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_max_product_dp(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
 };
 
 int main(void) {
@@ -1260,6 +1292,7 @@ int main(void) {
   using array_util::test_find_major_numbers_ii;
   using array_util::test_find_min_window_exceed_sum;
   using array_util::test_find_max_product;
+  using array_util::test_find_max_product_dp;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1390,6 +1423,7 @@ int main(void) {
   test_find_major_numbers_ii();
   test_find_min_window_exceed_sum();
   test_find_max_product();
+  test_find_max_product_dp();
 
   return 0;
 }
