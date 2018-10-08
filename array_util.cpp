@@ -1155,6 +1155,96 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 152. Maximum Product Subarray
+   * - Given an integer array nums, find the contiguous subarray within an array
+   *   (containing at least one number) which has the largest product.
+   * Example 1:
+   * - Input: [2,3,-2,4]
+   *   Output: 6
+   *   Explanation: [2,3] has the largest product 6.
+   * Example 2:
+   * - Input: [-2,0,-1]
+   *   Output: 0
+   *   Explanation: The result cannot be 2, because [-2,-1] is not a subarray.
+   * Intuition:
+   * - only max prod of sub-arr is needed, -> contigous -> sliding window.
+   * - use i, j to mark beginning & end of curr. window, curr_prod -> prod of window[i, j - 1]
+   * - when curr window prod > 0, we keep the max one.
+   * - seems quite hard to identify the boundary, as we neg * neg -> pos
+   * - pre-calc prod of input[j..n] ? such that we know what the pos of closest neg # ?
+   * - 2 3 -2 4 3 1 3 1 -> 2 3 -2 4 3 1 3 1
+   *   i    j                  ij
+   *   2 3 -2 4 -3 -1 3 1 -> 2 3 -2 4 -3 -1 3 1
+   *   i            j             i       j
+   *   -2, -3, 2, 3, -4, 1, 3, 0, -5 -> -2, -3, 2, 3, -4, 1, 3, 0, -5
+   *    i             j                      i         j
+   * - if curr sum is 0, then move i to j + 1;
+   */
+  static int find_max_product(const vector<int> & input) {
+    int max_product = INT_MIN, curr_prod = 1;
+    if (input.empty()) { return 0; }
+    vector<int> next_non_pos_value_pos(input.size(), 0);
+
+    for (int i = 0, j = 0; i < input.size(); ) {
+      j = i + 1;
+      while (j < input.size() && input[j] > 0) { j++; }
+      while (i < j) { next_non_pos_value_pos[i] = j; i++; }
+      i = j;
+    }
+    /* curr_prod will always be kept postive if possible */
+    for (int i = 0, j = 0; j < input.size(); ) {
+      if (i > j) { j = i; curr_prod = 1; }
+      if (j < input.size() && input[j] > 0) {
+        curr_prod *= input[j]; j++;
+        max_product = max(max_product, curr_prod);
+        continue;
+      }
+      if (j < input.size() && input[j] == 0) {
+        i = j + 1; curr_prod = 1;
+        max_product = max(max_product, 0);
+        continue;
+      }
+      if (j < input.size() && input[j] < 0) {
+        int next_non_pos = next_non_pos_value_pos[j];
+        if (next_non_pos < input.size() && input[next_non_pos] < 0) {
+          while (j <= next_non_pos) { curr_prod *= input[j]; j++; };
+        } else {
+          while (i < next_non_pos_value_pos[i] && i < j) {
+            curr_prod /= input[i]; i++; if (input[i] < 0) { break; }
+          }
+          curr_prod *= input[j]; j++;
+        }
+        max_product = max(max_product, curr_prod);
+      }
+    }
+    /* I: bf */
+    /*
+    for (int i = 0; i < input.size(); i++) {
+      int curr_prod = input[i];
+      max_product = max(max_product, curr_prod);
+      for (int j = i + 1; j < input.size(); j++) {
+        curr_prod *= input[j];
+        max_product = max(max_product, curr_prod);
+      }
+    }
+    */
+    if (INT_MIN == max_product) { max_product = 0; }
+    return max_product;
+  }
+
+  static void test_find_max_product() {
+    vector<vector<int>> test_input = { { 1, 0, 1 }, { 1 }, { 2, 3, -2, 4 }, { -2, 0, -1 }, { -2, -3, -4, -5 }, { -2, -3, -4, 0, -5 }, { -2, -3, 2, 3, -4, 1, 3, 0, -5 } };
+    vector<int> test_output = { 1, 1, 6, 0, 120, 12, 216 };
+    int result = 0;
+    cout << "21. test_find_max_product" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_max_product(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1180,6 +1270,7 @@ int main(void) {
   using array_util::test_find_major_num;
   using array_util::test_find_major_numbers_ii;
   using array_util::test_find_min_window_exceed_sum;
+  using array_util::test_find_max_product;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1309,6 +1400,7 @@ int main(void) {
   test_find_major_num();
   test_find_major_numbers_ii();
   test_find_min_window_exceed_sum();
+  test_find_max_product();
 
   return 0;
 }
