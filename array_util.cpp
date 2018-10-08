@@ -1266,6 +1266,56 @@ namespace array_util {
     }
   }
 
+  /**
+   * 128. Longest Consecutive Sequence
+   * - Given an unsorted array of integers, find the length of the longest
+   *   consecutive elements sequence.
+   * - Your algorithm should run in O(n) complexity.
+   * Example:
+   * - Input: [ 100, 4, 200, 1, 3, 2 ]
+   * - Output: 4
+   * Explanation:
+   * - The longest consecutive elements sequence is [1, 2, 3, 4]. Therefore
+   *   its length is 4.
+   * Intuition:
+   * - O(n) -> no sorting, has to use hash
+   * - dump all vals to set, & iterate the original input.
+   * - assume all numbers are uniq, for each num from arr:
+   *   if arr[i] found in set then
+   *     expand both ways until the end & keep max size
+   *     delete each elements checked
+   *   else
+   *     skip, as the element already been covered before.
+   *   end
+   */
+  static int find_lces(const vector<int> & input) {
+    int lces = 0, left_num = 0, right_num = 0;
+    unordered_set<int> lces_lookup(input.begin(), input.end());
+    for (auto & curr_num : input) {
+      if (lces_lookup.end() == lces_lookup.find(curr_num)) { continue; }
+      left_num = curr_num - 1; right_num = curr_num + 1;
+      while (lces_lookup.end() != lces_lookup.find(left_num)) {
+        lces_lookup.erase(left_num); left_num--;
+      }
+      while (lces_lookup.end() != lces_lookup.find(right_num)) {
+        lces_lookup.erase(right_num); right_num++;
+      }
+      lces = max(lces, right_num - left_num - 1);
+    }
+    return lces;
+  }
+
+  static void test_find_lces() {
+    vector<vector<int>> test_input = { {}, { 1 }, { 1, 5 }, { 1, 2, 3, 4 }, { 100, 4, 200, 1, 3, 2 } };
+    vector<int> test_output = { 0, 1, 1, 4, 4 };
+    int result = 0;
+    cout << "23. test_find_lces" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_lces(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(test_output[i] == result);
+    }
+  }
 };
 
 int main(void) {
@@ -1293,6 +1343,7 @@ int main(void) {
   using array_util::test_find_min_window_exceed_sum;
   using array_util::test_find_max_product;
   using array_util::test_find_max_product_dp;
+  using array_util::test_find_lces;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1424,6 +1475,7 @@ int main(void) {
   test_find_min_window_exceed_sum();
   test_find_max_product();
   test_find_max_product_dp();
+  test_find_lces();
 
   return 0;
 }
