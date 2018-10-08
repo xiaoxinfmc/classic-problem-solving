@@ -1196,7 +1196,7 @@ namespace array_util {
     /* curr_prod will always be kept postive if possible */
     for (int i = 0, j = 0; j < input.size(); ) {
       if (i > j) { j = i; curr_prod = 1; }
-      if (j < input.size() && input[j] > 0) {
+      if (j < input.size() && input[j] * curr_prod > 0) {
         curr_prod *= input[j]; j++;
         max_product = max(max_product, curr_prod);
         continue;
@@ -1206,37 +1206,26 @@ namespace array_util {
         max_product = max(max_product, 0);
         continue;
       }
-      if (j < input.size() && input[j] < 0) {
+      if (j < input.size() && input[j] * curr_prod < 0) {
         int next_non_pos = next_non_pos_value_pos[j];
         if (next_non_pos < input.size() && input[next_non_pos] < 0) {
           while (j <= next_non_pos) { curr_prod *= input[j]; j++; };
         } else {
           while (i < next_non_pos_value_pos[i] && i < j) {
-            curr_prod /= input[i]; i++; if (input[i] < 0) { break; }
+            curr_prod /= input[i]; i++; if (input[i - 1] < 0) { break; }
           }
           curr_prod *= input[j]; j++;
         }
         max_product = max(max_product, curr_prod);
       }
     }
-    /* I: bf */
-    /*
-    for (int i = 0; i < input.size(); i++) {
-      int curr_prod = input[i];
-      max_product = max(max_product, curr_prod);
-      for (int j = i + 1; j < input.size(); j++) {
-        curr_prod *= input[j];
-        max_product = max(max_product, curr_prod);
-      }
-    }
-    */
     if (INT_MIN == max_product) { max_product = 0; }
     return max_product;
   }
 
   static void test_find_max_product() {
-    vector<vector<int>> test_input = { { 1, 0, 1 }, { 1 }, { 2, 3, -2, 4 }, { -2, 0, -1 }, { -2, -3, -4, -5 }, { -2, -3, -4, 0, -5 }, { -2, -3, 2, 3, -4, 1, 3, 0, -5 } };
-    vector<int> test_output = { 1, 1, 6, 0, 120, 12, 216 };
+    vector<vector<int>> test_input = { { 1, 0, -1, 2, 3, -5, -2 },  { 3, -1, 4 }, { 1, 2, 3, -1, 99 }, { 1, 0, 1 }, { 1 }, { 2, 3, -2, 4 }, { -2, 0, -1 }, { -2, -3, -4, -5 }, { -2, -3, -4, 0, -5 }, { -2, -3, 2, 3, -4, 1, 3, 0, -5 } };
+    vector<int> test_output = { 60, 4, 99, 1, 1, 6, 0, 120, 12, 216 };
     int result = 0;
     cout << "21. test_find_max_product" << endl;
     for (int i = 0; i < test_input.size(); i++) {
