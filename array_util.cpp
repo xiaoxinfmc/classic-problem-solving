@@ -1424,14 +1424,7 @@ namespace array_util {
     }
     return max_profit;
   }
-/*
-cout << endl;
-print_all_elem<int>(input);
-cout << "k: " << k << endl;
-print_all_elem<int>(curr_mplookup_ref);
-print_all_elem_vec<int>(mplookup[k]);
-cout << endl;
-*/
+
   static void test_calc_max_profit_iii() {
     vector<vector<int>> test_input = { {3,2,6,5,0,3}, {2,1,4,5,2,9,7}, {3,3,5,0,0,3,1,4}, {1,2,3,4,5}, {7,6,4,3,1} };
     vector<int> test_output = { 7, 11, 6, 4, 0 };
@@ -1444,8 +1437,45 @@ cout << endl;
     }
   }
 
-/*
-*/
+  static int lean_calc_max_profit_iii(const vector<int> & input) {
+    int max_profit = 0;
+    if (input.size() < 2) { return max_profit; }
+    vector<vector<int>> mplookup(2, vector<int>(input.size(), 0));
+    for (int k = 0; k < mplookup.size(); k++) {
+      if (0 == k) {
+        /* mplookup[k][i] -> max profit possible for input[0..i], either sell not do nothing */
+        int cost_basis = input[0];
+        for (int i = 1; i < mplookup[k].size(); i++) {
+          mplookup[k][i] = max(mplookup[k][i - 1], max(mplookup[k][i], input[i] - cost_basis));
+          cost_basis = min(cost_basis, input[i]);
+        }
+      } else {
+        /* mplookup[k][i] -> max profit possible for input[0..i], either do nothing, buy + prev trxn */
+        int peak_future_price = input.back();
+        for (int i = mplookup[k].size() - 2; i >= 0; i--) {
+          mplookup[k][i] = peak_future_price - input[i];
+          if (i > 1) { mplookup[k][i] += mplookup[k - 1][i - 1]; }
+          mplookup[k][i] = max(mplookup[k - 1][i], mplookup[k][i]);
+
+          max_profit = max(max_profit, mplookup[k][i]);
+          peak_future_price = max(peak_future_price, input[i]);
+        }
+      }
+    }
+    return max_profit;
+  }
+
+  static void test_lean_calc_max_profit_iii() {
+    vector<vector<int>> test_input = { {3,2,6,5,0,3}, {2,1,4,5,2,9,7}, {3,3,5,0,0,3,1,4}, {1,2,3,4,5}, {7,6,4,3,1} };
+    vector<int> test_output = { 7, 11, 6, 4, 0 };
+    int profit = -1;
+    cout << "24. test_lean_calc_max_profit" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      profit = lean_calc_max_profit_iii(test_input[i]);
+      cout << profit << " <=> " << test_output[i] << endl;
+      assert(profit == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1476,6 +1506,7 @@ int main(void) {
   using array_util::test_find_lces;
   using array_util::test_calc_max_profit;
   using array_util::test_calc_max_profit_iii;
+  using array_util::test_lean_calc_max_profit_iii;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1610,6 +1641,7 @@ int main(void) {
   test_find_lces();
   test_calc_max_profit();
   test_calc_max_profit_iii();
+  test_lean_calc_max_profit_iii();
 
   return 0;
 }
