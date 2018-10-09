@@ -1316,6 +1316,55 @@ namespace array_util {
       assert(test_output[i] == result);
     }
   }
+
+  /**
+   * 121. Best Time to Buy and Sell Stock
+   * - Say you have an array for which the ith element is the price of a given
+   *   stock on day i. If you were only permitted to complete at most one
+   *   transaction (i.e., buy one and sell one share of the stock), design an
+   *   algorithm to find the maximum profit.
+   * - Note that you cannot sell a stock before you buy one.
+   * Example 1:
+   * - Input: [7,1,5,3,6,4]
+   *   Output: 5
+   *   Explanation: Buy on day 2 (price = 1) and sell on day 5 (price = 6),
+   *                profit = 6-1 = 5. Not 7-1 = 6, as selling price needs to be
+   *                larger than buying price.
+   * Example 2:
+   * - Input: [7,6,4,3,1]
+   *   Output: 0
+   *   Explanation: In this case, no transaction is done, i.e. max profit = 0.
+   * Intuition:
+   * - find 2 with max ending price - starting price, return 0 if negative.
+   */
+  static int calc_max_profit(const vector<int> & input) {
+    int max_profit = 0;
+    if (input.size() < 2) { return max_profit; }
+    int max_price = input.back();
+    vector<int> max_value_after_pos(input.size(), INT_MIN);
+    for (int i = input.size() - 2; i >= 0; i--) {
+      max_price = max(max_price, input[i + 1]);
+      max_value_after_pos[i] = max_price;
+    }
+
+    for (int i = 0; i < input.size() - 1; i++) {
+      max_profit = max(max_profit, max_value_after_pos[i] - input[i]);
+    }
+
+    return max_profit;
+  }
+
+  static void test_calc_max_profit() {
+    vector<vector<int>> test_input = { {}, { 1 }, { 1,5,3,6,4,9 }, { 7,1,5,3,6,4,9 }, { 7,1,5,3,6,4 }, { 7,6,4,3,1 } };
+    vector<int> test_output = { 0, 0, 8, 8, 5, 0 };
+    int profit = -1;
+    cout << "23. test_calc_max_profit" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      profit = calc_max_profit(test_input[i]);
+      cout << profit << " <=> " << test_output[i] << endl;
+      assert(profit == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1344,6 +1393,7 @@ int main(void) {
   using array_util::test_find_max_product;
   using array_util::test_find_max_product_dp;
   using array_util::test_find_lces;
+  using array_util::test_calc_max_profit;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1476,6 +1526,7 @@ int main(void) {
   test_find_max_product();
   test_find_max_product_dp();
   test_find_lces();
+  test_calc_max_profit();
 
   return 0;
 }
