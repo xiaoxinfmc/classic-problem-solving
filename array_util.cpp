@@ -1365,6 +1365,87 @@ namespace array_util {
       assert(profit == test_output[i]);
     }
   }
+
+  /**
+   * 123. Best Time to Buy and Sell Stock III
+   * Say you have an array for which the ith element is the price of a given stock on day i.
+   * Design an algorithm to find the maximum profit. You may complete at most two transactions.
+   * Note: You may not engage in multiple transactions at the same time (i.e., you must sell the stock before you buy again).
+   * Example 1:
+   * Input: [3,3,5,0,0,3,1,4]
+   * Output: 6
+   * Explanation: Buy on day 4 (price = 0) and sell on day 6 (price = 3), profit = 3-0 = 3.
+   *              Then buy on day 7 (price = 1) and sell on day 8 (price = 4), profit = 4-1 = 3.
+   * Example 2:
+   * Input: [1,2,3,4,5]
+   * Output: 4
+   * Explanation: Buy on day 1 (price = 1) and sell on day 5 (price = 5), profit = 5-1 = 4.
+   *              Note that you cannot buy on day 1, buy on day 2 and sell them later, as you are
+   *              engaging multiple transactions at the same time. You must sell before buying again.
+   * Example 3:
+   * Input: [7,6,4,3,1]
+   * Output: 0
+   * Explanation: In this case, no transaction is done, i.e. max profit = 0.
+   * Intuition:
+   * - Needs to consider 0, 1, 2 trxns that making most of the profits.
+   * - Cannot simply max out the trade as we could miss the swing in the middle.
+   * - Greedy not an option, then DP?
+   * - Let max-profit(i, j) denotes max-profit when sell stock in price j at postion i on trade k
+   *   max-profit(i, j, k) = {
+   *     input[j] - input[i], if k == 0,
+   *     (input[j] - input[i]) + max{ 0 <= y <= i - 1, x < y, max-profit(x, y, k - 1) }
+   *   }
+   *   return the max value.
+   */
+  static int calc_max_profit_iii(const vector<int> & input) {
+    int max_profit = 0;
+    if (input.size() < 2) { return max_profit; }
+    vector<vector<vector<int>>> mplookup(2,
+      vector<vector<int>>(input.size(), vector<int>(input.size(), 0))
+    );
+    /* max-profits if selling at pos 0..j for prev-trxn */
+    vector<int> prev_mplookup(input.size(), 0);
+    vector<int> curr_mplookup(input.size(), 0);
+    vector<int> & prev_mplookup_ref = prev_mplookup,
+                & curr_mplookup_ref = curr_mplookup,
+                & temp_mplookup_ref = prev_mplookup;
+    for (int k = 0; k < mplookup.size(); k++) {
+      for (int i = 0; i < mplookup[k].size(); i++) {
+        for (int j = i + 1; j < mplookup[k][i].size(); j++) {
+          mplookup[k][i][j] = input[j] - input[i];
+          if (k > 0 && i > 1) { mplookup[k][i][j] += prev_mplookup_ref[i - 1]; }
+          max_profit = max(max_profit, mplookup[k][i][j]);
+          curr_mplookup_ref[j] = max(curr_mplookup_ref[j - 1], max(curr_mplookup_ref[j], mplookup[k][i][j]));
+        }
+      }
+      temp_mplookup_ref = prev_mplookup_ref;
+      prev_mplookup_ref = curr_mplookup_ref;
+      curr_mplookup_ref = temp_mplookup_ref;
+    }
+    return max_profit;
+  }
+/*
+cout << endl;
+print_all_elem<int>(input);
+cout << "k: " << k << endl;
+print_all_elem<int>(curr_mplookup_ref);
+print_all_elem_vec<int>(mplookup[k]);
+cout << endl;
+*/
+  static void test_calc_max_profit_iii() {
+    vector<vector<int>> test_input = { {3,2,6,5,0,3}, {2,1,4,5,2,9,7}, {3,3,5,0,0,3,1,4}, {1,2,3,4,5}, {7,6,4,3,1} };
+    vector<int> test_output = { 7, 11, 6, 4, 0 };
+    int profit = -1;
+    cout << "23. test_calc_max_profit" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      profit = calc_max_profit_iii(test_input[i]);
+      cout << profit << " <=> " << test_output[i] << endl;
+      assert(profit == test_output[i]);
+    }
+  }
+
+/*
+*/
 };
 
 int main(void) {
@@ -1394,6 +1475,7 @@ int main(void) {
   using array_util::test_find_max_product_dp;
   using array_util::test_find_lces;
   using array_util::test_calc_max_profit;
+  using array_util::test_calc_max_profit_iii;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1527,6 +1609,7 @@ int main(void) {
   test_find_max_product_dp();
   test_find_lces();
   test_calc_max_profit();
+  test_calc_max_profit_iii();
 
   return 0;
 }
