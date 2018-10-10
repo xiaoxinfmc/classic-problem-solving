@@ -1476,6 +1476,110 @@ namespace array_util {
       assert(profit == test_output[i]);
     }
   }
+
+  /**
+   * 166. Fraction to Recurring Decimal
+   * - Given two integers representing the numerator and denominator of a
+   *   fraction, return the fraction in string format.
+   * - If fractional part is repeating, enclose repeating part in parentheses.
+   * Example 1:
+   * - Input: numerator = 1, denominator = 2
+   * - Output: "0.5"
+   * Example 2:
+   * - Input: numerator = 2, denominator = 1
+   * - Output: "2"
+   * Example 3:
+   * - Input: numerator = 2, denominator = 3
+   * - Output: "0.(6)"
+   * Intuition:
+   * - Assume the input is rational (as it should be)
+   * - for int part, simply divide
+   * - for fraction part, we need to implement divide & find the repeatition.
+   * - there will be non-repeat part(any length) & repeat part(any length)
+   * - need to judge repeatable part when it occurs, say:
+   * - sth similar to kmp failure array?
+   *
+   * - when a repititon occur, we have a substr [i..j] such that
+   *   1. j - i + 1 is even
+   *             8 5 7 7 9 8 5 7 7 9
+   *
+   *   0.0 1 4 2 8 5 7 7 9 8 5 7 7 9
+   *     |-----| |-------|
+   * - the only way to detect a repition is via looking back the div stack
+   *      0 1 4 2 8 5 7 1
+   *     ----------------
+   *   7  1 0 (remainder -> 1)
+   *        7
+   *     ----------------
+   *        3 0
+   *        2 8
+   *     ----------------
+   *        ...
+   *     ----------------
+   *                 5 0
+   *                 4 9
+   *     ----------------
+   *                   1 (remainder hit)
+   */
+  static string convert_fraction_to_decimal(int num, int denom) {
+    string decimal_str;
+    long numerator = num, denominator = denom;
+    long int_part = numerator / denominator;
+    bool is_negative = ((numerator > 0 && denominator < 0) || (numerator < 0 && denominator > 0));
+    decimal_str = to_string(int_part);
+    if (is_negative && '-' != decimal_str[0]) { decimal_str = "-" + decimal_str; }
+    if (int_part * denominator == numerator) { return decimal_str; }
+    long remainder = abs(numerator - int_part * denominator);
+    denominator = abs(denominator);
+
+    vector<int> non_repeating_fraction_digits, repeating_fraction_digits, fraction_digits;
+    unordered_map<long, int> remainder_to_index_map({ { remainder, 0 } });
+    bool is_repitition_found = false;
+    for (; remainder != 0 && false == is_repitition_found; ) {
+      int_part = remainder * 10 / denominator;
+      remainder = (remainder * 10 - int_part * denominator);
+      fraction_digits.push_back(int_part);
+      is_repitition_found = (remainder_to_index_map.end() !=
+                             remainder_to_index_map.find(remainder));
+      if (false == is_repitition_found) {
+        remainder_to_index_map[remainder] = fraction_digits.size();
+      }
+    }
+    if (true == is_repitition_found) {
+      for (int i = 0; i < remainder_to_index_map[remainder]; i++) {
+        non_repeating_fraction_digits.push_back(fraction_digits[i]);
+      }
+      for (int i = remainder_to_index_map[remainder]; i < fraction_digits.size(); i++) {
+        repeating_fraction_digits.push_back(fraction_digits[i]);
+      }
+    } else {
+      non_repeating_fraction_digits = fraction_digits;
+    }
+    decimal_str.push_back('.');
+    for (auto & digit : non_repeating_fraction_digits) {
+      decimal_str.push_back((char)('0' + digit));
+    }
+    if (!repeating_fraction_digits.empty()) {
+      decimal_str.push_back('(');
+      for (auto & digit : repeating_fraction_digits) {
+        decimal_str.push_back((char)('0' + digit));
+      }
+      decimal_str.push_back(')');
+    }
+    return decimal_str;
+  }
+
+  static void test_convert_fraction_to_decimal() {
+    vector<vector<int>> test_input = { { -50, 8 }, { -1, 6 }, { 1, -6 }, { 1, 6 }, { 1, 2 }, { 2, 1 }, { 2, 3 }, { 3227, 555 }, { 2, 7 }, { 22, 7 }, { -2147483648, -1 }, { -1, -2147483648 } };
+    vector<string> test_output = { "-6.25", "-0.1(6)", "-0.1(6)", "0.1(6)", "0.5", "2", "0.(6)", "5.8(144)", "0.(285714)", "3.(142857)", "2147483648", "0.0000000004656612873077392578125" };
+    string result;
+    cout << "25. test_convert_fraction_to_decimal" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = convert_fraction_to_decimal(test_input[i][0], test_input[i][1]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1507,6 +1611,7 @@ int main(void) {
   using array_util::test_calc_max_profit;
   using array_util::test_calc_max_profit_iii;
   using array_util::test_lean_calc_max_profit_iii;
+  using array_util::test_convert_fraction_to_decimal;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1642,6 +1747,7 @@ int main(void) {
   test_calc_max_profit();
   test_calc_max_profit_iii();
   test_lean_calc_max_profit_iii();
+  test_convert_fraction_to_decimal();
 
   return 0;
 }
