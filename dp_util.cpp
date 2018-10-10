@@ -1516,6 +1516,57 @@ namespace dp_util{
     for (int i = 0; i < nums.size(); i++) { unburst_balloons.push_back(i); }
     return maximum_coins_via_burst_balloons_recur(nums, unburst_balloons, subset_max);
   }
+
+  /**
+   * Maximum path sum that starting with any cell of 0-th row and ending with
+   * any cell of (N-1)-th row. Given a N X N matrix Mat[N][N] of positive int.
+   * There are only three possible moves from a cell (i, j)
+   * (i+1, j) (i+1, j-1) (i+1, j+1)
+   * Starting from any column in row 0, return the largest sum of any of the
+   * paths up to row N-1.
+   * Examples:
+   * Input : mat[4][4] = { {4, 2, 3, 4},
+   *                       {2, 9, 1, 10},
+   *                       {15, 1, 3, 0},
+   *                       {16, 92, 41, 44} };
+   * Output :120
+   * path : 4 + 9 + 15 + 92 = 120 
+   * Intuition:
+   * - let pslookup(i, j) -> max-sum for a path from row 0 -> row i ends at col j,
+   * - { come from ps(i - 1, j), ps(i - 1, j + 1), ps(i - 1, j - 1) }
+   * - pslookup(i, j) = matrix[i][j] + max(pslookup(i - 1, j), pslookup(i - 1, j + 1), pslookup(i - 1, j - 1))
+   * - boundary condition: pslookup(0, j) = matrix[0][j]
+   */
+  static int calc_max_path_sum(const vector<vector<int>> & matrix) {
+    int max_path_sum = 0, tentative_path_sum = 0;
+    if (matrix.empty() || matrix.front().empty()) { return max_path_sum; }
+    vector<vector<int>> pslookup(matrix.begin(), matrix.end());
+    for (int i = 0; i < matrix.size(); i++) {
+      for (int j = 0; j < matrix[i].size(); j++) {
+        tentative_path_sum = pslookup[i][j];
+        if (i > 0) {
+          tentative_path_sum += pslookup[i - 1][j];
+          if (j > 0) { tentative_path_sum = max(tentative_path_sum, pslookup[i][j] + pslookup[i - 1][j - 1]); }
+          if (j < matrix.size() - 1) { tentative_path_sum = max(tentative_path_sum, pslookup[i][j] + pslookup[i - 1][j + 1]); }
+        }
+        pslookup[i][j] = tentative_path_sum;
+        max_path_sum = max(max_path_sum, tentative_path_sum);
+      }
+    }
+    return max_path_sum;
+  }
+
+  static void test_calc_max_path_sum() {
+    int max_sum = 0;
+    vector<int> test_output = { 4, 120 };
+    vector<vector<vector<int>>> test_input = { { {4, 2, 3, 4} }, { {4, 2, 3, 4}, {2, 9, 1, 10}, {15, 1, 3, 0}, {16, 92, 41, 44} } };
+    cout << "25. test_calc_max_path_sum" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      max_sum = calc_max_path_sum(test_input[i]);
+      cout << max_sum << " <=> " << test_output[i] << endl;
+      assert(max_sum == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1547,6 +1598,7 @@ int main(void) {
   using dp_util::calc_lcstr_len;
   using dp_util::maximum_coins_via_burst_balloons;
   using dp_util::fast_maximum_coins_via_burst_balloons;
+  using dp_util::test_calc_max_path_sum;
 
   cout << "1. get_min_palindrome_cnt" << endl;
   string test_input[] = { "", "a", "aab", "aaa", "aaacdfe", "aaacaaafe",
@@ -1783,6 +1835,8 @@ int main(void) {
   cout << "152 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3, 5, 8 })) << endl;
   cout << "1088290 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
   cout << "3414 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
+
+  test_calc_max_path_sum();
 
   return 0;
 }
