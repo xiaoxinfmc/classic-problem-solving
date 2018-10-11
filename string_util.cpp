@@ -8,6 +8,7 @@
 #include <cctype>
 #include <list>
 #include <cmath>
+#include <set>
 
 namespace string_util {
   using std::cout;
@@ -15,10 +16,12 @@ namespace string_util {
   using std::string;
   using std::vector;
   using std::unordered_set;
+  using std::set;
   using std::list;
   using std::min;
   using std::max;
   using std::unordered_map;
+  using std::pair;
 
   template <class type>
   static void print_all_elem(const vector<type>& input) {
@@ -1281,7 +1284,177 @@ namespace string_util {
       assert(test_output[i] == resu);
     }
   }
+
+  /**
+   * 472. Concatenated Words
+   * - Given a list of words (without duplicates), please write a program that
+   *   returns all concatenated words in the given list of words.
+   * - A concatenated word is defined as a string that is comprised entirely of
+   *   at least two shorter words in the given array.
+   * Example:
+   * - Input: ["cat","cats","catsdogcats","dog","dogcatsdog",
+   *           "hippopotamuses","rat","ratcatdogcat"]
+   *   Output: ["catsdogcats","dogcatsdog","ratcatdogcat"]
+   *   catsdogcats : build up suffices O(m^2), n words & n pieces for -> O(n^2m^2)
+   *             s (cats, catsdogcats, hippopotamuses)
+   *            ts
+   *           ats
+   *          cats x
+   *         gcats
+   *        ogcats
+   *       dogcats x -> trie contains all suffices of all words.
+   *      sdogcats
+   *     tsdogcats
+   *    atsdogcats
+   *   catsdogcats x
+   *   suffix trie is too expensive & heavy.
+   *   build a prefix trie for all words & do dfs for every word
+   *            v  v
+   *   { a abbc abbcd bbcd }
+   * - actually a dfs should be good with available entries on each level of a path
+   * - say we have a prefix trie, then we need apply DP to find a path to the end.
+   * - for a word w[0..j], token[0..i] matched & token[i+1..j] can also be matched
+   * Explanation:
+   * - "catsdogcats" can be concatenated by "cats", "dog" and "cats"; 
+   * - "dogcatsdog" can be concatenated by "dog", "cats" and "dog"; 
+   * - "ratcatdogcat" can be concatenated by "rat", "cat", "dog" and "cat".
+   * Note:
+   * - The number of elements of the given array will not exceed 10,000
+   * - The length sum of elements in the given array will not exceed 600,000.
+   * - All the input string will only include lower case letters.
+   * - The returned elements order does not matter.
+   * Intuition:
+   * - bf -> for every word, check if it is a concat from others.
+   * - problem being that even check a single word is very expensive.
+   * - we may want to optimize & figure out the redundant calc.
+   * - seems word could be reused # times & its order does not matter.
+   *   (unlikely to concat all tokens & run DP)
+   * - then parse each word to a graph?
+   * - { a b ab c d cd abcd abc abcc }
+   *   base token: a  b    c  d
+   *               +--^ +---^
+   *   concat tok: ab   |  cd
+   *               ^----+   |
+   *               abc  +--abcd
+   *               |----+
+   *               abcc
+   * - think of the size of each token? only to prune out some cases.
+   * - the problem only require us to return true | false for any words
+   *   instead of actual breakdown, so still DP?
+   * - sort the input 1st such that we know what to do?
+   * - build a suffix tree for every word?
+   */
+  const static int MAX_PREFIX_TRIE_CHAR_CNT = (int)'z' - (int)'a' + 1;
+
+  class prefix_trie_vertex {
+  public:
+    prefix_trie_vertex(char val = '\0', int idx = -1) : value(val), word_idx(idx) {}
+    virtual ~prefix_trie_vertex() {}
+    prefix_trie_vertex * trie_ptrs[MAX_PREFIX_TRIE_CHAR_CNT] = { NULL };
+    char value; int word_idx;
+  };
+
+  static prefix_trie_vertex * gen_prefix_trie(const vector<string> & words) {
+    prefix_trie_vertex * trie_root_ptr = new prefix_trie_vertex(),
+                       * trie_curr_ptr = NULL;
+    assert(NULL != trie_root_ptr);
+
+    for (int j = 0; j < words.size(); j++) {
+      const string & word = words[j];
+      trie_curr_ptr = trie_root_ptr;
+      for (int i = 0; i < word.size(); i++) {
+        char chr = word[i];
+        int chr_idx = (int)chr - (int)'a', word_idx = -1;
+        if (NULL == trie_curr_ptr->trie_ptrs[chr_idx]) {
+          trie_curr_ptr->trie_ptrs[chr_idx] = new prefix_trie_vertex(chr, word_idx);
+          assert(NULL != trie_curr_ptr->trie_ptrs[chr_idx]);
+        }
+        trie_curr_ptr = trie_curr_ptr->trie_ptrs[chr_idx];
+        if (word.size() - 1 == i) { trie_curr_ptr->word_idx = j; }
+      }
+    }
+    return trie_root_ptr;
+  }
+
+  static void delete_prefix_trie(prefix_trie_vertex * trie_root_ptr) {
+    if (NULL == trie_root_ptr) { return; }
+    vector<prefix_trie_vertex *> trie_ptr_buffer({ trie_root_ptr });
+    prefix_trie_vertex * trie_ptr_to_del = NULL;
+    while(false == trie_ptr_buffer.empty()) {
+      trie_ptr_to_del = trie_ptr_buffer.back();
+      trie_ptr_buffer.pop_back();
+      for (int i = 0; i < (sizeof(trie_ptr_to_del->trie_ptrs) /
+                           sizeof(prefix_trie_vertex *)); i++) {
+        if (NULL != trie_ptr_to_del->trie_ptrs[i]) {
+          trie_ptr_buffer.push_back(trie_ptr_to_del->trie_ptrs[i]);
+        }
+      }
+      delete trie_ptr_to_del;
+    }
+  }
+
+  static void print_prefix_trie(prefix_trie_vertex * trie_root_ptr) {
+    if (NULL == trie_root_ptr) { return; }
+    vector<prefix_trie_vertex *> trie_ptr_buffer({ trie_root_ptr });
+    prefix_trie_vertex * trie_ptr_to_del = NULL;
+    while(false == trie_ptr_buffer.empty()) {
+      trie_ptr_to_del = trie_ptr_buffer.back();
+      trie_ptr_buffer.pop_back();
+      for (int i = 0; i < (sizeof(trie_ptr_to_del->trie_ptrs) /
+                           sizeof(prefix_trie_vertex *)); i++) {
+        if (NULL != trie_ptr_to_del->trie_ptrs[i]) {
+          trie_ptr_buffer.push_back(trie_ptr_to_del->trie_ptrs[i]);
+        }
+      }
+      cout << trie_ptr_to_del->value << " : ";
+    }
+    cout << endl;
+  }
+
+  static bool is_word_valid_recur(const vector<string> & words,
+                                  int curr_word_idx, int curr_char_idx, int token_cnt,
+                                  prefix_trie_vertex * trie_root_ptr) {
+    const string & word = words[curr_word_idx];
+
+    if (curr_char_idx >= word.size()) {
+      if (2 <= token_cnt){ return true; } else { return false; }
+    }
+    /* curr word idx (char) -> curr trie node ptr */
+    prefix_trie_vertex * curr_trie_ptr = trie_root_ptr->trie_ptrs[(int)word[curr_char_idx] - 'a'];
+    while (NULL != curr_trie_ptr && curr_trie_ptr->value == word[curr_char_idx]) {
+      if (curr_word_idx != curr_trie_ptr->word_idx && curr_trie_ptr->word_idx >= 0) {
+        if (is_word_valid_recur(words, curr_word_idx, curr_char_idx + 1, token_cnt + 1, trie_root_ptr)) { return true; }
+      }
+      curr_char_idx++; if (curr_char_idx >= word.size()) { break; }
+      curr_trie_ptr = curr_trie_ptr->trie_ptrs[(int)word[curr_char_idx] - 'a'];
+    }
+    return false;
+  }
+
+  static vector<string> find_all_concat_words(const vector<string> & words) {
+    vector<string> concat_words;
+    prefix_trie_vertex * trie_root_ptr = gen_prefix_trie(words);
+    for (int i = 0; i < words.size(); i++) {
+      if (is_word_valid_recur(words, i, 0, 0, trie_root_ptr)) { concat_words.push_back(words[i]); }
+    }
+    delete_prefix_trie(trie_root_ptr);
+    return concat_words;
+  }
+
+  static void test_find_all_concat_words() {
+    vector<string> result;
+    vector<vector<string>> test_output = { { "catsdogcats","dogcatsdog","ratcatdogcat" }, { "ab", "cd", "abcd", "abc", "abcc" }, { "abbcd" } };
+    vector<vector<string>> test_input = { { "cat","cats","catsdogcats","dog","dogcatsdog","hippopotamuses","rat","ratcatdogcat" }, { "a", "b", "ab", "c", "d", "cd", "abcd", "abc", "abcc" }, { "a", "abbc", "abbcd", "bbcd" } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_all_concat_words(test_input[i]);
+      sort(result.begin(), result.end());
+      sort(test_output[i].begin(), test_output[i].end());
+      print_all_elem<string>(result); cout << "<=>" << endl;
+      print_all_elem<string>(test_output[i]);
+    }
+  }
 };
+
 
 int main(void) {
   using string_util::test_find_word_in_batch;
@@ -1301,6 +1474,7 @@ int main(void) {
   using string_util::test_is_wild_card_matched;
   using string_util::test_is_regex_matched;
   using string_util::test_is_number_valid;
+  using string_util::test_find_all_concat_words;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1319,6 +1493,7 @@ int main(void) {
   test_is_wild_card_matched();
   test_is_regex_matched();
   test_is_number_valid();
+  test_find_all_concat_words();
 
   return 0;
 }
