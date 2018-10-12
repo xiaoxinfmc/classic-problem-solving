@@ -1580,6 +1580,103 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 547. Friend Circles
+   * - There are N students in a class. Some of them are friends, while some
+   *   are not. Their friendship is transitive in nature. For example, if A is
+   *   a direct friend of B, and B is a direct friend of C, then A is an
+   *   indirect friend of C. And we defined a friend circle is a group of
+   *   students who are direct or indirect friends.
+   * - Given a N*N matrix M representing the friend relationship between
+   *   students in the class. If M[i][j] = 1, then the ith and jth students are
+   *   direct friends with each other, otherwise not. And you have to output the
+   *   total number of friend circles among all the students.
+   * Example 1:
+   * - Input: {{1,1,0}, {1,1,0}, {0,0,1}}
+   *   Output: 2
+   * Explanation:
+   * - The 0th and 1st students are direct friends, so they are in friend circle
+   *   The 2nd student himself is in a friend circle. So return 2.
+   * Example 2:
+   * - Input: {{1,1,0}, {1,1,1}, {0,1,1}}
+   *   Output: 1
+   * Explanation:
+   * - The 0th and 1st students are direct friends, the 1st and 2nd students
+   *   are direct friends,
+   * - so the 0th and 2nd students are indirect friends.
+   * - All of them are in the same friend circle, so return 1.
+   * Note:
+   * - N is in range [1,200].
+   * - M[i][i] = 1 for all students.
+   * - If M[i][j] = 1, then M[j][i] = 1.
+   */
+  class disjoint_set {
+  public:
+    /* used for union 2 diff components together, return new root */
+    int union_set(int comp_idx_l, int comp_idx_r) {
+      int root_idx_l = union_find(comp_idx_l),
+          root_idx_r = union_find(comp_idx_r),
+          root_idx   = root_idx_l;
+      if (root_idx_l == root_idx_r) { return root_idx; }
+      if (components[root_idx_l] < components[root_idx_r]) {
+        components[root_idx_r] += components[root_idx_l];
+        components[root_idx_l] = root_idx_r;
+        root_idx = root_idx_r;
+      } else {
+        components[root_idx_l] += components[root_idx_r];
+        components[root_idx_r] = root_idx_l;
+        root_idx = root_idx_l;
+      }
+      components_cnt--;
+      return root_idx;
+    }
+
+    /* return # of dis-connected components */
+    int get_components_cnt() { return components_cnt; }
+
+    disjoint_set(int size) {
+      components = vector<int>(size, -1); components_cnt = size;
+    }
+    virtual ~disjoint_set() {}
+
+  private:
+
+    /* used for find the root of a certain components with path compression */
+    int union_find(int comp_idx) {
+      int root_idx = comp_idx;
+      while (components[root_idx] >= 0) { root_idx = components[root_idx]; }
+      while (components[comp_idx] >= 0) { components[comp_idx] = root_idx;
+                                          comp_idx = components[comp_idx]; }
+      return root_idx;
+    }
+
+    /* id mark diff. components, value mark its parent, negative value in root for size */
+    vector<int> components;
+    int components_cnt;
+  };
+
+  static int calc_friend_circle_cnt(const vector<vector<int>> & matrix) {
+    disjoint_set circles(matrix.size());
+    for (int i = 0; i < matrix.size(); i++) {
+      for (int j = i + 1; j < matrix[i].size(); j++) {
+        if (1 == matrix[i][j]) { circles.union_set(i, j); }
+      }
+    }
+    return circles.get_components_cnt();
+  }
+
+  static void test_calc_friend_circle_cnt() {
+    int cnt = 0;
+    vector<int> test_output = { 1, 2, 1 };
+    vector<vector<vector<int>>> test_input = { {{1,1,1},{1,1,1},{1,1,1}}, {{1,1,0}, {1,1,0}, {0,0,1}}, {{1,1,0}, {1,1,1}, {0,1,1}} };
+    cout << "26. test_calc_friend_circle_cnt" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      cnt = calc_friend_circle_cnt(test_input[i]);
+      cout << cnt << " <=> " << test_output[i] << endl;
+      assert(cnt == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1612,6 +1709,7 @@ int main(void) {
   using array_util::test_calc_max_profit_iii;
   using array_util::test_lean_calc_max_profit_iii;
   using array_util::test_convert_fraction_to_decimal;
+  using array_util::test_calc_friend_circle_cnt;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1748,6 +1846,7 @@ int main(void) {
   test_calc_max_profit_iii();
   test_lean_calc_max_profit_iii();
   test_convert_fraction_to_decimal();
+  test_calc_friend_circle_cnt();
 
   return 0;
 }
