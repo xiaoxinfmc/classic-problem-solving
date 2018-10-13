@@ -1891,6 +1891,46 @@ namespace array_util {
       print_all_elem_vec<int>(test_output[i]);
     }
   }
+
+  static void gen_uniq_subsets_recur(vector<int> & input, vector<int> & path,
+                                     vector<vector<int>> & subsets) {
+    if (input.empty()) { return; }
+    vector<int> buffer = input;
+    int curr_elem = 0;
+    while (!input.empty()) {
+      curr_elem = input.back();
+      path.push_back(curr_elem);
+      input.pop_back();
+      subsets.push_back(path);
+      gen_uniq_subsets_recur(input, path, subsets);
+      path.pop_back();
+      while(!input.empty() && input.back() == curr_elem) {
+        input.pop_back();
+      }
+    }
+    input = buffer;
+  }
+
+  static vector<vector<int>> gen_uniq_subsets(vector<int> & input) {
+    vector<int> path;
+    vector<vector<int>> subsets = {{}};
+    sort(input.begin(), input.end());
+    gen_uniq_subsets_recur(input, path, subsets);
+    return subsets;
+  }
+
+  static void test_gen_uniq_subsets() {
+    vector<vector<int>> result;
+    vector<vector<int>> test_input = { {}, {1,2,2} };
+    vector<vector<vector<int>>> test_output = { {{}}, {{1},{2},{1,2,2},{1,2},{2,2},{}} };
+    cout << "31. test_gen_uniq_subsets" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = gen_uniq_subsets(test_input[i]);
+      print_all_elem_vec<int>(result); cout << "<=>" << endl;
+      print_all_elem_vec<int>(test_output[i]);
+    }
+  }
+
 };
 int main(void) {
   using array_util::print_all_elem;
@@ -1927,6 +1967,7 @@ int main(void) {
   using array_util::test_is_value_existed;
   using array_util::test_fast_is_value_existed;
   using array_util::test_gen_subsets;
+  using array_util::test_gen_uniq_subsets;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2068,6 +2109,7 @@ int main(void) {
   test_is_value_existed();
   test_fast_is_value_existed();
   test_gen_subsets();
+  test_gen_uniq_subsets();
 
   return 0;
 }
