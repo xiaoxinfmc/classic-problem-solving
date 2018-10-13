@@ -1740,8 +1740,158 @@ namespace array_util {
       print_all_elem<int>(get_redundant_edges(test_input[i]));
     }
   }
-};
 
+  /**
+   * 74. Search a 2D Matrix
+   * - Write an efficient algorithm that searches for a value in an mxn matrix.
+   *   This matrix has the following properties:
+   * - Integers in each row are sorted from left to right.
+   * - The 1st integer of each row is greater than last integer of previous row
+   * Example 1:
+   * Input:
+   * matrix = { {1,   3,  5,  7}, {10, 11, 16, 20}, {23, 30, 34, 50} }
+   * target = 3
+   * Output: true
+   * Example 2:
+   * Input:
+   * matrix = { {1,   3,  5,  7}, {10, 11, 16, 20}, {23, 30, 34, 50} }
+   * target = 13
+   * Output: false
+   */
+  static bool is_value_existed(const vector<vector<int>> & matrix, int target) {
+    for (int i = matrix.size() - 1; i >= 0; i--) {
+      if (matrix[i].empty() || matrix[i][0] > target) { continue; }
+      for (int j = 0; j < matrix[i].size(); j++) {
+        if (matrix[i][j] == target) { return true; }
+      }
+      break;
+    }
+    return false;
+  }
+
+  static void test_is_value_existed() {
+    bool result = false;
+    vector<bool> test_output = { true, true, false };
+    vector<int> test_input_1 = { 3, 3, 13 };
+    vector<vector<vector<int>>> test_input_0 = { {{1, 3}}, { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} } };
+    cout << "28. test_is_value_existed" << endl;
+    for (int i = 0; i < test_input_0.size(); i++) {
+      result = is_value_existed(test_input_0[i], test_input_1[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
+  static int binary_search_for_row_less_or_equal_than(const vector<vector<int>> & matrix,
+                                                      int min, int max, int target) {
+    int mid = (min + max) / 2;
+    if (matrix.empty() || mid < 0 || mid >= matrix.size() ||
+        matrix[mid].empty()) { return -1; }
+    while (min < max) {
+      if (matrix[mid].empty()) { return -1; }
+      if (matrix[mid][0] == target) { return mid; }
+      else if (target < matrix[mid][0]) { max = mid - 1; }
+      else { min = mid + 1; }
+      mid = (min + max) / 2;
+    }
+    if (matrix[mid][0] > target) { return mid - 1; }
+    return mid;
+  }
+
+  /* 0 1 -> (mid 0 min 0 max -1 | min 1 max 1) 0 2 -> (mid 1 min 0 max 0 | min 2, max 2) */
+  static int binary_search_from_sorted_vector(const vector<int> & vector,
+                                              int min, int max, int target) {
+    if (vector.empty()) { return -1; }
+    int mid = (min + max) / 2;
+    while (min <= max) {
+      if (target == vector[mid]) { return mid; }
+      else if (target < vector[mid]) { max = mid - 1; }
+      else { min = mid + 1; }
+      mid = (min + max) / 2;
+    }
+    return -1;
+  }
+
+  static bool fast_is_value_existed(const vector<vector<int>> & matrix, int target) {
+    int row = binary_search_for_row_less_or_equal_than(matrix, 0, matrix.size() - 1, target);
+    if (-1 == row) { return false; }
+    int col = binary_search_from_sorted_vector(matrix[row], 0, matrix[row].size() - 1, target);
+    if (-1 == col) { return false; }
+    return true;
+  }
+
+  static void test_fast_is_value_existed() {
+    bool result = false;
+    vector<bool> test_output = { false, false, true, true, false, false, true, true, false };
+    vector<int> test_input_1 = { 1, 1, 98, 1, 99, -1, 3, 3, 13 };
+    vector<vector<vector<int>>> test_input_0 = { {}, {{}},
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 98} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 98} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} },
+                                                 { {1, 3} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} },
+                                                 { {1, 3, 5, 7}, {10, 11, 16, 20}, {23, 30, 34, 50} } };
+    cout << "29. test_fast_is_value_existed" << endl;
+    for (int i = 0; i < test_input_0.size(); i++) {
+      result = fast_is_value_existed(test_input_0[i], test_input_1[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
+  /**
+   * 78. Subsets
+   * Given a set of distinct integers, nums, return all possible subsets (the power set).
+   * Note: The solution set must not contain duplicate subsets.
+   * Example:
+   * Input: nums = {1,2,3}
+   * Output:
+   * { {3}, {1}, {2}, {1,2,3}, {1,3}, {2,3}, {1,2}, {} }
+   * - goal is to return sum(c(i, n))
+   * - dfs search for all uniq-path with diff. nodes.
+   * - then path + curr-node + reamining nodes
+   * - {} | 3 | { 1, 2 }
+   *   { 3 } | 2 | { 1 }
+   *   { 3 } | 1 | {}
+   * - {} | 2 | { 1 }
+   * - {} | 1 | { }
+   */
+  static void gen_subsets_recur(vector<int> & curr_input, /* remaining elem */
+                                vector<int> & curr_subset, /* existing sets */
+                                vector<vector<int>> & subsets) {
+    if (curr_input.empty()) { return; }
+    vector<int> buffer = curr_input;
+    while (!curr_input.empty()) {
+      curr_subset.push_back(curr_input.back());
+      subsets.push_back(curr_subset);
+      curr_input.pop_back();
+      gen_subsets_recur(curr_input, curr_subset, subsets);
+      curr_subset.pop_back();
+    }
+    curr_input = buffer;
+  }
+
+  static vector<vector<int>> gen_subsets(vector<int> & input) {
+    vector<int> curr_path;
+    vector<vector<int>> subsets = {{}};
+    gen_subsets_recur(input, curr_path, subsets);
+    return subsets;
+  }
+
+  static void test_gen_subsets() {
+    vector<vector<int>> result;
+    vector<vector<int>> test_input = { {}, {1,2,3} };
+    vector<vector<vector<int>>> test_output = { {{}}, { {3}, {1}, {2}, {1,2,3}, {1,3}, {2,3}, {1,2}, {} } };
+    cout << "30. test_gen_subsets" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = gen_subsets(test_input[i]);
+      print_all_elem_vec<int>(result); cout << "<=>" << endl;
+      print_all_elem_vec<int>(test_output[i]);
+    }
+  }
+};
 int main(void) {
   using array_util::print_all_elem;
   using array_util::print_all_elem_vec;
@@ -1774,6 +1924,9 @@ int main(void) {
   using array_util::test_convert_fraction_to_decimal;
   using array_util::test_calc_friend_circle_cnt;
   using array_util::test_get_redundant_edges;
+  using array_util::test_is_value_existed;
+  using array_util::test_fast_is_value_existed;
+  using array_util::test_gen_subsets;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -1912,6 +2065,9 @@ int main(void) {
   test_convert_fraction_to_decimal();
   test_calc_friend_circle_cnt();
   test_get_redundant_edges();
+  test_is_value_existed();
+  test_fast_is_value_existed();
+  test_gen_subsets();
 
   return 0;
 }
