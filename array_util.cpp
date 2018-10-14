@@ -2166,7 +2166,141 @@ namespace array_util {
     }
   }
 
+  /**
+   * 57. Insert Interval
+   * - Given a set of non-overlapping intervals, insert a new interval into the
+   *   intervals (merge if necessary).
+   * - You may assume that the intervals were initially sorted by start times.
+   * Example 1:
+   * - Input: intervals = {{1,3},{6,9}}, newInterval = {2,5}
+   *   Output: {{1,5},{6,9}}
+   * Example 2:
+   * - Input: intervals = {{1,2},{3,5},{6,7},{8,10},{12,16}}, newInterval = {4,8}
+   *   Output: {{1,2},{3,10},{12,16}}
+   * - Explanation: new interval {4,8} overlaps with {3,5},{6,7},{8,10}
+   * - struct Interval {
+   *     int start;
+   *     int end;
+   *     Interval() : start(0), end(0) {}
+   *     Interval(int s, int e) : start(s), end(e) {}
+   *   };
+   * Intuition:
+   * - for all input intervals, there is no overlapping, -> disjoint from each other.
+   * - use binary search to identify the zone to insert our new range.
+   * - use a list to keep track of all the iterator from input for ease of insertion.
+   * - merge interval if necessary.
+   * - case I: new-intv [ ... ] or [ ... ] new-intv
+   * - case II: [ ... ] new-intv [ ... ]
+   * - case III: [ old-intv-0 & new-intv ] or [ new-intv & old-intv-1 ] or
+   *             [ old-intv-0 & new-intv & old-intv-1 ]
+   *   start                      end
+   *     |-------------------------|
+   * - |---|   |---|   |---|    |---|    |---|
+   *     ^                         ^
+   */
+  class interval {
+  public:
+    interval(int s = 0, int e = 0) : start(s), end(e) {}
+    virtual ~interval() {}
+    int start, end;
+    friend ostream & operator<<(ostream & os, const interval & intv) {
+      os << "[ " << intv.start << ", " << intv.end << " ]"; return os;
+    }
+  };
+/*
+  static bool is_intv_within_range(interval & intv, interval & intv_chk) {
+    return (intv.start <= intv_chk.start && intv_chk.end <= intv.end);
+  }
+*/
+  static bool is_intv_preceed_range(interval & intv, interval & intv_chk) {
+    return (intv_chk.end < intv.start);
+  }
 
+  static bool is_intv_after_range(interval & intv, interval & intv_chk) {
+    return (intv_chk.start > intv.end);
+  }
+
+  static bool is_intervl_valid(interval & intv) {
+    return (intv.start >= 0 && intv.end >= 0 && intv.start <= intv.end);
+  }
+
+  static vector<interval> insert_new_interval(vector<interval>& intervals,
+                                              interval new_interval) {
+    if (!is_intervl_valid(new_interval)) { return intervals; }
+    vector<interval> new_interval_vec;
+
+    /* - case I: new-intv or new-intv [ ... ] or [ ... ] new-intv */
+    if (true == intervals.empty()) {
+      new_interval_vec.push_back(new_interval); return new_interval_vec;
+    }
+    if (true == is_intv_preceed_range(intervals.front(), new_interval)) {
+      new_interval_vec.push_back(new_interval);
+      for (auto & intv : intervals) { new_interval_vec.push_back(intv); }
+      return new_interval_vec;
+    }
+    if (true == is_intv_after_range(intervals.back(), new_interval)) {
+      for (auto & intv : intervals) { new_interval_vec.push_back(intv); }
+      new_interval_vec.push_back(new_interval);
+      return new_interval_vec;
+    }
+    /*
+     *   start                     end
+     *     |------------------------|
+     * - |---|   |---|   |---|    |---|    |---|
+     *     ^                        ^
+     *   start                end
+     *     |-------------------|
+     * - |---|   |---|   |---|    |---|    |---|
+     *     ^               ^
+     *       start                 end
+     *         |--------------------|
+     * - |---|   |---|   |---|    |---|    |---|
+     *             ^                ^
+     *       start             end
+     *         |----------------|
+     * - |---|   |---|   |---|    |---|    |---|
+     *             ^       ^
+     *       start    end
+     *         |-------|
+     * - |---|   |---|   |---|    |---|    |---|
+     *            ^ ^
+     *       start             end
+     *         |----------------|
+     * - |---|                    |---|
+     *     ^                        ^ (cross)
+     */
+    /* start_itr -> 1st elem, end_itr -> last elem */
+    vector<interval>::iterator start_itr = intervals.begin();
+    vector<interval>::iterator end_itr = intervals.end(); end_itr--;
+
+    /* as we short circuit before, so start_itr is guaranteed not to be end() */
+    while (true == is_intv_after_range(* start_itr, new_interval)) {
+      new_interval_vec.push_back(* start_itr); start_itr++;
+    }
+    /* as we short circuit before, so start_itr is guaranteed not to exceed begin(), but could cross with start_itr by 1 */
+    while (true == is_intv_preceed_range(* end_itr, new_interval)) { end_itr--; }
+
+    /* check if start & end cross, actually does not matter, as we always check the time */
+    int new_start_time = 0, new_end_time = 0;
+    new_start_time = min(start_itr->start, new_interval.start);
+    new_end_time = max(end_itr->end, new_interval.end);
+    new_interval_vec.push_back(interval(new_start_time, new_end_time));
+
+    for (end_itr++; end_itr != intervals.end(); end_itr++) { new_interval_vec.push_back(* end_itr); }
+
+    return new_interval_vec;
+  }
+
+  static void test_insert_new_interval() {
+    vector<interval> test_input_1 = { interval(2,5), interval(4,8) };
+    vector<vector<interval>> test_input_0 = { { interval(1,3),interval(6,9) }, { interval(1,2),interval(3,5),interval(6,7),interval(8,10),interval(12,16) } };
+    vector<vector<interval>> test_output = { { interval(1,5),interval(6,9) }, { interval(1,2),interval(3,10),interval(12,16) } };
+    cout << "37. test_insert_new_interval" << endl;
+    for (int i = 0; i < test_input_0.size(); i++) {
+			print_all_elem<interval>(test_output[i]); cout << "<=>" << endl;
+			print_all_elem<interval>(insert_new_interval(test_input_0[i], test_input_1[i]));
+    }
+  }
 };
 
 int main(void) {
@@ -2210,6 +2344,7 @@ int main(void) {
   using array_util::test_calc_min_sum_path;
   using array_util::test_cnt_uniq_paths;
   using array_util::test_cnt_uniq_paths_ii;
+  using array_util::test_insert_new_interval;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2357,6 +2492,7 @@ int main(void) {
   test_calc_min_sum_path();
   test_cnt_uniq_paths();
   test_cnt_uniq_paths_ii();
+  test_insert_new_interval();
 
   return 0;
 }
