@@ -2090,7 +2090,85 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 62. Unique Paths
+   * - A robot is located at the top-left corner of a m x n grid (marked Start
+   *   in the diagram below).
+   * - The robot can only move either down or right at any point in time. The
+   *   robot is trying to reach the bottom-right corner of the grid (marked
+   *   Finish in the diagram below).
+   * - How many possible unique paths are there?
+   * Example 1:
+   * Input: m = 3, n = 2
+   * Output: 3
+   * Explanation:
+   * Example 2:
+   * Input: m = 7, n = 3
+   * Output: 28
+   * Intuition:
+   * - let cplookup(i, j) denotes # of uniq-paths to m(i, j);
+   * - cplookup(i, j) = cplookup(i - 1, j) + cplookup(i, j - 1);
+   * - only previous row needed if we calc from left -> right.
+   */
+  static int cnt_uniq_paths(int row_cnt, int col_cnt) {
+    if (row_cnt <= 0 || col_cnt <= 0) { return 0; }
+    vector<int> cplookup(col_cnt, 1);
+    for (int i = 1; i < row_cnt; i++) {
+      for (int j = 0; j < col_cnt; j++) {
+        cplookup[j] = (0 == j) ? (cplookup[j]) : (cplookup[j] + cplookup[j - 1]);
+      }
+    }
+    return cplookup.back();
+  }
+
+  static void test_cnt_uniq_paths() {
+    int result = 0;
+    vector<int> test_output = { 3, 28 };
+    vector<vector<int>> test_input = { { 3, 2 }, { 7, 3 } };
+    cout << "35. test_cnt_uniq_paths" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = cnt_uniq_paths(test_input[i].front(), test_input[i].back());
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
+  /**
+   * 63. Unique Paths II
+   * - 1 means no-pass, Input: {{0,0,0},{0,1,0},{0,0,0}} Output: 2
+   */
+  static int cnt_uniq_paths_ii(const vector<vector<int>> & matrix) {
+    if (matrix.empty() || matrix.front().empty()) { return 0; }
+    vector<int> cplookup(matrix.front().size(), 1);
+    if (matrix[0][0] == 1) { return 0; }
+    for (int i = 1; i < cplookup.size(); i++) {
+      if (matrix[0][i] == 1) { cplookup[i] = 0; } else { cplookup[i] = cplookup[i - 1]; }
+    }
+    for (int i = 1; i < matrix.size(); i++) {
+      for (int j = 0; j < matrix[i].size(); j++) {
+        if (matrix[i][j] == 1) { cplookup[j] = 0; continue; }
+        cplookup[j] = (0 == j) ? (cplookup[j]) : (cplookup[j] + cplookup[j - 1]);
+      }
+    }
+    return cplookup.back();
+  }
+
+  static void test_cnt_uniq_paths_ii() {
+    int result = 0;
+    vector<int> test_output = { 0, 2 };
+    vector<vector<vector<int>>> test_input = {{{1,0,0},{0,1,0},{0,0,0}},{{0,0,0},{0,1,0},{0,0,0}}};
+    cout << "36. test_cnt_uniq_paths_ii" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = cnt_uniq_paths_ii(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
+
 };
+
 int main(void) {
   using array_util::print_all_elem;
   using array_util::print_all_elem_vec;
@@ -2130,6 +2208,8 @@ int main(void) {
   using array_util::test_set_zeroes;
   using array_util::test_lean_set_zeroes;
   using array_util::test_calc_min_sum_path;
+  using array_util::test_cnt_uniq_paths;
+  using array_util::test_cnt_uniq_paths_ii;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2275,6 +2355,8 @@ int main(void) {
   test_set_zeroes();
   test_lean_set_zeroes();
   test_calc_min_sum_path();
+  test_cnt_uniq_paths();
+  test_cnt_uniq_paths_ii();
 
   return 0;
 }
