@@ -1931,6 +1931,165 @@ namespace array_util {
     }
   }
 
+  /**
+   * 73. Set Matrix Zeroes
+   * - Given a m x n matrix, if an element is 0, set its entire row and column
+   *   to 0. Do it in-place.
+   * Example 1:
+   * Input: { {1,1,1}, {1,0,1}, {1,1,1} }
+   * Output: { {1,0,1}, {0,0,0}, {1,0,1} }
+   * Example 2:
+   * Input: { {0,1,2,0}, {3,4,5,2}, {1,3,1,5} }
+   * Output: { {0,0,0,0}, {0,4,5,0}, {0,3,1,0} }
+   * - A straight forward solution using O(mn) space is probably a bad idea.
+   *   A simple improvement uses O(m + n) space, but not the best solution.
+   *   Could you devise a constant space solution?
+   */
+  static void set_zeroes_recur(vector<vector<int>> & matrix,
+                               int start_row, int end_row,
+                               int start_col, int end_col) {
+    if (start_row > end_row || start_col > end_col) { return; }
+    int row = (start_row + end_row) / 2,
+        col = (start_col + end_col) / 2;
+    if (matrix[row][col] == 0) {
+      for (int i = 0; i < matrix.size(); i++) {
+        if (matrix[i][col] != 0) { matrix[i][col] = INT_MIN; }
+      }
+      for (int i = 0; i < matrix[row].size(); i++) {
+        if (matrix[row][i] != 0) { matrix[row][i] = INT_MIN; }
+      }
+    }
+    set_zeroes_recur(matrix, start_row, row - 1, start_col, col - 1);
+    set_zeroes_recur(matrix, start_row, row - 1, col + 1, end_col);
+    set_zeroes_recur(matrix, row + 1, end_row, start_col, col - 1);
+    set_zeroes_recur(matrix, row + 1, end_row, col + 1, end_col);
+    if (matrix[row][col] != 0) {
+      set_zeroes_recur(matrix, row, row, start_col, col - 1);
+      set_zeroes_recur(matrix, row, row, col + 1, end_col);
+      set_zeroes_recur(matrix, start_row, row - 1, col, col);
+      set_zeroes_recur(matrix, row + 1, end_row, col, col);
+    }
+  }
+
+  static void set_zeroes(vector<vector<int>> & matrix) {
+    if (matrix.empty()) { return; }
+    set_zeroes_recur(matrix, 0, matrix.size() - 1, 0, matrix.front().size() - 1);
+    for (int i = 0; i < matrix.size(); i++) {
+      for (int j = 0; j < matrix[i].size(); j++) {
+        if (matrix[i][j] == INT_MIN) { matrix[i][j] = 0; }
+      }
+    }
+  }
+
+  static void test_set_zeroes() {
+    vector<vector<vector<int>>> test_output = { {}, {{}}, {{0},{0},{0}}, {{0,0,0}},
+                                                { {1,0,1}, {0,0,0}, {1,0,1} },
+                                                { {0,0,0,0}, {0,4,5,0}, {0,3,1,0} } };
+    vector<vector<vector<int>>> test_input = { {}, {{}}, {{1},{0},{1}}, {{1,0,1}},
+                                               { {1,1,1}, {1,0,1}, {1,1,1} },
+                                               { {0,1,2,0}, {3,4,5,2}, {1,3,1,5} } };
+    cout << "32. test_set_zeroes" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      print_all_elem_vec<int>(test_output[i]); cout << "<=>" << endl;
+      set_zeroes(test_input[i]);
+      print_all_elem_vec<int>(test_input[i]);
+    }
+  }
+
+  static void lean_set_zeroes(vector<vector<int>> & matrix) {
+    if (matrix.empty() || matrix.front().empty()) { return; }
+    bool is_first_row_contains_zero = false;
+    bool is_first_col_contains_zero = false;
+
+    for (int i = 0; i < matrix.size(); i++) {
+      if (matrix[i][0] == 0){ is_first_col_contains_zero = true; break; }
+    }
+    for (int j = 0; j < matrix.front().size(); j++) {
+      if (matrix[0][j] == 0){ is_first_row_contains_zero = true; break; }
+    }
+    for (int i = 1; i < matrix.size(); i++) {
+      for (int j = 1; j < matrix[i].size(); j++) {
+        if (0 == matrix[i][j]) { matrix[0][j] = 0; matrix[i][0] = 0; }
+      }
+    }
+    for (int i = 1; i < matrix.size(); i++) {
+      if (0 == matrix[i][0]) {
+        for (int j = 0; j < matrix[i].size(); j++){ matrix[i][j] = 0; }
+      }
+    }
+
+    for (int j = 1; j < matrix.front().size(); j++) {
+      if (0 == matrix[0][j]) {
+        for (int i = 0; i < matrix.size(); i++){ matrix[i][j] = 0; }
+      }
+    }
+
+    if (true == is_first_row_contains_zero) {
+      for (int j = 0; j < matrix.front().size(); j++) { matrix[0][j] = 0; }
+    }
+    if (true == is_first_col_contains_zero) {
+      for (int i = 0; i < matrix.size(); i++) { matrix[i][0] = 0; }
+    }
+  }
+
+  static void test_lean_set_zeroes() {
+    vector<vector<vector<int>>> test_output = { {}, {{}}, {{0},{0},{0}}, {{0,0,0}},
+                                                { {1,0,1}, {0,0,0}, {1,0,1} },
+                                                { {0,0,0,0}, {0,4,5,0}, {0,3,1,0} } };
+    vector<vector<vector<int>>> test_input = { {}, {{}}, {{1},{0},{1}}, {{1,0,1}},
+                                               { {1,1,1}, {1,0,1}, {1,1,1} },
+                                               { {0,1,2,0}, {3,4,5,2}, {1,3,1,5} } };
+    cout << "33. test_lean_set_zeroes" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      print_all_elem_vec<int>(test_output[i]); cout << "<=>" << endl;
+      lean_set_zeroes(test_input[i]);
+      print_all_elem_vec<int>(test_input[i]);
+    }
+  }
+
+  /**
+   * 64. Minimum Path Sum
+   * - Given a m x n grid filled with non-negative numbers, find a path from
+   *   top left to bottom right which minimizes sum of all numbers along path.
+   * Note: You can only move either down or right at any point in time.
+   * Example:
+   * Input: {{1,3,1},{1,5,1},{4,2,1}}
+   * Output: 7
+   * Explanation: Because the path 1->3->1->1->1 minimizes the sum.
+   * Intuition:
+   * - let max-sum(i, j) max sum path from m(0, 0) ends at m(i, j)
+   * - max-sum(i, j) = max{ max-sum(i - 1, j) + m[i, j],
+   *                        max-sum(i, j - 1) + m[i, j] }
+   * - only prev. row needed as we calc from left -> right.
+   * - goal is to calc & return the last elem.
+   */
+  static int calc_min_sum_path(const vector<vector<int>> & matrix) {
+    if (matrix.empty() || matrix.front().empty()) { return -1; }
+    vector<int> mslookup = matrix.front();
+    for (int i = 1; i < mslookup.size(); i++) {
+      mslookup[i] += mslookup[i - 1];
+    }
+    for (int i = 1; i < matrix.size(); i++) {
+      for (int j = 0; j < matrix[i].size(); j++) {
+        mslookup[j] = matrix[i][j] + mslookup[j];
+        if (j > 0) {
+          mslookup[j] = min(mslookup[j], matrix[i][j] + mslookup[j - 1]);
+        }
+      }
+    }
+    return mslookup.back();
+  }
+  static void test_calc_min_sum_path() {
+    int result = 0;
+    vector<int> test_output = { 7 };
+    vector<vector<vector<int>>> test_input = { {{1,3,1},{1,5,1},{4,2,1}} };
+    cout << "34. test_calc_max_sum_path" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_min_sum_path(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 int main(void) {
   using array_util::print_all_elem;
@@ -1968,6 +2127,9 @@ int main(void) {
   using array_util::test_fast_is_value_existed;
   using array_util::test_gen_subsets;
   using array_util::test_gen_uniq_subsets;
+  using array_util::test_set_zeroes;
+  using array_util::test_lean_set_zeroes;
+  using array_util::test_calc_min_sum_path;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2110,6 +2272,9 @@ int main(void) {
   test_fast_is_value_existed();
   test_gen_subsets();
   test_gen_uniq_subsets();
+  test_set_zeroes();
+  test_lean_set_zeroes();
+  test_calc_min_sum_path();
 
   return 0;
 }
