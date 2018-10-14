@@ -2198,12 +2198,12 @@ namespace array_util {
    * - |---|   |---|   |---|    |---|    |---|
    *     ^                         ^
    */
-  class interval {
+  class Interval {
   public:
-    interval(int s = 0, int e = 0) : start(s), end(e) {}
-    virtual ~interval() {}
+    Interval(int s = 0, int e = 0) : start(s), end(e) {}
+    virtual ~Interval() {}
     int start, end;
-    friend ostream & operator<<(ostream & os, const interval & intv) {
+    friend ostream & operator<<(ostream & os, const Interval & intv) {
       os << "[ " << intv.start << ", " << intv.end << " ]"; return os;
     }
   };
@@ -2212,6 +2212,8 @@ namespace array_util {
     return (intv.start <= intv_chk.start && intv_chk.end <= intv.end);
   }
 */
+  typedef Interval interval;
+
   static bool is_intv_preceed_range(interval & intv, interval & intv_chk) {
     return (intv_chk.end < intv.start);
   }
@@ -2292,9 +2294,9 @@ namespace array_util {
   }
 
   static void test_insert_new_interval() {
-    vector<interval> test_input_1 = { interval(2,5), interval(4,8) };
-    vector<vector<interval>> test_input_0 = { { interval(1,3),interval(6,9) }, { interval(1,2),interval(3,5),interval(6,7),interval(8,10),interval(12,16) } };
-    vector<vector<interval>> test_output = { { interval(1,5),interval(6,9) }, { interval(1,2),interval(3,10),interval(12,16) } };
+    vector<interval> test_input_1 = { interval(4, 5), interval(1,11), interval(1,11), interval(10,11), interval(10,11), interval(0,1), interval(0,1), interval(2,5), interval(4,8) };
+    vector<vector<interval>> test_input_0 = { { interval(2,3),interval(6,9) }, { interval(2,3) }, { interval(2,3),interval(6,9) }, { }, { interval(2,3),interval(6,9) }, { interval(2,3),interval(6,9) }, { interval(1,3),interval(6,9) }, { interval(1,3),interval(6,9) }, { interval(1,2),interval(3,5),interval(6,7),interval(8,10),interval(12,16) } };
+    vector<vector<interval>> test_output = { { interval(2,3),interval(4,5),interval(6,9) }, { interval(1,11) }, { interval(1,11) }, { interval(10,11) }, { interval(2,3),interval(6,9),interval(10,11) }, { interval(0,1), interval(2,3),interval(6,9) }, { interval(0,3),interval(6,9) }, { interval(1,5),interval(6,9) }, { interval(1,2),interval(3,10),interval(12,16) } };
     cout << "37. test_insert_new_interval" << endl;
     for (int i = 0; i < test_input_0.size(); i++) {
 			print_all_elem<interval>(test_output[i]); cout << "<=>" << endl;
