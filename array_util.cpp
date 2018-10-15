@@ -2402,6 +2402,73 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 45. Jump Game II
+   * - Given an array of non-negative integers, you are initially positioned
+   *   at the first index of the array.
+   * - Each element in the array represents your maximum jump length at pos.
+   * - Your goal is to reach the last index in the minimum number of jumps.
+   * Example:
+   * - Input: [2,3,1,1,4]
+   *   Output: 2
+   * Explanation: The minimum number of jumps to reach the last index is 2.
+   *              Jump 1 step from index 0 to 1, then 3 steps to the last index
+   * Note:
+   * - You can assume that you can always reach the last index.
+   * Intuition:
+   * - usually greedy / dp is good for optimization problem.
+   * - assume it takes min k jumps to reach point i & last hop pos is j
+   *   then it took k - 1 jumps to reach pos(j) & jump[j] >= i - j
+   * - is k - 1 also the min jumps from 0?
+   * - assume it took k - 2 jumps to reach j, then we only need k - 1 jumps for i
+   *   then we got contradict, so we have optimal subproblem, which is
+   * - min(jump from 0 to i) = min(jump from 0 to j) + 1, where j is last hop pos.
+   * - problem remains how we find j? given both i & j is reachable?
+   *   Guess would be j is the furtherest node reachable to i:
+   *   (we need to proof j is reachable from 0)
+   *
+   * - if j is not reachable, while i is still reachable, then we know there exist
+   *   a node to left of j can reach i (contradict with assumption), or we have a
+   *   node to the right of j can reach i & it is reachable -> j is also reachable
+   *
+   * - each time to get j could be tricky, pre-calc for max pos reachable?
+   *     1  3  5  4  5
+   *   { 1, 2, 3, 1, 1, 4 } vector of things?
+   *     0  1  2  3  4  5
+   */
+  static int get_min_jump(const vector<int> & jump_vec) {
+    int jump_cnt = 0;
+    if (jump_vec.size() <= 1) { return jump_cnt; }
+    vector<int> leftmost_pos_reachable(jump_vec.size(), INT_MAX);
+    for (int i = 0; i < jump_vec.size() - 1; i++) {
+      int target_pos = min(int(jump_vec.size() - 1), int(i + jump_vec[i]));
+      leftmost_pos_reachable[target_pos] = min(leftmost_pos_reachable[target_pos], i);
+    }
+    for (int end_pos = jump_vec.size() - 1, hop_pos = end_pos - 1; hop_pos >= 0; ) {
+      if (leftmost_pos_reachable[end_pos] != INT_MAX) {
+        hop_pos = leftmost_pos_reachable[end_pos];
+      } else {
+        /* until hop_pos is 1 node ahead to the left of target pos */
+        while (hop_pos >= 0 && jump_vec[hop_pos] >= (end_pos - hop_pos)){ hop_pos--; }
+        hop_pos++;
+      }
+      jump_cnt++; end_pos = hop_pos; hop_pos--;
+    }
+    return jump_cnt;
+  }
+
+  static void test_get_min_jump() {
+    int result = false;
+    vector<int> test_output = { 0, 0, 2, 1, 2, 2, 2, 3 };
+    vector<vector<int>> test_input = { {1}, {}, {2,3,1,1,4}, {4,0,0,0,4}, {2,3,0,0,4}, {2,3,1,0,4}, {2,3,1,1,4}, {1,2,3,1,1,4} };
+    cout << "40. test_get_min_jump" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = get_min_jump(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -2448,6 +2515,7 @@ int main(void) {
   using array_util::test_insert_new_interval;
   using array_util::test_merge_intervals;
   using array_util::test_is_last_pos_reachable;
+  using array_util::test_get_min_jump;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2598,6 +2666,7 @@ int main(void) {
   test_insert_new_interval();
   test_merge_intervals();
   test_is_last_pos_reachable();
+  test_get_min_jump();
 
   return 0;
 }
