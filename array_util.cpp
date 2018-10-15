@@ -2355,6 +2355,53 @@ namespace array_util {
 			print_all_elem<interval>(merge_intervals(test_input[i]));
     }
   }
+
+  /**
+   * 55. Jump Game
+   * - Given an array of non-negative integers, you are initially positioned at
+   *   the first index of the array.
+   * - Each element in the array represents your maximum jump length at position
+   * Determine if you are able to reach the last index.
+   * Example 1:
+   * Input: {2,3,1,1,4}
+   * Output: true
+   * Explanation: Jump 1 step from index 0 to 1, then 3 steps to the last index.
+   * Example 2:
+   * Input: {3,2,1,0,4}
+   * Output: false
+   * Explanation: You will always arrive at index 3 no matter what. Its maximum
+   *              jump length is 0, which makes it impossible to reach the last index.
+   * Intuition:
+   * - no matter where we start to jump, once jumped, then previous credit goes away.
+   *   potentially no DP needed.
+   * - to be able to reach i, must be a hop point j satisfies dist(i - j) <= arr[j]
+   *   where 0 <= j < i, then start from the end, go back to nearest possible point.
+   *   it also says if we can jump to i, we should be able to jump to i - 1
+   * - we should always be able get our way back to origin point.
+   */
+  static bool is_last_pos_reachable(const vector<int> & jump_vec) {
+    bool is_reachable = false;
+    if (jump_vec.size() < 2) { return true; } /* no need to jump at all */
+    int end_pos = jump_vec.size() - 1, hop_pos = end_pos - 1;
+    while (hop_pos >= 0) {
+      while (hop_pos >= 0 && jump_vec[hop_pos] < (end_pos - hop_pos)) { hop_pos--; }
+      if (hop_pos >= 0) { end_pos = hop_pos; }; hop_pos--;
+    }
+    is_reachable = (end_pos == 0);
+    return is_reachable;
+  }
+
+  static void test_is_last_pos_reachable() {
+    bool result = false;
+    vector<bool> test_output = { true, false, true, true, true, false };
+    vector<vector<int>> test_input = { {4,0,0,0,4}, {0,3,0,0,4},{2,3,0,0,4}, {2,3,1,0,4}, {2,3,1,1,4}, {3,2,1,0,4} };
+    cout << "39. test_is_last_pos_reachable" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = is_last_pos_reachable(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -2400,6 +2447,7 @@ int main(void) {
   using array_util::test_cnt_uniq_paths_ii;
   using array_util::test_insert_new_interval;
   using array_util::test_merge_intervals;
+  using array_util::test_is_last_pos_reachable;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2549,6 +2597,7 @@ int main(void) {
   test_cnt_uniq_paths_ii();
   test_insert_new_interval();
   test_merge_intervals();
+  test_is_last_pos_reachable();
 
   return 0;
 }
