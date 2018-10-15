@@ -2441,9 +2441,11 @@ namespace array_util {
     int jump_cnt = 0;
     if (jump_vec.size() <= 1) { return jump_cnt; }
     vector<int> leftmost_pos_reachable(jump_vec.size(), INT_MAX);
+    int curr_span = 0;
     for (int i = 0; i < jump_vec.size() - 1; i++) {
       int target_pos = min(int(jump_vec.size() - 1), int(i + jump_vec[i]));
-      leftmost_pos_reachable[target_pos] = min(leftmost_pos_reachable[target_pos], i);
+      for (int j = curr_span + 1; j <= target_pos; j++) { leftmost_pos_reachable[j] = i; }
+      curr_span = max(target_pos, curr_span);
     }
     for (int end_pos = jump_vec.size() - 1, hop_pos = end_pos - 1; hop_pos >= 0; ) {
       if (leftmost_pos_reachable[end_pos] != INT_MAX) {
@@ -2460,8 +2462,8 @@ namespace array_util {
 
   static void test_get_min_jump() {
     int result = false;
-    vector<int> test_output = { 0, 0, 2, 1, 2, 2, 2, 3 };
-    vector<vector<int>> test_input = { {1}, {}, {2,3,1,1,4}, {4,0,0,0,4}, {2,3,0,0,4}, {2,3,1,0,4}, {2,3,1,1,4}, {1,2,3,1,1,4} };
+    vector<int> test_output = { 2, 0, 0, 2, 1, 2, 2, 2, 3 };
+    vector<vector<int>> test_input = { {4,1,1,3,1,1,1}, {1}, {}, {2,3,1,1,4}, {4,0,0,0,4}, {2,3,0,0,4}, {2,3,1,0,4}, {2,3,1,1,4}, {1,2,3,1,1,4} };
     cout << "40. test_get_min_jump" << endl;
     for (int i = 0; i < test_input.size(); i++) {
       result = get_min_jump(test_input[i]);
