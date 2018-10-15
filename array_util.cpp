@@ -2303,6 +2303,58 @@ namespace array_util {
 			print_all_elem<interval>(insert_new_interval(test_input_0[i], test_input_1[i]));
     }
   }
+
+  /**
+   * 56. Merge Intervals
+   * Given a collection of intervals, merge all overlapping intervals.
+   * Example 1:
+   * Input: [[1,3],[2,6],[8,10],[15,18]]
+   * Output: [[1,6],[8,10],[15,18]]
+   * Explanation: Since intervals [1,3] and [2,6] overlaps, merge them into [1,6].
+   * Example 2:
+   * Input: [[1,4],[4,5]]
+   * Output: [[1,5]]
+   * Explanation: Intervals [1,4] and [4,5] are considerred overlapping.
+   */
+  /* sort by start time and finishing time asc */
+  static bool interval_compare_func(interval & intv_l, interval & intv_r) {
+    if (intv_l.start < intv_r.start) { return true; }
+    if (intv_l.start == intv_r.start && intv_l.end < intv_r.end ) { return true; }
+    return false;
+  }
+
+  static vector<interval> merge_intervals(vector<interval> & intervals) {
+    if (intervals.size() < 2) { return intervals; }
+
+    vector<interval> new_interval_vec;
+    sort(intervals.begin(), intervals.end(), interval_compare_func);
+    vector<interval>::iterator start_itr = intervals.begin();
+    vector<interval>::iterator end_itr = intervals.begin();
+    /* after sort: [ 1, 4 ], [ 2, 4 ], [ 3, 4 ], [ 2, 5 ], [ 3, 5 ] ...  */
+    for (; start_itr != intervals.end(); ) {
+      int new_start_time = start_itr->start;
+      int new_end_time = start_itr->end;
+      while(end_itr != intervals.end() && end_itr->start <= new_end_time) {
+        new_start_time = min(new_start_time, end_itr->start);
+        new_end_time = max(new_end_time, end_itr->end);
+        start_itr = end_itr;
+        end_itr++;
+      }
+      new_interval_vec.push_back(interval(new_start_time, new_end_time));
+      start_itr = end_itr;
+    }
+    return new_interval_vec;
+  }
+
+  static void test_merge_intervals() {
+    vector<vector<interval>> test_input = { { interval(4, 5),interval(2,3),interval(6,9) }, { interval(1,11),interval(2,3) }, { interval(1,11),interval(2,3),interval(6,9) }, {interval(10,11)}, { interval(10,11),interval(2,3),interval(6,9) }, { interval(0,1),interval(2,3),interval(6,9) }, { interval(0,1),interval(1,3),interval(6,9) }, { interval(2,5),interval(1,3),interval(6,9) }, { interval(1,2),interval(3,5),interval(6,7),interval(8,10),interval(12,16),interval(4,8) } };
+    vector<vector<interval>> test_output = { { interval(2,3),interval(4,5),interval(6,9) }, { interval(1,11) }, { interval(1,11) }, { interval(10,11) }, { interval(2,3),interval(6,9),interval(10,11) }, { interval(0,1), interval(2,3),interval(6,9) }, { interval(0,3),interval(6,9) }, { interval(1,5),interval(6,9) }, { interval(1,2),interval(3,10),interval(12,16) } };
+    cout << "38. test_merge_intervals" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+			print_all_elem<interval>(test_output[i]); cout << "<=>" << endl;
+			print_all_elem<interval>(merge_intervals(test_input[i]));
+    }
+  }
 };
 
 int main(void) {
@@ -2347,6 +2399,7 @@ int main(void) {
   using array_util::test_cnt_uniq_paths;
   using array_util::test_cnt_uniq_paths_ii;
   using array_util::test_insert_new_interval;
+  using array_util::test_merge_intervals;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2495,6 +2548,7 @@ int main(void) {
   test_cnt_uniq_paths();
   test_cnt_uniq_paths_ii();
   test_insert_new_interval();
+  test_merge_intervals();
 
   return 0;
 }
