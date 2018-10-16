@@ -2506,7 +2506,7 @@ namespace array_util {
     int backward_idx = pivot_id, forward_idx = pivot_id + 1;
 
     while (kc_set.size() < k) {
-      if (backward_idx >= 0 && forward_idx < kc_set.size()) {
+      if (backward_idx >= 0 && forward_idx < input.size()) {
         if (abs(input[backward_idx] - origin) <= abs(input[forward_idx] - origin)) {
           kc_set.push_front(input[backward_idx--]);
         } else {
@@ -2523,10 +2523,10 @@ namespace array_util {
   }
 
   static void test_find_k_closest_elems() {
-    vector<vector<int>> test_input_0 = { {1,2,3,4,5}, {1,2,3,4,5} };
-    vector<int> test_input_1 = { 4, 4 };
-    vector<int> test_input_2 = { 3, -1 };
-    vector<vector<int>> test_output = { {1,2,3,4}, {1,2,3,4} };
+    vector<vector<int>> test_input_0 = { {-9,1,1,5,6,7,8,8}, {0,0,0,1,1,5,6,7,8,8},{0,0,0,1,1,3,3,5,6,7,8,8},{0,0,0,1,1,3,5,6,7,8,8}, {0,0,0,1,3,5,6,7,8,8}, {1,2,3,4,5}, {1,2,3,4,5} };
+    vector<int> test_input_1 = { 3, 2, 2, 2, 2, 4, 4 };
+    vector<int> test_input_2 = { 2, 2, 2, 2, 2, 3, -1 };
+    vector<vector<int>> test_output = { {1,1,5}, {1,1}, {1,1}, {1,1}, {1,3}, {1,2,3,4}, {1,2,3,4} };
     cout << "41. test_find_k_closest_elems" << endl;
     for (int i = 0; i < test_output.size(); i++) {
       print_all_elem<int>(test_output[i]);
