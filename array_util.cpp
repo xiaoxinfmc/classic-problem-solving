@@ -2471,6 +2471,69 @@ namespace array_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 658. Find K Closest Elements
+   * - Given a sorted array, two integers k and x, find the k closest elements
+   *   to x in the array. The result should also be sorted in ascending order.
+   *   If there is a tie, the smaller elements are always preferred.
+   * Example 1:
+   * - Input: {1,2,3,4,5}, k=4, x=3
+   *   Output: {1,2,3,4}
+   * Example 2:
+   * - Input: {1,2,3,4,5}, k=4, x=-1
+   *   Output: {1,2,3,4}
+   * Note:
+   * - The value k is positive and will always be smaller than the length of the
+   *   sorted array.
+   * - Length of the given array is positive and will not exceed 10^4
+   * - Absolute value of elements in the array and x will not exceed 10^4
+   */
+  int bi_search_for_elem_equal_or_less_than(vector<int> & input, int target) {
+    int low = 0, high = input.size() - 1, mid = (low + high) / 2;
+    while (low < high) {
+      if (input[mid] == target) { return mid; }
+      if (input[mid] < target) { low = mid + 1; } else { high = mid - 1; }
+      mid = (low + high) / 2;
+    }
+    if (input[high] <= target) { return high; }
+    return mid;
+  }
+
+  vector<int> find_k_closest_elems(vector<int> & input, int k, int origin) {
+    deque<int> kc_set;
+    int pivot_id = bi_search_for_elem_equal_or_less_than(input, origin);
+    int backward_idx = pivot_id, forward_idx = pivot_id + 1;
+
+    while (kc_set.size() < k) {
+      if (backward_idx >= 0 && forward_idx < kc_set.size()) {
+        if (abs(input[backward_idx] - origin) <= abs(input[forward_idx] - origin)) {
+          kc_set.push_front(input[backward_idx--]);
+        } else {
+          kc_set.push_back(input[forward_idx++]);
+        }
+        continue;
+      } else if (backward_idx >= 0) {
+        kc_set.push_front(input[backward_idx--]); continue;
+      } else {
+        kc_set.push_back(input[forward_idx++]); continue;
+      }
+    }
+    return vector<int>(kc_set.begin(), kc_set.end());
+  }
+
+  static void test_find_k_closest_elems() {
+    vector<vector<int>> test_input_0 = { {1,2,3,4,5}, {1,2,3,4,5} };
+    vector<int> test_input_1 = { 4, 4 };
+    vector<int> test_input_2 = { 3, -1 };
+    vector<vector<int>> test_output = { {1,2,3,4}, {1,2,3,4} };
+    cout << "41. test_find_k_closest_elems" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      print_all_elem<int>(test_output[i]);
+      cout << "<=>" << endl;
+      print_all_elem<int>(find_k_closest_elems(test_input_0[i], test_input_1[i], test_input_2[i]));
+    }
+  }
 };
 
 int main(void) {
@@ -2518,6 +2581,7 @@ int main(void) {
   using array_util::test_merge_intervals;
   using array_util::test_is_last_pos_reachable;
   using array_util::test_get_min_jump;
+  using array_util::test_find_k_closest_elems;
 
   cout << "1. get_next_permutation_asc" << endl;
   cout << "[ 6 8 1 3 7 4 0 1 2 3 ] <=> " << endl;
@@ -2669,6 +2733,7 @@ int main(void) {
   test_merge_intervals();
   test_is_last_pos_reachable();
   test_get_min_jump();
+  test_find_k_closest_elems();
 
   return 0;
 }
