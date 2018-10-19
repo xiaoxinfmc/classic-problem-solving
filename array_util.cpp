@@ -459,24 +459,40 @@ namespace array_util {
    *   then rest 2 values by moving pointer around from both ends.
    */
   vector<vector<int>> calc_triplets_by_sum(vector<int> input, int target = 0) {
-    vector<vector<int>> triplets_arr;
+    vector<vector<int>> triplets;
     sort(input.begin(), input.end());
     int curr_sum = 0;
     for (int i = 0; i < input.size(); i++) {
-      for (int left_idx = i + 1, right_idx = input.size() - 1; left_idx < right_idx;) {
-        curr_sum = input[i] + input[left_idx] + input[right_idx];
-        if (target == curr_sum) {
-          triplets_arr.push_back({ input[i], input[left_idx], input[right_idx] });
-          while (left_idx < right_idx && input[right_idx] == input[right_idx - 1]) { right_idx--; }
-          while (left_idx < right_idx && input[left_idx] == input[left_idx + 1]) { left_idx++; }
-          right_idx--; left_idx++;
+      for (int j = i + 1, k = input.size() - 1; j < k; ) {
+        curr_sum = input[i] + input[j] + input[k];
+        if (curr_sum == target) {
+          triplets.push_back({ input[i], input[j], input[k] });
+          while (j + 1 < input.size() && input[j] == input[j + 1]) { j++; }
+          while (k - 1 >= 0 && input[k] == input[k - 1]) { k--; }
+          j++; k--; continue;
         }
-        if (curr_sum < target) { left_idx++; }
-        if (curr_sum > target) { right_idx--; }
+        if (curr_sum < target) { j++; } else { k--; }
       }
-      while (i < input.size() - 1 && input[i] == input[i + 1]) { i++; }
+      while (i + 1 < input.size() && input[i] == input[i + 1]) { i++; };
     }
-    return triplets_arr;
+    return triplets;
+  }
+
+  static void test_calc_triplets_by_sum() {
+    cout << "6. calc_triplets_by_sum" << endl;
+    vector<int> test_input_1 = { 0, 24, 0, 10 };
+    vector<vector<int>> test_input_0 = { { -1, 0, 1, 2, -1, -4 },
+                                         { 12, 3, 6, 1, 6, 9 },
+                                         { -2, 0, 1, 1, 2 },
+                                         { -2, 0, 1, 1, 2 } };
+    vector<vector<vector<int>>> test_output = { { { -1, 0, 1 }, { -1, -1, 2 } },
+                                                { { 3, 9, 12 }, { 6, 6, 12 } },
+                                                { { -2, 0, 2 }, { -2, 1, 1 } }, {} };
+    for (int i = 0; i < test_output.size(); i++) {
+      print_all_elem_vec<int>(test_output[i]);
+      cout << "<=>" << endl;
+      print_all_elem_vec<int>(calc_triplets_by_sum(test_input_0[i], test_input_1[i]));
+    }
   }
 
   /**
@@ -494,7 +510,6 @@ namespace array_util {
    *   (-2, -1, 1, 2)
    *   (-2,  0, 0, 2)
    */
-
   vector<vector<int>> calc_quadruplets_by_sum(vector<int> input, int target = 0) {
     vector<vector<int>> quadruplets;
     sort(input.begin(), input.end());
@@ -506,9 +521,9 @@ namespace array_util {
           curr_sum = input[i] + input[j] + input[k] + input[l];
           if (curr_sum == target) {
             quadruplets.push_back({ input[i], input[j], input[k], input[l] });
-            while (k < l && k + 1 < input.size() && input[k] == input[k + 1]) { k++; }
-            while (k < l && l - 1 > 0 && input[l] == input[l - 1]) { l--; }
-            k++; l--;
+            while (k + 1 < input.size() && input[k] == input[k + 1]) { k++; }
+            while (l - 1 >= 0 && input[l] == input[l - 1]) { l--; }
+            k++; l--; continue;
           }
           if (curr_sum < target) { k++; }
           if (curr_sum > target) { l--; }
@@ -518,6 +533,19 @@ namespace array_util {
       while (i < input.size() - 1 && input[i] == input[i + 1]) { i++; }
     }
     return quadruplets;
+  }
+
+  static void test_calc_quadruplets_by_sum() {
+    cout << "7. calc_quadruplets_by_sum" << endl;
+    vector<int> test_input_1 = { 0, 10 };
+    vector<vector<int>> test_input_0 = { { 1, 0, -1, 0, -2, 2 },
+                                         { -2, 0, 1, 1, 2 } };
+    vector<vector<vector<int>>> test_output = { { { -1, 0, 0, 1 }, { -2, -1, 1, 2 }, { -2, 0, 0, 2 } }, {} };
+    for (int i = 0; i < test_output.size(); i++) {
+      print_all_elem_vec<int>(test_output[i]);
+      cout << "<=>" << endl;
+      print_all_elem_vec<int>(calc_quadruplets_by_sum(test_input_0[i], test_input_1[i]));
+    }
   }
 
   /**
@@ -2614,6 +2642,8 @@ namespace array_util {
 int main(void) {
   using array_util::test_calc_two_sum;
   using array_util::test_calc_two_sum_ii;
+  using array_util::test_calc_triplets_by_sum;
+  using array_util::test_calc_quadruplets_by_sum;
 
   using array_util::print_all_elem;
   using array_util::print_all_elem_vec;
@@ -2621,8 +2651,6 @@ int main(void) {
   using array_util::find_in_rotated_sorted_arr;
   using array_util::calc_longest_seq_len;
   using array_util::find_median_elem;
-  using array_util::calc_triplets_by_sum;
-  using array_util::calc_quadruplets_by_sum;
   using array_util::calc_max_trapping_water;
   using array_util::sort_colors;
   using array_util::fast_sort_colors;
@@ -2696,22 +2724,8 @@ int main(void) {
 
   test_calc_two_sum();
   test_calc_two_sum_ii();
-
-  cout << "6. calc_triplets_by_sum" << endl;
-  cout << "[ [ -1 0 1 ], [ -1 -1 2 ] ] <=> " << endl;
-  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -1, 0, 1, 2, -1, -4 })));
-  cout << "[ [ 3 9 12 ], [ 6 6 12 ] ] <=> " << endl;
-  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ 12, 3, 6, 1, 6, 9 }), 24));
-  cout << "[ [ -2 0 2 ], [ -2 1 1 ] ] <=> " << endl;
-  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 })));
-  cout << "[ ] <=> " << endl;
-  print_all_elem_vec<int>(calc_triplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
-
-  cout << "7. calc_quadruplets_by_sum" << endl;
-  cout << "[ [ -1 0 0 1 ], [ -2 -1 1 2 ], [ -2 0 0 2 ] ] <=> " << endl;
-  print_all_elem_vec<int>(calc_quadruplets_by_sum(vector<int>({ 1, 0, -1, 0, -2, 2 })));
-  cout << "[ ] <=> " << endl;
-  print_all_elem_vec<int>(calc_quadruplets_by_sum(vector<int>({ -2, 0, 1, 1, 2 }), 10));
+  test_calc_triplets_by_sum();
+  test_calc_quadruplets_by_sum();
 
   cout << "8. calc_max_trapping_water" << endl;
   cout << "6 <=> " << calc_max_trapping_water(vector<int>({ 0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1 })) << endl;
