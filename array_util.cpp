@@ -350,19 +350,62 @@ namespace array_util {
    * Observation:
    * - use a map to store the value of a number & its corresponding id (start_from 1)
    */
-  vector<int> calc_two_sum(vector<int> input, int target) {
-    vector<int> index_pair({});
-    if (true == input.empty()) { return index_pair; }
-    unordered_map<int, int> value_to_id_lookup;
-    for (int i = 0; i < input.size(); i++) { value_to_id_lookup[input[i]] = i; }
+  vector<int> calc_two_sum(vector<int> & input, int target) {
+    vector<int> pair = { -1, -1 };
+    unordered_map<int, int> value_to_idx_map;
+    for (int i = 0; i < input.size(); i++) { value_to_idx_map[input[i]] = i; }
+    int remaining_part = 0;
     for (int i = 0; i < input.size(); i++) {
-      if (value_to_id_lookup.end() != value_to_id_lookup.find(target - input[i]) &&
-          i < value_to_id_lookup[target - input[i]]) {
-        index_pair.push_back(i + 1);
-        index_pair.push_back(value_to_id_lookup[target - input[i]] + 1);
-      }
+      remaining_part = target - input[i];
+      if (value_to_idx_map.end() == value_to_idx_map.find(remaining_part)) { continue; }
+      if (i == value_to_idx_map[remaining_part]) { continue; }
+      pair = { i + 1, value_to_idx_map[remaining_part] + 1 };
+      break;
     }
-    return index_pair;
+    return pair;
+  }
+
+  static void test_calc_two_sum() {
+    vector<vector<int>> test_output = { { 2, 3 }, { 1, 2 } };
+    vector<int> test_input_1 = { 6, 9 };
+    vector<vector<int>> test_input_0 = { { 3, 2, 4 }, { 2, 7, 11, 15 } };
+    cout << "5. calc_two_sum" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      print_all_elem<int>(test_output[i]);
+      cout << "<=>" << endl;
+      print_all_elem<int>(calc_two_sum(test_input_0[i], test_input_1[i]));
+    }
+  }
+
+  /**
+   * 167. Two Sum II - Input array is sorted
+   * Input: numbers = [2,7,11,15], target = 9
+   * Output: [1,2]
+   * Explanation: The sum of 2 and 7 is 9. Therefore index1 = 1, index2 = 2.
+   */
+  static vector<int> calc_two_sum_ii(vector<int> & input, int target) {
+    vector<int> pair = { -1, -1 };
+    if (input.size() < 2) { return pair; }
+    int curr_sum = 0;
+    for (int i = 0, j = input.size() - 1; i < j;) {
+      curr_sum = input[i] + input[j];
+      if (curr_sum == target) { pair = { i + 1, j + 1 }; break; }
+      if (curr_sum < target) { i++; continue; }
+      if (curr_sum > target) { j--; continue; }
+    }
+    return pair;
+  }
+
+  static void test_calc_two_sum_ii() {
+    vector<vector<int>> test_output = { { 1, 3 }, { 1, 2 } };
+    vector<int> test_input_1 = { 6, 9 };
+    vector<vector<int>> test_input_0 = { { 2, 3, 4 }, { 2, 7, 11, 15 } };
+    cout << "5. calc_two_sum_ii" << endl;
+    for (int i = 0; i < test_output.size(); i++) {
+      print_all_elem<int>(test_output[i]);
+      cout << "<=>" << endl;
+      print_all_elem<int>(calc_two_sum_ii(test_input_0[i], test_input_1[i]));
+    }
   }
 
   /**
@@ -2537,13 +2580,15 @@ namespace array_util {
 };
 
 int main(void) {
+  using array_util::test_calc_two_sum;
+  using array_util::test_calc_two_sum_ii;
+
   using array_util::print_all_elem;
   using array_util::print_all_elem_vec;
   using array_util::get_next_permutation_asc;
   using array_util::find_in_rotated_sorted_arr;
   using array_util::calc_longest_seq_len;
   using array_util::find_median_elem;
-  using array_util::calc_two_sum;
   using array_util::calc_triplets_by_sum;
   using array_util::calc_quadruplets_by_sum;
   using array_util::calc_max_trapping_water;
@@ -2617,9 +2662,8 @@ int main(void) {
   cout << "{1} & {2} <=> 1.5 <=> "
        << find_median_elem(vector<int>({ 1 }), vector<int>({ 2 })) << endl;
 
-  cout << "5. calc_two_sum" << endl;
-  cout << "[ 2 3 ] <=> "; print_all_elem<int>(calc_two_sum(vector<int>({ 3, 2, 4 }), 6));
-  cout << "[ 1 2 ] <=> "; print_all_elem<int>(calc_two_sum(vector<int>({ 2, 7, 11, 15 }), 9));
+  test_calc_two_sum();
+  test_calc_two_sum_ii();
 
   cout << "6. calc_triplets_by_sum" << endl;
   cout << "[ [ -1 0 1 ], [ -1 -1 2 ] ] <=> " << endl;
