@@ -409,6 +409,38 @@ namespace array_util {
   }
 
   /**
+   * 653. Two Sum IV - Input is a BST
+   * - Given a Binary Search Tree and a target number, return true if there
+   *   exist two elements in BST such that their sum is equal to given target.
+   * Example 1:
+   *       Input:
+   *           5
+   *          / \
+   *         3   6
+   *        / \   \
+   *       2   4   7
+   * Target = 9 -> True
+  typedef TreeNode binary_tree_node;
+  static void get_all_values(binary_tree_node * root, vector<int> & num_buf) {
+    if (NULL == root) { return; }
+    get_all_values(root->left, num_buf);
+    num_buf.push_back(root->value);
+    get_all_values(root->right, num_buf);
+  }
+  static bool is_two_sum_existed(binary_tree_node * root, int target) {
+    vector<int> num_buf;
+    get_all_values(root, num_buf);
+    for (int i = 0, j = num_buf.size() - 1; i < j; ) {
+      int curr_sum = num_buf[i] + num_buf[j];
+      if (target == curr_sum) { return true; }
+      if (curr_sum > target) { j--; continue; }
+      if (curr_sum < target) { i++; continue; }
+    }
+    return false;
+  }
+   */
+
+  /**
    * 2.1.8 3Sum
    * Given an array S of n integers, are there elements a,b,c in S such that
    * a + b + c = 0? Find all unique triplets in array which gives sum of zero.
