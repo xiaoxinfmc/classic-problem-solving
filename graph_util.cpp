@@ -594,55 +594,58 @@ namespace graph_util {
    *   while there is an augmenting path. In worst case, we may add 1 unit flow
    *   in every iteration. Therefore time complexity becomes O(max_flow * E).
    */
-  static bool best_effort_dfs_path(int src_vid, int sink_vid,
-                                   vector<int> & src_to_sink_vids,
-                                   vector<vector<int>> & residual_graph) {
-    bool is_path_found = false;
-    vector<int> vid_visit_stack(1, src_vid);
-    vector<bool> vid_visit_lookup(src_to_sink_vids.size(), false);
+  static bool best_effort_dfs_path(vector<vector<int>> & residual_graph,
+                                   int src_vid, int sink_vid,
+                                   vector<int> & dfs_path_vec) {
+    dfs_path_vec[sink_vid] = -1;
 
-    while (false == vid_visit_stack.empty()) {
-      int curr_vid = vid_visit_stack.back();
-      vid_visit_stack.pop_back();
-      if (true == vid_visit_lookup[curr_vid]) { continue; }
-      vid_visit_lookup[curr_vid] = true;
-
-      if (sink_vid == curr_vid) { is_path_found = true; break; }
-
-      for (int i = 0; i < residual_graph[curr_vid].size(); i++) {
-        if (vid_visit_lookup[i] || i == curr_vid ||
-            residual_graph[curr_vid][i] <= 0) { continue; }
-        vid_visit_stack.push_back(i);
-        src_to_sink_vids[i] = curr_vid;
+    int curr_vid = 0;
+    unordered_set<int> vid_lookup;
+    vector<int> curr_dfs_buffer = { src_vid };
+    while (!curr_dfs_buffer.empty()) {
+      curr_vid = curr_dfs_buffer.back();
+      curr_dfs_buffer.pop_back();
+      vid_lookup.insert(curr_vid);
+      /* break after found the path */
+      if (curr_vid == sink_vid) { break; }
+      for (int next_vid = 0; next_vid < residual_graph[curr_vid].size(); next_vid++) {
+        /* usually for traversal, no need to check unless when tracking path */
+        if (residual_graph[curr_vid][next_vid] > 0 &&
+            vid_lookup.end() == vid_lookup.find(next_vid)) {
+          curr_dfs_buffer.push_back(next_vid); dfs_path_vec[next_vid] = curr_vid;
+        }
       }
     }
-
-    return is_path_found;
+    return (dfs_path_vec[sink_vid] != -1);
   }
 
-  static int calc_max_flow(vector<vector<int>> input_graph, int src_vid, int sink_vid) {
-    int max_flow_val = 0;
-
-    if (src_vid < 0 || sink_vid < 0 || src_vid == sink_vid ||
-        src_vid >= input_graph.size() || sink_vid >= input_graph.size()) {
-      return max_flow_val;
-    }
-    vector<int>src_to_sink_vids(input_graph.size(), -1);
+  static int calc_max_flow(vector<vector<int>> & input_graph, int src_vid, int sink_vid) {
+    int max_flow_to_push = 0;
+    /* residual graph for flows in reverse */
     vector<vector<int>> residual_graph(input_graph.begin(), input_graph.end());
-
-    while (true == best_effort_dfs_path(src_vid, sink_vid, src_to_sink_vids, residual_graph)) {
-      int curr_flow_to_push = INT_MAX;
-      for (int curr_vid = sink_vid; curr_vid != src_vid; curr_vid = src_to_sink_vids[curr_vid]) {
-        curr_flow_to_push = min(curr_flow_to_push, residual_graph[src_to_sink_vids[curr_vid]][curr_vid]);
+    /* stores the parent vid of each path vertex */
+    vector<int> dfs_path_vec(input_graph.size(), -1);
+    int curr_flow_to_push = 0, curr_vid = 0;
+    while (best_effort_dfs_path(residual_graph, src_vid, sink_vid, dfs_path_vec)) {
+      curr_flow_to_push = INT_MAX;
+      /* calc. the max flow we could push in this round */
+      for (curr_vid = sink_vid; -1 != dfs_path_vec[curr_vid];
+           curr_vid = dfs_path_vec[curr_vid]) {
+        curr_flow_to_push = min(
+          curr_flow_to_push, residual_graph[dfs_path_vec[curr_vid]][curr_vid]
+        );
       }
-      for (int curr_vid = sink_vid; curr_vid != src_vid; curr_vid = src_to_sink_vids[curr_vid]) {
-        residual_graph[src_to_sink_vids[curr_vid]][curr_vid] -= curr_flow_to_push;
-        residual_graph[curr_vid][src_to_sink_vids[curr_vid]] += curr_flow_to_push;
+      /* based on the max flow of this single path, update the graph & residual */
+      for (curr_vid = sink_vid; -1 != dfs_path_vec[curr_vid];
+           curr_vid = dfs_path_vec[curr_vid]) {
+        residual_graph[dfs_path_vec[curr_vid]][curr_vid] -= curr_flow_to_push;
+        residual_graph[curr_vid][dfs_path_vec[curr_vid]] += curr_flow_to_push;
       }
-      max_flow_val += curr_flow_to_push;
+      if (INT_MAX == curr_flow_to_push) { break; }
+      /* reset the parent of target vertex for next round of flow push */
+      max_flow_to_push += curr_flow_to_push;
     }
-
-    return max_flow_val;
+    return max_flow_to_push;
   }
 
   static void test_calc_max_flow() {
