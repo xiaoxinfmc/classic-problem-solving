@@ -67,6 +67,27 @@ namespace graph_util {
     int from, to, weight;
   };
 
+  /**
+   * 133. Clone Graph
+   * Nodes are labeled uniquely.
+   * We use # as a separator for each node, and, as a separator for node label and
+   * each neighbor of the node. As an example, consider the serialized graph
+   * { 0, 1, 2#1, 2#2, 2 }.
+   * The graph has a total of three nodes, and therefore contains three parts as
+   * separated by #.
+   * First node is labeled as 0. Connect node 0 to both nodes 1 and 2.
+   * Second node is labeled as 1. Connect node 1 to node 2.
+   * Third node is labeled as 2. Connect node 2 to 2 (itself), forming a self-cycle.
+   * Visually, the graph looks like the following:
+   *        1
+   *       / \
+   *      /   \
+   *     0 --- 2
+   *          / \
+   *          \_/
+   * 1, (0, 2)
+   * 1 | [ 0, 2 ]    < 1 >
+   */
   class undirected_graph_vertex {
   public:
     int label;
@@ -74,6 +95,38 @@ namespace graph_util {
     undirected_graph_vertex(int value) : label(value) {}
     virtual ~undirected_graph_vertex() {}
   };
+
+  typedef undirected_graph_vertex UndirectedGraphNode;
+
+  static undirected_graph_vertex * clone_undirected_graph(undirected_graph_vertex * udag_start_ptr) {
+    undirected_graph_vertex * new_vertex_ptr = NULL, * curr_node_ptr = NULL;
+    if (NULL == udag_start_ptr) { return new_vertex_ptr; }
+
+    /* visit lookup + holds label & new vertex ptr */
+    unordered_map<undirected_graph_vertex *, undirected_graph_vertex *> existing_udg_ptrs = {
+      { udag_start_ptr, new undirected_graph_vertex(udag_start_ptr->label) }
+    };
+    assert(NULL != existing_udg_ptrs[udag_start_ptr]);
+    vector<undirected_graph_vertex *> udg_ptr_buffer = { udag_start_ptr };
+    unordered_set<undirected_graph_vertex *> visit_lookup;
+
+    while (!udg_ptr_buffer.empty()) {
+      curr_node_ptr = udg_ptr_buffer.back();
+      udg_ptr_buffer.pop_back();
+      if (visit_lookup.count(curr_node_ptr) > 0) { continue; }
+      visit_lookup.insert(curr_node_ptr);
+      for (auto & udg_ptr : curr_node_ptr->neighbors) {
+        if (existing_udg_ptrs.count(udg_ptr) <= 0) {
+          existing_udg_ptrs[udg_ptr] = new undirected_graph_vertex(udg_ptr->label);
+          assert(NULL != existing_udg_ptrs[udg_ptr]);
+        }
+        existing_udg_ptrs[curr_node_ptr]->neighbors.push_back(existing_udg_ptrs[udg_ptr]);
+        udg_ptr_buffer.push_back(udg_ptr);
+      }
+    }
+
+    return existing_udg_ptrs[udag_start_ptr];
+  }
 
   /* 0 |2| 0#1 0#2 1 |2| 1#0 1#2 2 |3| 2#0 2#1 2#2 */
   static void print_undirected_graph(undirected_graph_vertex * graph_ptr) {
@@ -100,63 +153,36 @@ namespace graph_util {
     cout << endl;
   }
 
-  /**
-   * OJ's Undirected graph serialization:
-   * Nodes are labeled uniquely.
-   * 
-   * We use # as a separator for each node, and, as a separator for node label and
-   * each neighbor of the node. As an example, consider the serialized graph
-   * { 0, 1, 2#1, 2#2, 2 }.
-   * 
-   * The graph has a total of three nodes, and therefore contains three parts as
-   * separated by #.
-   * 
-   * First node is labeled as 0. Connect node 0 to both nodes 1 and 2.
-   * Second node is labeled as 1. Connect node 1 to node 2.
-   * Third node is labeled as 2. Connect node 2 to 2 (itself), forming a self-cycle.
-   * 
-   * Visually, the graph looks like the following:
-   *        1
-   *       / \
-   *      /   \
-   *     0 --- 2
-   *          / \
-   *          \_/
-   * 1, (0, 2)
-   * 1 | [ 0, 2 ]    < 1 >
-   */
+  static void test_clone_undirected_graph() {
+    undirected_graph_vertex * a_ptr = new undirected_graph_vertex(0);
+    undirected_graph_vertex * b_ptr = new undirected_graph_vertex(1);
+    undirected_graph_vertex * c_ptr = new undirected_graph_vertex(2);
 
-  static undirected_graph_vertex * clone_undirected_graph(undirected_graph_vertex * udag_start_ptr) {
-    undirected_graph_vertex * udag_copy_ptr = NULL,
-                            * curr_udag_ptr = NULL,
-                            * temp_udag_ptr = NULL;
-    if (NULL == udag_start_ptr) { return udag_copy_ptr; }
+    a_ptr->neighbors.push_back(b_ptr); a_ptr->neighbors.push_back(c_ptr);
+    b_ptr->neighbors.push_back(a_ptr); b_ptr->neighbors.push_back(c_ptr);
+    c_ptr->neighbors.push_back(a_ptr); c_ptr->neighbors.push_back(b_ptr);
+    c_ptr->neighbors.push_back(c_ptr);
 
-    vector<undirected_graph_vertex *> udag_ptr_buffer;
-    unordered_set<undirected_graph_vertex *> udag_visited_lookup;
-    unordered_map<int, undirected_graph_vertex *> udag_vid_to_ptr_map;
+    cout << "1. clone_undirected_graph:" << endl;
+    print_undirected_graph(a_ptr);
+    cout << "<=>" << endl;
+    print_undirected_graph(clone_undirected_graph(a_ptr));
+    print_undirected_graph(b_ptr);
+    cout << "<=>" << endl;
+    print_undirected_graph(clone_undirected_graph(b_ptr));
+    print_undirected_graph(c_ptr);
+    cout << "<=>" << endl;
+  	print_undirected_graph(clone_undirected_graph(c_ptr));
 
-    udag_ptr_buffer.push_back(udag_start_ptr);
-    while (false == udag_ptr_buffer.empty()) {
-      curr_udag_ptr = udag_ptr_buffer.back();
-      udag_ptr_buffer.pop_back();
-      if (udag_visited_lookup.end() != udag_visited_lookup.find(curr_udag_ptr)) { continue; }
-      temp_udag_ptr = new undirected_graph_vertex(curr_udag_ptr->label);
-      if (NULL == udag_copy_ptr) { udag_copy_ptr = temp_udag_ptr; }
-      udag_vid_to_ptr_map[temp_udag_ptr->label] = temp_udag_ptr;
-      udag_visited_lookup.insert(curr_udag_ptr);
-      for (undirected_graph_vertex * vptr : curr_udag_ptr->neighbors) {
-        udag_ptr_buffer.push_back(vptr);
-        if (udag_visited_lookup.end() != udag_visited_lookup.find(vptr)) {
-          temp_udag_ptr->neighbors.push_back(udag_vid_to_ptr_map[vptr->label]);
-          if (temp_udag_ptr->label != vptr->label) {
-            udag_vid_to_ptr_map[vptr->label]->neighbors.push_back(temp_udag_ptr);
-          }
-        }
-      }
-    }
-    return udag_copy_ptr;
+    undirected_graph_vertex * d_ptr = new undirected_graph_vertex(-1);
+    undirected_graph_vertex * e_ptr = new undirected_graph_vertex(1);
+
+    d_ptr->neighbors.push_back(e_ptr); e_ptr->neighbors.push_back(d_ptr);
+    print_undirected_graph(d_ptr);
+    cout << "<=>" << endl;
+  	print_undirected_graph(clone_undirected_graph(d_ptr));
   }
+
 
   /* graph_vertex(int vid, int vpriority, int vfrom = -1) */
   static vector<graph_vertex> calc_shortest_paths(
@@ -727,7 +753,8 @@ int main(void) {
   using graph_util::graph_vertex;
   using graph_util::graph_edge;
 
-  using graph_util::clone_undirected_graph;
+  using graph_util::test_clone_undirected_graph;
+
   using graph_util::calc_shortest_paths;
   using graph_util::calc_minimum_spanning_tree;
 
@@ -736,24 +763,6 @@ int main(void) {
   using graph_util::test_plan_courses_to_take;
   using graph_util::test_is_forest_bipartite;
   using graph_util::test_calc_max_flow;
-
-  undirected_graph_vertex * a_ptr = new undirected_graph_vertex(0);
-  undirected_graph_vertex * b_ptr = new undirected_graph_vertex(1);
-  undirected_graph_vertex * c_ptr = new undirected_graph_vertex(2);
-
-  a_ptr->neighbors.push_back(b_ptr); a_ptr->neighbors.push_back(c_ptr);
-  b_ptr->neighbors.push_back(a_ptr); b_ptr->neighbors.push_back(c_ptr);
-  c_ptr->neighbors.push_back(a_ptr); c_ptr->neighbors.push_back(b_ptr);
-  c_ptr->neighbors.push_back(c_ptr);
-
-  cout << "1. clone_undirected_graph:" << endl;
-  print_undirected_graph(a_ptr);
-  print_undirected_graph(b_ptr);
-  print_undirected_graph(c_ptr);
-  cout << "<<==>>" << endl;
-  print_undirected_graph(clone_undirected_graph(a_ptr));
-  print_undirected_graph(clone_undirected_graph(b_ptr));
-	print_undirected_graph(clone_undirected_graph(c_ptr));
 
   cout << "2. calc_shortest_paths:" << endl;
   /* V D 0 0 1 4 2 12 3 19 4 21 5 11 6 9 7 8 8 14 */
@@ -789,6 +798,7 @@ int main(void) {
     calc_minimum_spanning_tree(mst_graph_metrix)
   );
 
+  test_clone_undirected_graph();
   test_is_sequence_unique();
   test_can_all_courses_be_taken();
   test_plan_courses_to_take();
