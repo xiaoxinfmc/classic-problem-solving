@@ -265,27 +265,77 @@ namespace graph_util {
    * [      4,      3 ] =>      4-00,003
    * only 1 sequence can be constructed => seqs covers all links & no conflicts.
    */
-  static bool is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
-    unordered_map<int, int> links_to_confirm_map, value_to_index_map;
-    for (int i = 0; i < origin_seq.size(); i++) {
-      if (i < origin_seq.size() - 1) {
-        links_to_confirm_map[origin_seq[i]] = origin_seq[i + 1];
-      }
-      value_to_index_map[origin_seq[i]] = i;
+  class dag_vertex {
+  public:
+    dag_vertex(int id = -1) : vid(id) {}
+    virtual ~dag_vertex() {}
+    int vid;
+    unordered_set<int> incoming_vids; /* all vids must come before */
+    unordered_set<int> outgoing_vids; /* all vids can come after */
+    friend ostream & operator<<(ostream & os, const dag_vertex & dv) {
+      os << dv.vid; return os;
     }
+  };
 
-    for (auto & seq_to_chk : seqs) {
-      for (int i = 0; i < seq_to_chk.size() - 1; i++) {
-        if (value_to_index_map[seq_to_chk[i]] >
-            value_to_index_map[seq_to_chk[i + 1]]) { return false; }
-        if (links_to_confirm_map.find(seq_to_chk[i]) != links_to_confirm_map.end() &&
-            links_to_confirm_map[seq_to_chk[i]] == seq_to_chk[i + 1]) {
-          links_to_confirm_map.erase(seq_to_chk[i]);
+  static bool is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
+    bool is_seq_uniq = true;
+
+    int total_dep_cnt = 0;
+    unordered_map<int, dag_vertex> dag_map;
+    for (auto & seq : seqs) {
+      for (auto & vid : seq) { dag_map[vid] = dag_vertex(vid); }
+    }
+    for (auto & seq : seqs) {
+      for (int i = 0; i < seq.size(); i++) {
+        if (i + 1 < seq.size()) {
+          dag_map[seq[i]].outgoing_vids.insert(seq[i + 1]);
+          dag_map[seq[i + 1]].incoming_vids.insert(seq[i]);
         }
       }
     }
+    for (auto & dag_pair : dag_map) { total_dep_cnt += dag_pair.second.outgoing_vids.size(); }
 
-    return links_to_confirm_map.empty();
+    vector<int> sorted_vids;
+    vector<int> start_pos_vec;
+    for (auto & dag_pair : dag_map) {
+      if (dag_pair.second.incoming_vids.empty()) { start_pos_vec.push_back(dag_pair.first); }
+    }
+    dag_vertex curr_vertex;
+    /* at any given time, we should have only 1 entry to follow, otherwise seq is not uniq */
+    while(1 == start_pos_vec.size()) {
+      curr_vertex = dag_map[start_pos_vec.back()];
+      sorted_vids.push_back(curr_vertex.vid);
+      start_pos_vec.pop_back();
+      for (auto & out_vid : curr_vertex.outgoing_vids) {
+        dag_map[out_vid].incoming_vids.erase(curr_vertex.vid); total_dep_cnt -= 1;
+        if (dag_map[out_vid].incoming_vids.empty()) { start_pos_vec.push_back(out_vid); }
+      }
+    }
+
+    if (sorted_vids.size() != origin_seq.size() || 0 != total_dep_cnt) { is_seq_uniq = false; }
+    else {
+      for (int i = 0; i < sorted_vids.size(); i++) {
+        if (sorted_vids[i] != origin_seq[i]) { is_seq_uniq = false; break; }
+      }
+    }
+
+    return is_seq_uniq;
+  }
+
+  static void test_is_sequence_unique() {
+    cout << "4. test_is_sequence_unique:" << endl;
+    bool result = false;
+    vector<vector<int>> test_input_origin = { { 1 }, { 1, 2, 3 }, { 1, 2, 3 }, { 1, 2, 3 }, { 4, 1, 5, 2, 6, 3 } };
+    vector<vector<vector<int>>> test_input_seqs = { { {}, {} }, { { 1, 2 }, { 1, 3 } },
+                                                    { { 1, 2 } },
+                                                    { { 1, 2 }, { 1, 3 }, { 2, 3 } },
+                                                    { { 5, 2, 6, 3 }, { 4, 1, 5, 2 } } };
+    vector<bool> test_output = { false, false, false, true, true };
+    for (int i = 0; i < test_output.size(); i++) {
+      result = is_sequence_unique(test_input_origin[i], test_input_seqs[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
   }
 
   /**
@@ -317,20 +367,6 @@ namespace graph_util {
    *   them can be scheduled on some certain order.
    * - if we can sort whole DAG, then true, otherwise(not DAG, with cycle) false
    */
-
-
-  class dag_vertex {
-  public:
-    dag_vertex(int id = -1) : vid(id) {}
-    virtual ~dag_vertex() {}
-    int vid;
-    unordered_set<int> incoming_vids; /* all vids must come before */
-    unordered_set<int> outgoing_vids; /* all vids can come after */
-    friend ostream & operator<<(ostream & os, const dag_vertex & dv) {
-      os << dv.vid; return os;
-    }
-  };
-
   static bool can_all_courses_be_taken(int n, vector<pair<int, int>> prerequisites) {
     bool is_dag_valid = false;
     /* 1. build out the dag before topological sorting */
@@ -366,7 +402,7 @@ namespace graph_util {
   }
 
   static void test_can_all_courses_be_taken() {
-    cout << "5. can_all_courses_be_taken:" << endl;
+    cout << "5. test_can_all_courses_be_taken:" << endl;
     vector<vector<pair<int, int>>> test_input_pairs = {
       { pair<int, int>(1, 0) },
       { pair<int, int>(1, 0), pair<int, int>(0, 1) },
@@ -418,7 +454,7 @@ namespace graph_util {
   }
 
   static void test_plan_courses_to_take() {
-    cout << "6. plan_courses_to_take:" << endl;
+    cout << "6. test_plan_courses_to_take:" << endl;
     vector<int> result;
     vector<vector<pair<int, int>>> test_input_pairs = {
       { pair<int, int>(1, 0) },
@@ -694,11 +730,8 @@ int main(void) {
   using graph_util::clone_undirected_graph;
   using graph_util::calc_shortest_paths;
   using graph_util::calc_minimum_spanning_tree;
-  using graph_util::is_sequence_unique;
-  using graph_util::can_all_courses_be_taken;
-  using graph_util::plan_courses_to_take;
-  using graph_util::is_udg_bipartite;
 
+  using graph_util::test_is_sequence_unique;
   using graph_util::test_can_all_courses_be_taken;
   using graph_util::test_plan_courses_to_take;
   using graph_util::test_is_forest_bipartite;
@@ -756,39 +789,7 @@ int main(void) {
     calc_minimum_spanning_tree(mst_graph_metrix)
   );
 
-  cout << "4. is_sequence_unique:" << endl;
-  vector<int> av({ 1, 2, 3 }); vector<int> av1({ 1, 2 });
-  vector<int> av2({ 1, 3 });   vector<int> av3({ 2, 3 });
-  vector<vector<int>> avv1; avv1.push_back(av1);
-                            avv1.push_back(av2);
-  vector<vector<int>> avv2; avv2.push_back(av1);
-  vector<vector<int>> avv3; avv3.push_back(av1);
-                            avv3.push_back(av2);
-                            avv3.push_back(av3);
-  vector<int> bv({ 4, 1, 5, 2, 6, 3 });
-  vector<int> bv1({ 5, 2, 6, 3 });
-  vector<int> bv2({ 4, 1, 5, 2 });
-  vector<vector<int>> bvv; bvv.push_back(bv1);
-                           bvv.push_back(bv2);
-
-  print_all_elem<int>(av);
-  print_all_elem_vec<int>(avv1);
-  cout << false << endl;
-  assert(false == is_sequence_unique(av, avv1));
-  print_all_elem<int>(av);
-  print_all_elem_vec<int>(avv2);
-  cout << false << endl;
-  assert(false == is_sequence_unique(av, avv2));
-  print_all_elem<int>(av);
-  print_all_elem_vec<int>(avv3);
-  cout << true << endl;
-  assert(true == is_sequence_unique(av, avv3));
-  print_all_elem<int>(bv);
-  print_all_elem_vec<int>(bvv);
-  cout << true << endl;
-  assert(true == is_sequence_unique(bv, bvv));
-
-
+  test_is_sequence_unique();
   test_can_all_courses_be_taken();
   test_plan_courses_to_take();
   test_is_forest_bipartite();
