@@ -223,40 +223,7 @@ namespace graph_util {
       }
     }
   }
-  /*
-    // store all shortest path info, store parent of each v.
-    vector<graph_vertex> shortest_path_vec;
-    for (int i = 0; i < sp_graph_matrix.size(); i++) {
-      shortest_path_vec.push_back(graph_vertex(i, INT_MAX));
-    }
-    shortest_path_vec[start_vid].priority = 0;
 
-    // dist vector store all dist from start_v to curr_node 
-    vector<graph_vertex> vertex_min_heap;
-    unordered_set<int> visited_lookup;
-
-    vertex_min_heap.push_back(shortest_path_vec[start_vid]);
-    while (false == vertex_min_heap.empty()) {
-      // each time adding the closest node to the buffer
-      graph_vertex curr_vertex = vertex_min_heap.front();
-      pop_heap(vertex_min_heap.begin(), vertex_min_heap.end());
-      vertex_min_heap.pop_back();
-      if (visited_lookup.end() != visited_lookup.find(curr_vertex.id)) { continue; }
-      visited_lookup.insert(curr_vertex.id);
-      for (int i = 0; i < sp_graph_matrix[curr_vertex.id].size(); i++) {
-        if ((curr_vertex.id == i) || (0 == sp_graph_matrix[curr_vertex.id][i])) { continue; }
-        // update distance vector, push to heap if we see a shorter dist
-        int tentative_dist_from_src = curr_vertex.priority + sp_graph_matrix[curr_vertex.id][i];
-        if (tentative_dist_from_src < shortest_path_vec[i].priority) {
-          shortest_path_vec[i].priority = tentative_dist_from_src;
-          shortest_path_vec[i].id_from = curr_vertex.id;
-          vertex_min_heap.push_back(shortest_path_vec[i]);
-          push_heap(vertex_min_heap.begin(), vertex_min_heap.end());
-        }
-      }
-    }
-    return shortest_path_vec;
-  */
   class graph_edge {
   public:
     graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {}
