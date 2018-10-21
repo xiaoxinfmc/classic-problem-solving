@@ -15,9 +15,6 @@
 using namespace std;
 
 namespace graph_util {
-
-  const static int GRAPH_VERTEX_CNT = 9;
-
   template <class Type>
   static void print_all_elem(const vector<Type> & input) {
     cout << "[ ";
@@ -30,26 +27,6 @@ namespace graph_util {
     for (auto & arr : input){ cout << "  "; print_all_elem<Type>(arr); }
     cout << "]" << endl;
   }
-
-  class graph_vertex {
-  public:
-    graph_vertex(int vid, int vpriority, int vfrom = -1) {
-      id = vid; priority = vpriority; id_from = vfrom;
-    }
-    virtual ~graph_vertex(){}
-    // default stl heap is max heap, by inverting the < we got min heap.
-    friend bool operator< (const graph_vertex & lv, const graph_vertex & rv) {
-      return (lv.priority > rv.priority);
-    }
-    friend bool operator== (const graph_vertex & lv, const graph_vertex & rv) {
-      return (lv.priority == rv.priority);
-    }
-    friend ostream & operator<< (ostream & os, const graph_vertex & v) {
-      os << "< " << v.id << ", " << v.priority << ", " << v.id_from << " >";
-      return os;
-    }
-    int id, priority, id_from;
-  };
 
   /**
    * 133. Clone Graph
@@ -167,25 +144,100 @@ namespace graph_util {
   	print_undirected_graph(clone_undirected_graph(d_ptr));
   }
 
+  class graph_vertex {
+  public:
+    graph_vertex(int vid, int vpriority, int vfrom = -1) {
+      id = vid; priority = vpriority; id_from = vfrom;
+    }
+    virtual ~graph_vertex(){}
+    // default stl heap is max heap, by inverting the < we got min heap.
+    friend bool operator< (const graph_vertex & lv, const graph_vertex & rv) {
+      return (lv.priority > rv.priority);
+    }
+    friend bool operator== (const graph_vertex & lv, const graph_vertex & rv) {
+      return (lv.priority == rv.priority);
+    }
+    friend ostream & operator<< (ostream & os, const graph_vertex & v) {
+      os << "< " << v.id << ", " << v.priority << ", " << v.id_from << " >";
+      return os;
+    }
+    int id, priority, id_from;
+  };
 
   /* graph_vertex(int vid, int vpriority, int vfrom = -1) */
-  static vector<graph_vertex> calc_shortest_paths(
-    const vector<vector<int>> & sp_graph_matrix, int start_vid
-  ) {
-    /* store all shortest path info, store parent of each v. */
+  static vector<graph_vertex> calc_shortest_paths(const vector<vector<int>> & sp_graph_matrix, int start_vid = 0) {
+    vector<graph_vertex> all_src_dist_vec;
+    vector<graph_vertex> vertex_dist_min_heap = { graph_vertex(start_vid, 0, -1) };
+    vector<bool> is_visited_lookup(sp_graph_matrix.size(), false);
+
+    for (int i = 0; i < sp_graph_matrix.size(); i++) {
+      all_src_dist_vec.push_back(graph_vertex(i, INT_MAX, -1));
+    }
+    all_src_dist_vec[0].priority = 0;
+
+    while (!vertex_dist_min_heap.empty()) {
+      graph_vertex curr_vertex = vertex_dist_min_heap.front();
+      pop_heap(vertex_dist_min_heap.begin(), vertex_dist_min_heap.end());
+      vertex_dist_min_heap.pop_back();
+      if (is_visited_lookup[curr_vertex.id]) { continue; }
+      is_visited_lookup[curr_vertex.id] = true;
+      for (int vid = 0; vid < sp_graph_matrix[curr_vertex.id].size(); vid++) {
+        if (vid == curr_vertex.id || is_visited_lookup[vid] ||
+            0 >= sp_graph_matrix[curr_vertex.id][vid]) { continue; }
+        int tentative_dist = all_src_dist_vec[curr_vertex.id].priority +
+                             sp_graph_matrix[curr_vertex.id][vid];
+        if (tentative_dist < all_src_dist_vec[vid].priority) {
+          all_src_dist_vec[vid].priority = tentative_dist;
+          all_src_dist_vec[vid].id_from = curr_vertex.id;
+          vertex_dist_min_heap.push_back(all_src_dist_vec[vid]);
+          push_heap(vertex_dist_min_heap.begin(), vertex_dist_min_heap.end());
+        }
+      }
+    }
+
+    return all_src_dist_vec;
+  }
+
+  static void test_calc_shortest_paths() {
+    cout << "2. test_calc_shortest_paths:" << endl;
+    vector<graph_vertex> result;
+    /* V D 0 0 1 4 2 12 3 19 4 21 5 11 6 9 7 8 8 14 */
+    vector<vector<vector<int>>> test_input = {
+      { {0, 4, 0, 0, 0, 0, 0, 8, 0}, {4, 0, 8, 0, 0, 0, 0, 11, 0}, {0, 8, 0, 7, 0, 4, 0, 0, 2},
+        {0, 0, 7, 0, 9, 14, 0, 0, 0}, {0, 0, 0, 9, 0, 10, 0, 0, 0}, {0, 0, 4, 14, 10, 0, 2, 0, 0},
+        {0, 0, 0, 0, 0, 2, 0, 1, 6}, {8, 11, 0, 0, 0, 0, 1, 0, 7}, {0, 0, 2, 0, 0, 0, 6, 7, 0} } };
+    vector<vector<graph_vertex>> test_output = {
+      { graph_vertex(0, 0, -1),  graph_vertex(1, 4, 0), graph_vertex(2, 12, 1),
+        graph_vertex(3, 19, 2), graph_vertex(4, 21, 5), graph_vertex(5, 11, 6),
+        graph_vertex(6, 9, 7),  graph_vertex(7, 8, 0), graph_vertex(8, 14, 2) } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_shortest_paths(test_input[i]);
+      print_all_elem<graph_vertex>(result);
+      cout << "<=>" << endl;
+      print_all_elem<graph_vertex>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) {
+        assert((result[j].id == test_output[i][j].id) &&
+               (result[j].priority == test_output[i][j].priority) &&
+               (result[j].id_from == test_output[i][j].id_from));
+      }
+    }
+  }
+  /*
+    // store all shortest path info, store parent of each v.
     vector<graph_vertex> shortest_path_vec;
     for (int i = 0; i < sp_graph_matrix.size(); i++) {
       shortest_path_vec.push_back(graph_vertex(i, INT_MAX));
     }
     shortest_path_vec[start_vid].priority = 0;
 
-    /* dist vector store all dist from start_v to curr_node */
+    // dist vector store all dist from start_v to curr_node 
     vector<graph_vertex> vertex_min_heap;
     unordered_set<int> visited_lookup;
 
     vertex_min_heap.push_back(shortest_path_vec[start_vid]);
     while (false == vertex_min_heap.empty()) {
-      /* each time adding the closest node to the buffer */
+      // each time adding the closest node to the buffer
       graph_vertex curr_vertex = vertex_min_heap.front();
       pop_heap(vertex_min_heap.begin(), vertex_min_heap.end());
       vertex_min_heap.pop_back();
@@ -193,7 +245,7 @@ namespace graph_util {
       visited_lookup.insert(curr_vertex.id);
       for (int i = 0; i < sp_graph_matrix[curr_vertex.id].size(); i++) {
         if ((curr_vertex.id == i) || (0 == sp_graph_matrix[curr_vertex.id][i])) { continue; }
-        /* update distance vector, push to heap if we see a shorter dist */
+        // update distance vector, push to heap if we see a shorter dist
         int tentative_dist_from_src = curr_vertex.priority + sp_graph_matrix[curr_vertex.id][i];
         if (tentative_dist_from_src < shortest_path_vec[i].priority) {
           shortest_path_vec[i].priority = tentative_dist_from_src;
@@ -204,8 +256,7 @@ namespace graph_util {
       }
     }
     return shortest_path_vec;
-  }
-
+  */
   class graph_edge {
   public:
     graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {}
@@ -757,29 +808,9 @@ namespace graph_util {
 };
 
 int main(void) {
-  /*
-     0, 1, 2
-     0 | [ 1, 2 ] | <0> { 0#1, 0#2 }
-     1 | [ 2, 2 ] | <0, 1> { 1#0, 1#2 }
-     2 | [ 2, 2, 2 ] <0, 1, 2> { 2#0, 2#1, 2#2 }
-         1
-        / \
-       /   \
-      0 --- 2
-           / \
-           \_/
-  */
-  using graph_util::print_all_elem;
-  using graph_util::print_all_elem_vec;
-
-  using graph_util::undirected_graph_vertex;
-  using graph_util::graph_vertex;
-  using graph_util::graph_edge;
-
-
-  using graph_util::calc_shortest_paths;
 
   using graph_util::test_clone_undirected_graph;
+  using graph_util::test_calc_shortest_paths;
   using graph_util::test_calc_minimum_spanning_tree;
   using graph_util::test_is_sequence_unique;
   using graph_util::test_can_all_courses_be_taken;
@@ -787,27 +818,8 @@ int main(void) {
   using graph_util::test_is_forest_bipartite;
   using graph_util::test_calc_max_flow;
 
-  cout << "2. calc_shortest_paths:" << endl;
-  /* V D 0 0 1 4 2 12 3 19 4 21 5 11 6 9 7 8 8 14 */
-  vector<vector<int>> sp_graph_metrix({
-    vector<int>({0, 4, 0, 0, 0, 0, 0, 8, 0}),
-    vector<int>({4, 0, 8, 0, 0, 0, 0, 11, 0}),
-    vector<int>({0, 8, 0, 7, 0, 4, 0, 0, 2}),
-    vector<int>({0, 0, 7, 0, 9, 14, 0, 0, 0}),
-    vector<int>({0, 0, 0, 9, 0, 10, 0, 0, 0}),
-    vector<int>({0, 0, 4, 14, 10, 0, 2, 0, 0}),
-    vector<int>({0, 0, 0, 0, 0, 2, 0, 1, 6}),
-    vector<int>({8, 11, 0, 0, 0, 0, 1, 0, 7}),
-    vector<int>({0, 0, 2, 0, 0, 0, 6, 7, 0}),
-  });
-  print_all_elem<graph_vertex>(vector<graph_vertex>({
-    graph_vertex(0, 0),  graph_vertex(1, 4), graph_vertex(2, 12),
-    graph_vertex(3, 19), graph_vertex(4, 21), graph_vertex(5, 11),
-    graph_vertex(6, 9),  graph_vertex(7, 8), graph_vertex(8, 14)
-  }));
-  print_all_elem<graph_vertex>(calc_shortest_paths(sp_graph_metrix, 0));
-
   test_clone_undirected_graph();
+  test_calc_shortest_paths();
   test_calc_minimum_spanning_tree();
   test_is_sequence_unique();
   test_can_all_courses_be_taken();
