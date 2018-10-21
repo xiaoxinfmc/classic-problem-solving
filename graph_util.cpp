@@ -288,36 +288,6 @@ namespace graph_util {
     return links_to_confirm_map.empty();
   }
 
-  static bool _is_sequence_unique(vector<int>& origin_seq, vector<vector<int>>& seqs) {
-    unordered_map<int, int> links_to_confirm_map, value_to_index_map;
-
-    for (int i = 0; i < origin_seq.size(); i++) {
-      if (i < origin_seq.size() - 1) {
-        links_to_confirm_map[origin_seq[i]] = origin_seq[i + 1];
-      }
-      value_to_index_map[origin_seq[i]] = i;
-    }
-
-    for (auto & seq_to_chk : seqs) {
-      for (int i = 0; i < seq_to_chk.size(); i++) {
-        if (i == seq_to_chk.size() - 1) {
-          if (value_to_index_map.find(seq_to_chk[i]) ==
-              value_to_index_map.end()) { return false; }
-          continue;
-        }
-        if (value_to_index_map[seq_to_chk[i]] >=
-            value_to_index_map[seq_to_chk[i + 1]]) { return false; }
-        if (links_to_confirm_map.find(seq_to_chk[i]) !=
-            links_to_confirm_map.end()) {
-          if (links_to_confirm_map[seq_to_chk[i]] == seq_to_chk[i + 1]) {
-            links_to_confirm_map.erase(seq_to_chk[i]);
-          }
-        }
-      }
-    }
-    return links_to_confirm_map.empty();
-  }
-
   /**
    * 207 Course Schedule
    * There are a total of n courses you have to take, labeled from 0 to n-1.
@@ -347,95 +317,130 @@ namespace graph_util {
    *   them can be scheduled on some certain order.
    * - if we can sort whole DAG, then true, otherwise(not DAG, with cycle) false
    */
+
+
   class dag_vertex {
   public:
-    dag_vertex(int id = 0) : vid(id) {}
+    dag_vertex(int id = -1) : vid(id) {}
     virtual ~dag_vertex() {}
-
     int vid;
-    unordered_set<int> incoming_vids;
-    unordered_set<int> outgoing_vids;
+    unordered_set<int> incoming_vids; /* all vids must come before */
+    unordered_set<int> outgoing_vids; /* all vids can come after */
+    friend ostream & operator<<(ostream & os, const dag_vertex & dv) {
+      os << dv.vid; return os;
+    }
   };
 
   static bool can_all_courses_be_taken(int n, vector<pair<int, int>> prerequisites) {
-    /* build the graph based on input */
-    int total_edges_cnt = 0;
-    vector<dag_vertex> graph_vertices(n, dag_vertex());
-    for (int i = 0; i < n; i++) { graph_vertices[i].vid = i; }
-    for (auto & pair_ref : prerequisites) {
-      if (pair_ref.first == pair_ref.second) { return false; }
-      graph_vertices[pair_ref.second].outgoing_vids.insert(pair_ref.first);
-      graph_vertices[pair_ref.first].incoming_vids.insert(pair_ref.second);
-      total_edges_cnt += 1;
+    bool is_dag_valid = false;
+    /* 1. build out the dag before topological sorting */
+    int total_dependency_cnt = 0;
+    vector<dag_vertex> dag;
+    for (int i = 0; i < n; i++) { dag.push_back(dag_vertex(i)); }
+    int curr_vid = 0, required_vid = 0;
+    for (auto & dep_pair : prerequisites) {
+      curr_vid = dep_pair.first; required_vid = dep_pair.second;
+      dag[curr_vid].incoming_vids.insert(required_vid);
+      dag[required_vid].outgoing_vids.insert(curr_vid);
+      total_dependency_cnt += 1;
     }
 
-    /* start topological sort */
-    vector<int> vertex_id_buffer;  // used here as a stack
-    vector<bool> visited_vid_lookup(n, false);
-
-    for (auto & vertex_ref : graph_vertices) {
-      if (true == vertex_ref.incoming_vids.empty()) {
-        vertex_id_buffer.push_back(vertex_ref.vid);
-      }
+    /* 2. start topological sorting */
+    vector<int> start_vids_vec;
+    for (auto & vertex : dag) {
+      if (vertex.incoming_vids.empty()) { start_vids_vec.push_back(vertex.vid); }
     }
-    int curr_vid = -1;
-    while (false == vertex_id_buffer.empty()) {
-      curr_vid = vertex_id_buffer.back();
-      dag_vertex & curr_vertex = graph_vertices[curr_vid];
-      vertex_id_buffer.pop_back();
-
-      if (true == visited_vid_lookup[curr_vid]) { continue; }
-
-      visited_vid_lookup[curr_vid] = true;
-
-      for (auto & outgoing_vid : curr_vertex.outgoing_vids) {
-        graph_vertices[outgoing_vid].incoming_vids.erase(curr_vid);
-        if (true == graph_vertices[outgoing_vid].incoming_vids.empty()) {
-          vertex_id_buffer.push_back(outgoing_vid);
-        }
-        total_edges_cnt -= 1;
+    while (!start_vids_vec.empty()) {
+      /* 2-1. start by pick v without any dependency each time */
+      curr_vid = start_vids_vec.back();
+      start_vids_vec.pop_back();
+      /* 2-2. remove its dependencies from all its outgoing ones */
+      for (auto & next_vid : dag[curr_vid].outgoing_vids) {
+        dag[next_vid].incoming_vids.erase(curr_vid); total_dependency_cnt -= 1;
+        if (dag[next_vid].incoming_vids.empty()) { start_vids_vec.push_back(next_vid); }
       }
     }
 
-    return (total_edges_cnt == 0);
+    is_dag_valid = (0 == total_dependency_cnt);
+    return is_dag_valid;
   }
 
+  static void test_can_all_courses_be_taken() {
+    cout << "5. can_all_courses_be_taken:" << endl;
+    vector<vector<pair<int, int>>> test_input_pairs = {
+      { pair<int, int>(1, 0) },
+      { pair<int, int>(1, 0), pair<int, int>(0, 1) },
+      { pair<int, int>(5, 2), pair<int, int>(5, 0),
+        pair<int, int>(4, 0), pair<int, int>(4, 1),
+        pair<int, int>(2, 3), pair<int, int>(3, 1) } };
+    vector<int> test_input_cnt = { 2, 2, 6 };
+    vector<bool> test_output = { true, false, true };
+    bool result = false;
+    for (int i = 0; i < test_output.size(); i++) {
+      result = can_all_courses_be_taken(test_input_cnt[i], test_input_pairs[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
+  /**
+   * 210. Course Schedule II
+   */
   static vector<int> plan_courses_to_take(int n, vector<pair<int, int>> prerequisites) {
-    /* build the graph based on input */
-    vector<int> course_planing;
-    vector<dag_vertex> graph_vertices(n, dag_vertex());
-    for (int i = 0; i < n; i++) { graph_vertices[i].vid = i; }
-    for (auto & pair_ref : prerequisites) {
-      if (pair_ref.first == pair_ref.second) { return course_planing; }
-      graph_vertices[pair_ref.second].outgoing_vids.insert(pair_ref.first);
-      graph_vertices[pair_ref.first].incoming_vids.insert(pair_ref.second);
+    vector<int> sorted_dag_vds;
+
+    vector<dag_vertex> dag;
+    int total_dep_cnt = 0;
+    for (int i = 0; i < n; i++) { dag.push_back(dag_vertex(i)); }
+    for (auto & dep_pair : prerequisites) {
+      dag[dep_pair.first].incoming_vids.insert(dep_pair.second);
+      dag[dep_pair.second].outgoing_vids.insert(dep_pair.first);
+      total_dep_cnt += 1;
     }
 
-    /* start topological sort */
-    vector<int> vertex_id_buffer;  // used here as a stack
-    vector<bool> visited_vid_lookup(n, false);
-    for (auto & vertex_ref : graph_vertices) {
-      if (true == vertex_ref.incoming_vids.empty()) {
-        vertex_id_buffer.push_back(vertex_ref.vid);
+    vector<int> start_vids_vec;
+    for (auto & vertex : dag) {
+      if (vertex.incoming_vids.empty()) { start_vids_vec.push_back(vertex.vid); }
+    }
+    while (!start_vids_vec.empty()) {
+      sorted_dag_vds.push_back(start_vids_vec.back());
+      start_vids_vec.pop_back();
+      auto & curr_vertex = dag[sorted_dag_vds.back()];
+      for (auto & next_vid : curr_vertex.outgoing_vids) {
+        dag[next_vid].incoming_vids.erase(curr_vertex.vid); total_dep_cnt -= 1;
+        if (dag[next_vid].incoming_vids.empty()) { start_vids_vec.push_back(next_vid); }
       }
     }
-    int curr_vid = -1;
-    while (false == vertex_id_buffer.empty()) {
-      curr_vid = vertex_id_buffer.back();
-      dag_vertex & curr_vertex = graph_vertices[curr_vid];
-      vertex_id_buffer.pop_back();
-      if (true == visited_vid_lookup[curr_vid]) { continue; }
-      course_planing.push_back(curr_vid);
-      visited_vid_lookup[curr_vid] = true;
-      for (auto & outgoing_vid : curr_vertex.outgoing_vids) {
-        graph_vertices[outgoing_vid].incoming_vids.erase(curr_vid);
-        if (true == graph_vertices[outgoing_vid].incoming_vids.empty()) {
-          vertex_id_buffer.push_back(outgoing_vid);
-        }
-      }
+
+    if (0 != total_dep_cnt) { sorted_dag_vds = {}; }
+
+    return sorted_dag_vds;
+  }
+
+  static void test_plan_courses_to_take() {
+    cout << "6. plan_courses_to_take:" << endl;
+    vector<int> result;
+    vector<vector<pair<int, int>>> test_input_pairs = {
+      { pair<int, int>(1, 0) },
+      { pair<int, int>(1, 0), pair<int, int>(0, 1) },
+      { pair<int, int>(5, 2), pair<int, int>(5, 0),
+        pair<int, int>(4, 0), pair<int, int>(4, 1),
+        pair<int, int>(2, 3), pair<int, int>(3, 1) },
+      { pair<int, int>(1, 0), pair<int, int>(2, 0),
+        pair<int, int>(3, 1), pair<int, int>(3, 2) }
+    };
+    vector<int> test_input_cnt = { 2, 2, 6, 4 };
+    vector<vector<int>> test_output = {
+      { 0, 1 }, {}, { 1, 3, 2, 0, 5, 4 }, { 0, 1, 2, 3 }
+    };
+    for (int i = 0; i < test_output.size(); i++) {
+      result = plan_courses_to_take(test_input_cnt[i], test_input_pairs[i]);
+      print_all_elem<int>(result);
+      cout << "<=>" << endl;
+      print_all_elem<int>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
     }
-    if (course_planing.size() != n){ course_planing.clear(); }
-    return course_planing;
   }
 
   /**
@@ -694,6 +699,8 @@ int main(void) {
   using graph_util::plan_courses_to_take;
   using graph_util::is_udg_bipartite;
 
+  using graph_util::test_can_all_courses_be_taken;
+  using graph_util::test_plan_courses_to_take;
   using graph_util::test_is_forest_bipartite;
   using graph_util::test_calc_max_flow;
 
@@ -781,21 +788,9 @@ int main(void) {
   cout << true << endl;
   assert(true == is_sequence_unique(bv, bvv));
 
-  cout << "5. can_all_courses_be_taken:" << endl;
-  cout << "1 <=> " << can_all_courses_be_taken(2, vector<pair<int, int>>({ pair<int, int>(1, 0) })) << endl;
-  cout << "0 <=> " << can_all_courses_be_taken(2, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(0, 1) })) << endl;
-  cout << "1 <=> " << can_all_courses_be_taken(6, vector<pair<int, int>>({ pair<int, int>(5, 2), pair<int, int>(5, 0),
-                                                                           pair<int, int>(4, 0), pair<int, int>(4, 1),
-                                                                           pair<int, int>(2, 3), pair<int, int>(3, 1) })) << endl;
 
-  cout << "6. plan_courses_to_take:" << endl;
-  cout << "[ 0 1 ] <=> "; print_all_elem<int>(plan_courses_to_take(2, vector<pair<int, int>>({ pair<int, int>(1, 0) })));
-  cout << "[ ] <=> "; print_all_elem<int>(plan_courses_to_take(2, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(0, 1) })));
-  cout << "[ 1 3 2 0 5 4 ] <=> "; print_all_elem<int>(plan_courses_to_take(6, vector<pair<int, int>>({ pair<int, int>(5, 2), pair<int, int>(5, 0),
-                                                                                                       pair<int, int>(4, 0), pair<int, int>(4, 1),
-                                                                                                       pair<int, int>(2, 3), pair<int, int>(3, 1) })));
-  cout << "[ 0 1 2 3 ] <=> "; print_all_elem<int>(plan_courses_to_take(4, vector<pair<int, int>>({ pair<int, int>(1, 0), pair<int, int>(2, 0),
-                                                                                                   pair<int, int>(3, 1), pair<int, int>(3, 2) })));
+  test_can_all_courses_be_taken();
+  test_plan_courses_to_take();
   test_is_forest_bipartite();
   test_calc_max_flow();
 
