@@ -51,22 +51,6 @@ namespace graph_util {
     int id, priority, id_from;
   };
 
-  class graph_edge {
-  public:
-    graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {}
-    virtual ~graph_edge() {}
-    friend ostream & operator<< (ostream & os, const graph_edge & e) {
-      os << "(" << e.from << " -> " << e.to << " : " << e.weight << ")"; return os;
-    }
-    friend bool operator< (const graph_edge & le, const graph_edge & re) {
-      return (le.weight > re.weight);
-    }
-    friend bool operator== (const graph_edge & le, const graph_edge & re) {
-      return (le.weight == re.weight);
-    }
-    int from, to, weight;
-  };
-
   /**
    * 133. Clone Graph
    * Nodes are labeled uniquely.
@@ -222,36 +206,75 @@ namespace graph_util {
     return shortest_path_vec;
   }
 
+  class graph_edge {
+  public:
+    graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {}
+    virtual ~graph_edge() {}
+    friend ostream & operator<< (ostream & os, const graph_edge & e) {
+      os << "(" << e.from << " -> " << e.to << " : " << e.weight << ")"; return os;
+    }
+    friend bool operator< (const graph_edge & le, const graph_edge & re) {
+      return (le.weight > re.weight);
+    }
+    friend bool operator== (const graph_edge & le, const graph_edge & re) {
+      return (le.weight == re.weight);
+    }
+    int from, to, weight;
+  };
+
   /* graph_edge(int f, int t, int w) : from(f), to(t), weight(w) {} */
-  /* graph_vertex(int vid, int vpriority, int vfrom = -1) */
+  /* graph_vertex(int vid, int vpriority, int vfrom = -1) int id, priority, id_from; */
   static vector<graph_edge> calc_minimum_spanning_tree(const vector<vector<int>> & mst_graph_metrix) {
     vector<graph_edge> mst_edges;
+    if (mst_graph_metrix.empty()) { return mst_edges; }
 
-    vector<graph_vertex> mst_vertices_min_heap;
-    unordered_set<int> visited_lookup;
-    mst_vertices_min_heap.push_back(graph_vertex(0, 0, -1));
-    while (false == mst_vertices_min_heap.empty()) {
-      graph_vertex curr_vertex = mst_vertices_min_heap.front();
-      pop_heap(mst_vertices_min_heap.begin(), mst_vertices_min_heap.end());
-      mst_vertices_min_heap.pop_back();
-      if (visited_lookup.end() != visited_lookup.find(curr_vertex.id)) { continue; }
-      visited_lookup.insert(curr_vertex.id);
-      if (-1 != curr_vertex.id_from) {
+    vector<bool> visit_lookup(mst_graph_metrix.size(), false);
+    vector<graph_vertex> vertex_heap = { graph_vertex(0, 0, -1) };
+    make_heap(vertex_heap.begin(), vertex_heap.end());
+
+    while (!vertex_heap.empty()) {
+      graph_vertex curr_vertex = vertex_heap.front();
+      pop_heap(vertex_heap.begin(), vertex_heap.end());
+      vertex_heap.pop_back();
+      if (true == visit_lookup[curr_vertex.id]) { continue; }
+      visit_lookup[curr_vertex.id] = true;
+      if (curr_vertex.id_from != -1) {
         mst_edges.push_back(graph_edge(curr_vertex.id_from, curr_vertex.id, curr_vertex.priority));
       }
       for (int i = 0; i < mst_graph_metrix[curr_vertex.id].size(); i++) {
-        if (0 == mst_graph_metrix[curr_vertex.id][i] || curr_vertex.id == i) { continue; }
-        mst_vertices_min_heap.push_back(
-          graph_vertex(i, mst_graph_metrix[curr_vertex.id][i], curr_vertex.id)
-        );
-        push_heap(mst_vertices_min_heap.begin(), mst_vertices_min_heap.end());
+        if (true == visit_lookup[i] || i == mst_graph_metrix[curr_vertex.id][i] ||
+                                       0 >= mst_graph_metrix[curr_vertex.id][i]) { continue; }
+        vertex_heap.push_back(graph_vertex(i, mst_graph_metrix[curr_vertex.id][i], curr_vertex.id));
+        push_heap(vertex_heap.begin(), vertex_heap.end());
       }
     }
-
     return mst_edges;
   }
 
-  /*
+  static void test_calc_minimum_spanning_tree() {
+    cout << "3. test_calc_minimum_spanning_tree:" << endl;
+    vector<graph_edge> result;
+    vector<vector<vector<int>>> test_input = {
+      { {0, 2, 0, 6, 0}, {2, 0, 3, 8, 5}, {0, 3, 0, 0, 7}, {6, 8, 0, 0, 9}, {0, 5, 7, 9, 0} }
+    };
+    vector<vector<graph_edge>> test_output = {
+      { graph_edge(0, 1, 2), graph_edge(1, 2, 3), graph_edge(1, 4, 5), graph_edge(0, 3, 6) }
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_minimum_spanning_tree(test_input[i]);
+      print_all_elem<graph_edge>(result);
+      cout << "<=>" << endl;
+      print_all_elem<graph_edge>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) {
+        assert((result[j].from == test_output[i][j].from) &&
+               (result[j].to == test_output[i][j].to) &&
+               (result[j].weight == test_output[i][j].weight));
+      }
+    }
+  }
+
+  /**
    * Check whether the original sequence org can be uniquely reconstructed from
    * the sequences in seqs. The org sequence is a permutation of the integers
    * from 1 to n, with 1 ≤ n ≤ 10^4. Reconstruction means building a shortest
@@ -753,11 +776,11 @@ int main(void) {
   using graph_util::graph_vertex;
   using graph_util::graph_edge;
 
-  using graph_util::test_clone_undirected_graph;
 
   using graph_util::calc_shortest_paths;
-  using graph_util::calc_minimum_spanning_tree;
 
+  using graph_util::test_clone_undirected_graph;
+  using graph_util::test_calc_minimum_spanning_tree;
   using graph_util::test_is_sequence_unique;
   using graph_util::test_can_all_courses_be_taken;
   using graph_util::test_plan_courses_to_take;
@@ -784,21 +807,8 @@ int main(void) {
   }));
   print_all_elem<graph_vertex>(calc_shortest_paths(sp_graph_metrix, 0));
 
-  cout << "3. calc_minimum_spanning_tree:" << endl;
-  vector<vector<int>> mst_graph_metrix({
-    vector<int>({0, 2, 0, 6, 0}), vector<int>({2, 0, 3, 8, 5}),
-    vector<int>({0, 3, 0, 0, 7}), vector<int>({6, 8, 0, 0, 9}),
-    vector<int>({0, 5, 7, 9, 0}),
-  });
-  print_all_elem<graph_edge>(vector<graph_edge>({
-    graph_edge(0, 1, 2), graph_edge(1, 2, 3),
-    graph_edge(0, 3, 6), graph_edge(1, 4, 5),
-  }));
-  print_all_elem<graph_edge>(
-    calc_minimum_spanning_tree(mst_graph_metrix)
-  );
-
   test_clone_undirected_graph();
+  test_calc_minimum_spanning_tree();
   test_is_sequence_unique();
   test_can_all_courses_be_taken();
   test_plan_courses_to_take();
