@@ -2010,6 +2010,7 @@ namespace array_util {
    *   { 3 } | 1 | {}
    * - {} | 2 | { 1 }
    * - {} | 1 | { }
+   * - the core of recur is to add all subset ends with max value of an elem (say after sort)
    */
   static void gen_subsets_recur(vector<int> & curr_input, /* remaining elem */
                                 vector<int> & curr_subset, /* existing sets */
