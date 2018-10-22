@@ -669,79 +669,129 @@ namespace array_util {
     return true;
   }
 
+  static void test_is_sudoku_valid() {
+    cout << "11. test_is_sudoku_valid" << endl;
+    bool result = false;
+    vector<vector<vector<char>>> test_input = {
+      { {'5','3','.','.','7','.','.','.','.'}, {'6','.','.','1','9','5','.','.','.'}, {'.','9','8','.','.','.','.','6','.'},
+        {'8','.','.','.','6','.','.','.','3'}, {'4','.','.','8','.','3','.','.','1'}, {'7','.','.','.','2','.','.','.','6'},
+        {'.','6','.','.','.','.','2','8','.'}, {'.','.','.','4','1','9','.','.','5'}, {'.','.','.','.','8','.','.','7','9'} },
+      { {'8','3','.','.','7','.','.','.','.'}, {'6','.','.','1','9','5','.','.','.'}, {'.','9','8','.','.','.','.','6','.'},
+        {'8','.','.','.','6','.','.','.','3'}, {'4','.','.','8','.','3','.','.','1'}, {'7','.','.','.','2','.','.','.','6'},
+        {'.','6','.','.','.','.','2','8','.'}, {'.','.','.','4','1','9','.','.','5'}, {'.','.','.','.','8','.','.','7','9'} },
+      { {'3','.','6','5','.','8','4','.','.'}, {'5','2','.','.','.','.','.','.','.'}, {'.','8','7','.','.','.','.','3','1'},
+        {'.','.','3','.','1','.','.','8','.'}, {'9','.','.','8','6','3','.','.','5'}, {'.','5','.','.','9','.','6','.','.'},
+        {'1','3','.','.','.','.','2','5','.'}, {'.','.','.','.','.','.','.','7','4'}, {'.','.','5','2','.','6','3','.','.'} },
+      { {'3','.','6','5','.','8','4','.','9'}, {'5','2','.','.','.','.','.','.','.'}, {'.','8','7','.','.','.','.','3','1'},
+        {'.','.','3','.','1','.','.','8','.'}, {'9','.','.','8','6','3','.','.','5'}, {'.','5','.','.','9','.','6','.','.'},
+        {'1','3','.','.','.','.','2','5','.'}, {'.','.','.','.','.','.','.','7','4'}, {'.','.','5','2','.','6','3','.','9'} }
+    };
+    vector<bool> test_output  = { true, false, true, false };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = is_sudoku_valid(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
+
   /**
    * ending term: all blanks been filled already
    * each round fill exact 1 number if curr cell not been filled yet, and if we
    * actually filled a value, then we run validation, if true contiue return
    * false otherwise.
    */
-  static bool is_current_fill_valid(vector<vector<char>> & board, int i, int j) {
-    int board_size = board.size();
-    for (int k = 0; k < board_size; k++) {
-      if (k != j && board[i][j] == board[i][k]) { return false; }
-      if (k != i && board[i][j] == board[k][j]) { return false; }
+  static bool is_current_fill_valid(vector<vector<char>> & board, int row, int col) {
+    /* 0 0 -> box top-left, */
+    for (int i = 0; i < board.size(); i++) {
+      /* verify corresponding row & col to see any conflicts */
+      if ((board[row][col] == board[row][i] && col != i) ||
+          (board[row][col] == board[i][col] && row != i)) { return false; }
     }
-    int box_start_row = (i / 3) * 3, box_start_col = (j / 3) * 3;
-    for (int r = box_start_row; r < box_start_row + 3; r++) {
-      for (int c = box_start_col; c < box_start_col + 3; c++) {
-        if (i != r && j != c && board[i][j] == board[r][c]) { return false; }
+    /* verify corresponding box to see any conflicts */
+    int box_start_row = (row / 3) * 3, box_start_col = (col / 3) * 3;
+    for (int i = box_start_row; i < box_start_row + 3; i++) {
+      for (int j = box_start_col; j < box_start_col + 3; j++) {
+        if (i == row && j == col) { continue; }
+        if (board[row][col] == board[i][j]) { return false; }
       }
     }
     return true;
   }
 
-  static vector<char> get_all_values_to_fill(vector<vector<char>> & board, int i, int j) {
-    int board_size = board.size();
-    vector<bool> number_lookup(board_size + 1, false);
-    vector<char> values_to_fill;
-    for (int k = 0; k < board_size; k++) {
-      if ('.' != board[i][k]) { number_lookup[get_number_val(board, i, k)] = true; }
-      if ('.' != board[k][j]) { number_lookup[get_number_val(board, k, j)] = true; }
+  static vector<char> get_avaialbe_values(vector<vector<char>> & board, int row, int col) {
+    vector<char> avail_nums;
+    vector<bool> lookup(9, false);
+    for (int i = 0; i < board.size(); i++) {
+      if ('.' != board[row][i]) { lookup[board[row][i] - '1'] = true; }
+      if ('.' != board[i][col]) { lookup[board[i][col] - '1'] = true; }
     }
-    int box_start_row = (i / 3) * 3, box_start_col = (j / 3) * 3;
-    for (int r = box_start_row; r < box_start_row + 3; r++) {
-      for (int c = box_start_col; c < box_start_col + 3; c++) {
-        if ('.' != board[r][c]) { number_lookup[get_number_val(board, r, c)] = true; }
+    /* verify corresponding box to see any conflicts */
+    int box_start_row = (row / 3) * 3, box_start_col = (col / 3) * 3;
+    for (int i = box_start_row; i < box_start_row + 3; i++) {
+      for (int j = box_start_col; j < box_start_col + 3; j++) {
+        if ('.' != board[i][j]) { lookup[board[i][j] - '1'] = true; }
       }
     }
-    for (int i = 1; i < board_size + 1; i++) {
-      if (false == number_lookup[i]) { values_to_fill.push_back((char)(i + (int)'0')); }
+    for (int i = 0; i < lookup.size(); i++) {
+      if (!lookup[i]) { avail_nums.push_back(i + (int)'1'); }
     }
-    return values_to_fill;
+    return avail_nums;
   }
 
   static bool solve_sudoku_recur(vector<vector<char>> & board,
                                  vector<pair<int, int>> & cells_to_fill) {
-    int board_size = board.size();
     if (true == cells_to_fill.empty()){ return true; }
 
-    bool is_good_fill_found = false;
-    pair<int, int> cell = cells_to_fill.back();
-    vector<char> numbers_to_fill = get_all_values_to_fill(board, cell.first, cell.second);
-    if (true == numbers_to_fill.empty()) { return false; }
-
-    char original_value = board[cell.first][cell.second];
-    for (auto value : numbers_to_fill) {
-      board[cell.first][cell.second] = value;
-      if (true == is_current_fill_valid(board, cell.first, cell.second)) {
-        cells_to_fill.pop_back();
-        is_good_fill_found = solve_sudoku_recur(board, cells_to_fill);
-        if (false == is_good_fill_found) { cells_to_fill.push_back(cell); }
+    pair<int, int> curr_cell = cells_to_fill.back();
+    vector<char> num_arr = get_avaialbe_values(board, curr_cell.first, curr_cell.second);
+    for (char num_to_fill : num_arr) {
+      board[curr_cell.first][curr_cell.second] = num_to_fill;
+      cells_to_fill.pop_back();
+      if (is_current_fill_valid(board, curr_cell.first, curr_cell.second)) {
+        if (solve_sudoku_recur(board, cells_to_fill)) { break; }
+        /* if rest of path does not go well, then recover */
+        board[curr_cell.first][curr_cell.second] = '.';
+        cells_to_fill.push_back(curr_cell);
+      } else {
+        board[curr_cell.first][curr_cell.second] = '.';
+        cells_to_fill.push_back(curr_cell);
       }
-      if (true == is_good_fill_found) { break; }
-      board[cell.first][cell.second] = original_value;
     }
-    return is_good_fill_found;
+    return cells_to_fill.empty();
   }
 
   static bool solve_sudoku(vector<vector<char>> & board) {
     vector<pair<int, int>> cells_to_fill;
     for (int i = 0; i < board.size(); i++) {
-      for (int j = 0; j < board.size(); j++) {
-        if ('.' == board[i][j]) { cells_to_fill.push_back(pair<int, int>(i, j)); }
+      for (int j = 0; j < board[i].size(); j++) {
+        if ('.' != board[i][j]) { continue; }
+        cells_to_fill.push_back(pair<int, int>(i, j));
       }
     }
     return solve_sudoku_recur(board, cells_to_fill);
+  }
+
+  static void test_solve_sudoku() {
+    cout << "12. test_solve_sudoku" << endl;
+    bool result = false;
+    vector<vector<vector<char>>> test_input = {
+      { {'5','3','.','.','7','.','.','.','.'}, {'6','.','.','1','9','5','.','.','.'}, {'.','9','8','.','.','.','.','6','.'},
+        {'8','.','.','.','6','.','.','.','3'}, {'4','.','.','8','.','3','.','.','1'}, {'7','.','.','.','2','.','.','.','6'},
+        {'.','6','.','.','.','.','2','8','.'}, {'.','.','.','4','1','9','.','.','5'}, {'.','.','.','.','8','.','.','7','9'} },
+      { {'8','3','.','.','7','.','.','.','.'}, {'6','.','.','1','9','5','.','.','.'}, {'.','9','8','.','.','.','.','6','.'},
+        {'8','.','.','.','6','.','.','.','3'}, {'4','.','.','8','.','3','.','.','1'}, {'7','.','.','.','2','.','.','.','6'},
+        {'.','6','.','.','.','.','2','8','.'}, {'.','.','.','4','1','9','.','.','5'}, {'.','.','.','.','8','.','.','7','9'} },
+      { {'3','.','6','5','.','8','4','.','.'}, {'5','2','.','.','.','.','.','.','.'}, {'.','8','7','.','.','.','.','3','1'},
+        {'.','.','3','.','1','.','.','8','.'}, {'9','.','.','8','6','3','.','.','5'}, {'.','5','.','.','9','.','6','.','.'},
+        {'1','3','.','.','.','.','2','5','.'}, {'.','.','.','.','.','.','.','7','4'}, {'.','.','5','2','.','6','3','.','.'} }
+    };
+    vector<bool> test_output  = { true, false, true };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = solve_sudoku(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+      if (true == result) { assert(true == is_sudoku_valid(test_input[i])); }
+    }
   }
 
   /**
@@ -2654,8 +2704,8 @@ int main(void) {
   using array_util::calc_max_trapping_water;
   using array_util::sort_colors;
   using array_util::fast_sort_colors;
-  using array_util::is_sudoku_valid;
-  using array_util::solve_sudoku;
+  using array_util::test_is_sudoku_valid;
+  using array_util::test_solve_sudoku;
   using array_util::find_duplicate;
   using array_util::check_and_update_board;
   using array_util::test_calendar;
@@ -2745,41 +2795,8 @@ int main(void) {
   cout << "[ 0 0 0 0 0 1 1 1 1 1 2 2 ] <=>" << endl;
   print_all_elem(fast_sort_colors(vector<int>({ 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2 })));
 
-  cout << "11. is_sudoku_valid" << endl;
-  vector<vector<char>> sudoku_0({vector<char>({'5','3','.','.','7','.','.','.','.'}),
-                                 vector<char>({'6','.','.','1','9','5','.','.','.'}),
-                                 vector<char>({'.','9','8','.','.','.','.','6','.'}),
-                                 vector<char>({'8','.','.','.','6','.','.','.','3'}),
-                                 vector<char>({'4','.','.','8','.','3','.','.','1'}),
-                                 vector<char>({'7','.','.','.','2','.','.','.','6'}),
-                                 vector<char>({'.','6','.','.','.','.','2','8','.'}),
-                                 vector<char>({'.','.','.','4','1','9','.','.','5'}),
-                                 vector<char>({'.','.','.','.','8','.','.','7','9'})});
-  vector<vector<char>> sudoku_1({vector<char>({'8','3','.','.','7','.','.','.','.'}),
-                                 vector<char>({'6','.','.','1','9','5','.','.','.'}),
-                                 vector<char>({'.','9','8','.','.','.','.','6','.'}),
-                                 vector<char>({'8','.','.','.','6','.','.','.','3'}),
-                                 vector<char>({'4','.','.','8','.','3','.','.','1'}),
-                                 vector<char>({'7','.','.','.','2','.','.','.','6'}),
-                                 vector<char>({'.','6','.','.','.','.','2','8','.'}),
-                                 vector<char>({'.','.','.','4','1','9','.','.','5'}),
-                                 vector<char>({'.','.','.','.','8','.','.','7','9'})});
-  vector<vector<char>> sudoku_2({vector<char>({'3', '.', '6', '5', '.', '8', '4', '.', '.'}),
-                                 vector<char>({'5', '2', '.', '.', '.', '.', '.', '.', '.'}),
-                                 vector<char>({'.', '8', '7', '.', '.', '.', '.', '3', '1'}),
-                                 vector<char>({'.', '.', '3', '.', '1', '.', '.', '8', '.'}),
-                                 vector<char>({'9', '.', '.', '8', '6', '3', '.', '.', '5'}),
-                                 vector<char>({'.', '5', '.', '.', '9', '.', '6', '.', '.'}),
-                                 vector<char>({'1', '3', '.', '.', '.', '.', '2', '5', '.'}),
-                                 vector<char>({'.', '.', '.', '.', '.', '.', '.', '7', '4'}),
-                                 vector<char>({'.', '.', '5', '2', '.', '6', '3', '.', '.'})});
-  cout << "1 <=> " << is_sudoku_valid(sudoku_0) << endl;
-  cout << "0 <=> " << is_sudoku_valid(sudoku_1) << endl;
-
-  cout << "12. solve_sudoku_row_recur" << endl;
-  cout << "1 <=> " << solve_sudoku(sudoku_0) << " <=> " << is_sudoku_valid(sudoku_0) <<  endl;
-  cout << "0 <=> " << solve_sudoku(sudoku_1) << " <=> " << is_sudoku_valid(sudoku_1) << endl;
-  cout << "1 <=> " << solve_sudoku(sudoku_2) << " <=> " << is_sudoku_valid(sudoku_2) <<  endl;
+  test_is_sudoku_valid();
+  test_solve_sudoku();
 
   cout << "13. find_duplicate" << endl;
   cout << "2 <=> " << find_duplicate(vector<int>({ 1, 3, 4, 2, 2 })) << endl;
