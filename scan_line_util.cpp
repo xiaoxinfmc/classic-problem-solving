@@ -1,6 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <cmath>
+#include <set>
+#include <climits>
 
 namespace scan_line_util {
   using namespace std;
@@ -95,11 +98,96 @@ namespace scan_line_util {
     }
   }
 
+  /**
+   * Problem: Find closest pair of points in given array of n distinct points
+   * - This problem can be solved by comparing all pairs of points, but then n^2.
+   *   So, we need a better algorithm for this. Here, we'll discuss it using
+   *   line sweep technique.
+   *
+   * - For this problem, we can consider the points in the array as our events.
+   *   And in a set, we store the already visited points sorted by y coordinate.
+   *   So, first we sort the points in x direction as we want our line to move
+   *   towards right.
+   *
+   * - Now, suppose we have processed the points from 1 to N-1, and let h be
+   *   the shortest distance we have got so far. For Nth point, we want to find
+   *   points whose distance from Nth point is less than or equal to h.
+   *
+   * - Now, we know we can only go till h distance from Xn to find such point,
+   *   and in the y direction we can go in h distance upwards and h distance
+   *   downwards. So, all such points whose x coordinate lie in [Yn-h, Yn+h]
+   *   and y coordinates lie in [Xn-h, Xn] are what we are concerned with and
+   *   these form the active events of the set. All points in the set with x
+   *   coordinates less than Xn-h are to be deleted. After this processing,
+   *   we'll add the Nth point to the set.
+   *
+   * - One thing to note is that at any instance, the number of points which
+   *   are active events is O(1)(there can be at most 5 points around a point
+   *   which are active excluding the point itself).
+   *
+   * - {{2, 3}, {12, 30}, {40, 50}, {5, 1}, {12, 10}, {3, 4}}, 1.414214
+   */
+  class point {
+  public:
+    point(long long xv, long long yv) : x(xv), y(yv) {}
+    virtual ~point() {}
+    long long x, y;
+    friend bool operator< (const point & l, const point & r) {
+      if (l.x < r.x) { return true; }
+      if (l.x == r.x && l.y < r.y) { return true; }
+      return false;
+    }
+    friend bool operator== (const point & l, const point & r) {
+      return (l.x == r.x && l.y == r.y);
+    }
+  };
+
+  static double calc_closest_pair_dist(vector<point> & points) {
+    double dist_limit = numeric_limits<double>::max();
+
+    sort(points.begin(), points.end());
+
+    set<point> points_buffer = { points.front() };
+    int left_most_point_id = 0;
+
+    for (int i = 1; i < points.size(); i++) {
+      while (left_most_point_id < i && (points[i].x - points[left_most_point_id].x) > dist_limit) {
+        points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
+      }
+      point bottom_left(points[i].x - dist_limit, points[i].y - dist_limit);
+      for (set<point>::iterator itr  = points_buffer.lower_bound(bottom_left);
+                                itr != points_buffer.end() && (itr->y <= points[i].y + dist_limit);
+                                itr++) {
+        dist_limit = min(dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
+      }
+      points_buffer.insert(points[i]);
+    }
+
+    return dist_limit;
+  }
+
+  static void test_calc_closest_pair_dist() {
+    cout << "2. test_calc_closest_pair_dist" << endl;
+    double result = 0.0;
+    vector<vector<point>> test_input = {
+      { point(2, 3), point(12, 30), point(40, 50), point(5, 1), point(12, 10), point(3, 4) },
+      { point(2, 3), point(12, 30), point(2, 2), point(40, 50), point(5, 1), point(12, 10), point(3, 4) }
+    };
+    vector<double> test_output = { 1.414214, 1 };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_closest_pair_dist(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(abs(result - test_output[i]) < 0.000001);
+    }
+  }
 };
 
 int main(void) {
   using scan_line_util::test_count_num_of_planes;
+  using scan_line_util::test_calc_closest_pair_dist;
+
   test_count_num_of_planes();
+  test_calc_closest_pair_dist();
 }
 
 /**
