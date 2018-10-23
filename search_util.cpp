@@ -657,38 +657,57 @@ namespace search_util{
    * - needs to use a buffer to log all points visited, islands id.
    * - 1s => island id, 0s => 0, un-visited => -1
    * - when to incr. island_seq? when no expansion in any direction.
+   * Intuition:
+   * - islands are cells filled with 1 & connected vert|horiz
+   * - one cell can at most belongs to 1 island, so need a buffer to log it
+   * - key can be its id (func(r, c))
+   * - for each cell greedy search all possible direction to the end
+   * - if new islands found, then return true (incr. cnt), otherwise false
    */
-  static void search_islands_recur(vector<vector<char>> & grid,
-                                   int curr_row, int curr_col, int * curr_area_ptr,
-                                   vector<vector<int>> & islands_mark) {
-    if (curr_row < 0 || curr_row >= grid.size() ||
-        curr_col < 0 || curr_col >= grid[curr_row].size()) { return; }
-    if (-1 != islands_mark[curr_row][curr_col]) { return; }
-
-    if ('1' == grid[curr_row][curr_col]) {
-      islands_mark[curr_row][curr_col] = 1;
-      * curr_area_ptr += 1;
-      search_islands_recur(grid, curr_row + 1, curr_col, curr_area_ptr, islands_mark);
-      search_islands_recur(grid, curr_row, curr_col + 1, curr_area_ptr, islands_mark);
-      search_islands_recur(grid, curr_row - 1, curr_col, curr_area_ptr, islands_mark);
-      search_islands_recur(grid, curr_row, curr_col - 1, curr_area_ptr, islands_mark);
-    } else {
-      islands_mark[curr_row][curr_col] = 0;
-    }
+  static bool is_new_island_found(const vector<vector<char>> & grid,
+                                  int row, int col,
+                                  vector<bool> & cell_usage_lookup) {
+    int curr_cell_key = row * grid.front().size() + col;
+    if (!(row < grid.size() && col < grid[row].size())) { return false; }
+    if (grid[row][col] == '0' || cell_usage_lookup[curr_cell_key]) { return false; }
+    cell_usage_lookup[curr_cell_key] = true;
+    is_new_island_found(grid, row + 1, col, cell_usage_lookup);
+    is_new_island_found(grid, row, col + 1, cell_usage_lookup);
+    is_new_island_found(grid, row - 1, col, cell_usage_lookup);
+    is_new_island_found(grid, row, col - 1, cell_usage_lookup);
+    return true;
   }
 
-  static int calc_num_of_islands(vector<vector<char>> grid) {
-    int curr_area = 0, islands_cnt = 0;
-    if (grid.empty()) { return islands_cnt; }
-    vector<vector<int>> islands_mark(grid.size(), vector<int>(grid.front().size(), -1));
+  static int calc_num_of_islands(const vector<vector<char>> grid) {
+    int total_cnt = 0;
+    if (grid.empty()) { return total_cnt; }
+    vector<bool> cell_usage_lookup(grid.size() * grid.front().size(), false);
     for (int i = 0; i < grid.size(); i++) {
       for (int j = 0; j < grid[i].size(); j++) {
-        curr_area = 0;
-        search_islands_recur(grid, i, j, & curr_area, islands_mark);
-        if (curr_area > 0) { islands_cnt += 1; }
+        if (is_new_island_found(grid, i, j, cell_usage_lookup)) { total_cnt += 1; }
       }
     }
-    return islands_cnt;
+    return total_cnt;
+  }
+
+  static void test_calc_num_of_islands() {
+    cout << "14. calc_num_of_islands" << endl;
+    int result = 0;
+    vector<vector<vector<char>>> test_input = {
+      { vector<char>({'1', '1', '1', '1', '0'}), vector<char>({'1', '1', '0', '1', '0'}),
+        vector<char>({'1', '1', '0', '0', '0'}), vector<char>({'0', '0', '0', '0', '0'})},
+      { vector<char>({'1', '1', '0', '0', '0'}), vector<char>({'1', '1', '0', '0', '0'}),
+        vector<char>({'0', '0', '1', '0', '0'}), vector<char>({'0', '0', '0', '1', '1'})},
+      { vector<char>({'1', '1', '1'}), vector<char>({'0', '1', '0'}), vector<char>({'0', '1', '0'})},
+      { vector<char>({'1', '0', '0', '0', '0'}), vector<char>({'0', '1', '1', '0', '0'}),
+        vector<char>({'0', '1', '1', '0', '0'}), vector<char>({'0', '0', '0', '1', '1'})}
+    };
+    vector<int> test_output = { 1, 3, 1, 3 };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_num_of_islands(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
   }
 
   /**
@@ -823,7 +842,7 @@ int main(void) {
   using search_util::print_board;
   using search_util::restore_ips;
   using search_util::find_first_missing_positive;
-  using search_util::calc_num_of_islands;
+  using search_util::test_calc_num_of_islands;
   using search_util::calc_num_of_islands_adp;
 
   cout << "1. find_shortest_ladder" << endl;
@@ -904,22 +923,7 @@ int main(void) {
   cout << "4 <=> " << find_first_missing_positive(vector<int>({ 2, 3, -7, 6, 8, 1, -10, 15 })) << endl;
   cout << "2 <=> " << find_first_missing_positive(vector<int>({ 1, 1, 0, -1, -2 })) << endl;
 
-  cout << "14. calc_num_of_islands" << endl;
-  cout << "1 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '1', '1', '0'}),
-                                                                 vector<char>({'1', '1', '0', '1', '0'}),
-                                                                 vector<char>({'1', '1', '0', '0', '0'}),
-                                                                 vector<char>({'0', '0', '0', '0', '0'})})) << endl;
-  cout << "3 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '0', '0', '0'}),
-                                                                 vector<char>({'1', '1', '0', '0', '0'}),
-                                                                 vector<char>({'0', '0', '1', '0', '0'}),
-                                                                 vector<char>({'0', '0', '0', '1', '1'})})) << endl;
-  cout << "1 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '1', '1'}),
-                                                                 vector<char>({'0', '1', '0'}),
-                                                                 vector<char>({'0', '1', '0'})})) << endl;
-  cout << "3 <=> " << calc_num_of_islands(vector<vector<char>>({ vector<char>({'1', '0', '0', '0', '0'}),
-                                                                 vector<char>({'0', '1', '1', '0', '0'}),
-                                                                 vector<char>({'0', '1', '1', '0', '0'}),
-                                                                 vector<char>({'0', '0', '0', '1', '1'})})) << endl;
+  test_calc_num_of_islands();
 
   cout << "15. calc_num_of_islands" << endl;
   cout << "[ 1 1 2 2 2 ] <=> " << endl;
