@@ -611,22 +611,61 @@ namespace search_util{
    * - Output: 4
    * - Input: {1, 1, 0, -1, -2}
    * - Output: 2 
+   * Intuition:
+   * - bf -> sorting & scan nlogn
+   * - maybe we can do it via swapping?
+   * - 1st missing positive int -> counting sort ?
+   *   for an array of size n, say we have m negative, then (n - m) positives
+   *   ideally (n - m) pos # should be 1 ... (n - m) -> should fit within arr
+   *   { 2, 3, -7, 6, 8, 1, -10, 15 }
+   *     ^                        ^
+   *     ^                   ^
+   *   { -10, 3, -7, 6, 8, 1, 2, 15 }
+   *          ^   ^
+   *       1   2  3  4  5  6
+   *   { -10, -7, 3, 6, 8, 1, 2, 15 }
+   *              ^k
+   *              1  2  3  8  15  6
+   * - even to make it simple, for every val, try to put it to its index which
+   *   should be idx of val - 1 (say 5 -> idx of 4), swap it with origin.
+   *   { 2, 3, -7, 6, 8, 1, -10, 15 }
+   *     ^
+   *   { 3, 2, -7, 6, 8, 1, -10, 15 }
+   *     ^
+   *   { -7, 2, 3, 6, 8, 1, -10, 15 }
+   *         ^  ^  ^...
    */
-  static int find_first_missing_positive(vector<int> input) {
-    for (int i = 0, j = input.size() - 1; i < j;) {
-      if (input[j] < 0) { j--; continue; }
-      if (input[i] > 0) { i++; continue; }
-      swap(input[i], input[j]);
+  static int find_first_missing_positive(vector<int> & arr) {
+    int first_miss = 1;
+    if (arr.empty()) { return first_miss; }
+    int id_to_swap = 0, i = 0;
+    for (i = 0; i < arr.size(); ) {
+      if (arr[i] <= 0) { i++; continue; }
+      id_to_swap = arr[i] - 1;
+      if (id_to_swap < arr.size() && id_to_swap != i &&
+          arr[i] > 0 && arr[i] != arr[id_to_swap]) {
+         swap(arr[i], arr[id_to_swap]);
+      } else { i++; }
     }
-    for (int i = 0; i < input.size(); i++) {
-      if (input[i] > 0 && input[i] < input.size()) {
-        input[input[i]] = input[input[i]] * -1;
-      }
+    for (i = 0; i < arr.size(); i++) {
+      if (arr[i] - 1 != i) { first_miss = i + 1; return first_miss; }
     }
-    for (int i = 1; i < input.size(); i++) {
-      if (input[i] >= 0) { return i; }
+    first_miss = i + 1;
+    return first_miss;
+  }
+
+  static void test_find_first_missing_positive() {
+    cout << "13. find_first_missing_positive" << endl;
+    int result = 0;
+    vector<int> test_output = { 1, 4, 2, 3, 2, 1, 1, 2, 3 };
+    vector<vector<int>> test_input = {
+      { 2, 3, 7, 6, 8, -1, -10, 15 }, { 2, 3, -7, 6, 8, 1, -10, 15 }, { 1, 1, 0, -1, -2 }, { 1, 2, 0 }, { 3, 4, -1, 1 }, {0}, {}, {1}, {1,2}
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_first_missing_positive(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
     }
-    return false;
   }
 
   /**
@@ -858,7 +897,7 @@ int main(void) {
   using search_util::print_board_vec;
   using search_util::print_board;
   using search_util::restore_ips;
-  using search_util::find_first_missing_positive;
+  using search_util::test_find_first_missing_positive;
   using search_util::test_calc_num_of_islands;
   using search_util::test_calc_num_of_islands_adp;
 
@@ -935,11 +974,7 @@ int main(void) {
   cout << "[ 255.255.11.135 255.255.111.35 ] <=>" << endl;
   print_all_elem<string>(restore_ips("25525511135"));
 
-  cout << "13. find_first_missing_positive" << endl;
-  cout << "1 <=> " << find_first_missing_positive(vector<int>({ 2, 3, 7, 6, 8, -1, -10, 15 })) << endl;
-  cout << "4 <=> " << find_first_missing_positive(vector<int>({ 2, 3, -7, 6, 8, 1, -10, 15 })) << endl;
-  cout << "2 <=> " << find_first_missing_positive(vector<int>({ 1, 1, 0, -1, -2 })) << endl;
-
+  test_find_first_missing_positive();
   test_calc_num_of_islands();
   test_calc_num_of_islands_adp();
   return 0;
