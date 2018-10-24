@@ -734,93 +734,110 @@ namespace search_util{
   class disjoint_set {
   public:
     disjoint_set(int size) {
-      assert(size > 0);
-      components_cnt = size;
-      union_set = vector<int>(size, -1);
+      comp_cnt = 0; components = vector<int>(size, INT_MIN);
     }
 
-    virtual ~disjoint_set() {}
+    int get_comp_cnt() { return comp_cnt; }
 
-    /* when elem 1st added, reset its component size to 1 <-> 1 */
-    bool add_to_set(int id) {
-      if (!is_id_within_range(id)) { return false; }
-      union_set[id] = -1;
-      return false;
+    void set_comp(int key) {
+      if (INT_MIN == components[key]) { components[key] = -1; comp_cnt++; }
     }
 
-    /* merge prev with next to same component */
-    bool union_sets(int prev_id, int next_id) {
-      if (!is_id_within_range(prev_id) ||
-          !is_id_within_range(next_id)) { return false; }
-      int prev_src = union_find(prev_id);
-      int next_src = union_find(next_id);
-      if (prev_src == next_src) { return false; }
-      union_by_root(prev_src, next_src);
-      components_cnt--;
+    bool is_curr_cell_belongs_to_sea(int key) { return (INT_MIN == components[key]); }
+
+    bool union_set(int l_comp_id, int r_comp_id) {
+      bool is_comp_dec = false;
+      if (INT_MIN == components[l_comp_id] ||
+          INT_MIN == components[r_comp_id]) { return false; }
+      int l_root_id = union_find(l_comp_id);
+      int r_root_id = union_find(r_comp_id);
+      if (l_root_id == r_root_id) { return false; }
+      /* merge small tree to larger one */
+      if (abs(components[l_root_id]) > abs(components[r_root_id])) {
+        components[l_root_id] += components[r_root_id];
+        components[r_root_id] = l_root_id;
+      } else {
+        components[r_root_id] += components[l_root_id];
+        components[l_root_id] = r_root_id;
+      }
+      comp_cnt--;
       return true;
     }
 
-    int get_components_cnt() { return components_cnt; }
-
-    int get_max_slots() { return union_set.size(); }
-
-  private:
-
-    /* un-connected means belongs to itself */
-    int union_find(int id) {
-      if (!is_id_within_range(id)) { return -1; }
-      if (union_set[id] < 0) { return id; }
-      union_set[id] = union_find(union_set[id]);
-      return union_set[id];
+    int union_find(int comp_id) {
+      int root_id = comp_id;
+      while (components[root_id] >= 0) { root_id = components[root_id]; }
+      while (components[comp_id] >= 0) { components[comp_id] = root_id;
+                                         comp_id = components[comp_id]; }
+      return root_id;
     }
 
-    void union_by_root(int prev_root, int next_root) {
-      if (union_set[prev_root] > union_set[next_root]) {
-        /* size(-2) < size(-3), -2 > -3 => merge small(prev) to big(next), merge next to prev */
-        union_set[next_root] += union_set[prev_root];
-        union_set[prev_root]  = next_root;
-      } else {
-        union_set[prev_root] += union_set[next_root];
-        union_set[next_root] = prev_root;
-      }
-    }
-
-    bool is_id_within_range(int id) {
-      return ((id >= 0) && (id < union_set.size()));
-    }
-
-    vector<int> union_set;
-    int components_cnt;
+    virtual ~disjoint_set() {}
+    /* for root, size of group will be negative number, non-neg means parent id */
+    vector<int> components;
+    int comp_cnt;
   };
 
-  static vector<int> calc_num_of_islands_adp(vector<vector<int>> ops_arr,
+  static void check_and_link_neighbor_cells(disjoint_set & islands_set,
+                                            int curr_row, int curr_col,
+                                            int next_row, int next_col,
+                                            int row_cnt, int col_cnt) {
+    if ((curr_row < 0 || curr_col < 0 || curr_row >= row_cnt || curr_col >= col_cnt) ||
+        (next_row < 0 || next_col < 0 || next_row >= row_cnt || next_col >= col_cnt)) { return; }
+    int curr_cell_key = curr_row * col_cnt + curr_col;
+    int next_cell_key = next_row * col_cnt + next_col;
+    if (islands_set.is_curr_cell_belongs_to_sea(next_cell_key)) { return; }
+    islands_set.union_set(curr_cell_key, next_cell_key);
+  }
+
+  static vector<int> calc_num_of_islands_adp(const vector<vector<int>> & ops_arr,
                                              int row, int col) {
-    vector<vector<int>> board(row, vector<int>(col, 0));
-    vector<int> islands_cnts;
-    disjoint_set islands_union(row * col);
-    int curr_row = 0, curr_col = 0, total_islands = 0;
-    for (vector<int> & op : ops_arr) {
-      curr_row = op.front(); curr_col = op.back();
-
-      if (1 == board[curr_row][curr_col]) { islands_cnts.push_back(total_islands); continue; }
-      total_islands += 1;
-      board[curr_row][curr_col] = 1;
-
-      if (curr_row + 1 < row && board[curr_row + 1][curr_col] == 1) {
-        if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row + 1) * col + curr_col)) { total_islands--; }
+    vector<int> islands_cnt;
+    if (ops_arr.empty() || row <= 0 || col <= 0) { return islands_cnt; }
+    disjoint_set islands_set(row * col);
+    int curr_cell_key = 0;
+    for (vector<int> op : ops_arr) {
+      curr_cell_key = op.front() * col + op.back();
+      /* only union find if existing cell change from sea to land */
+      if (islands_set.is_curr_cell_belongs_to_sea(curr_cell_key)) {
+        islands_set.set_comp(curr_cell_key);
+        check_and_link_neighbor_cells(islands_set, op.front(), op.back(), op.front() + 1, op.back(), row, col);
+        check_and_link_neighbor_cells(islands_set, op.front(), op.back(), op.front() - 1, op.back(), row, col);
+        check_and_link_neighbor_cells(islands_set, op.front(), op.back(), op.front(), op.back() + 1, row, col);
+        check_and_link_neighbor_cells(islands_set, op.front(), op.back(), op.front(), op.back() - 1, row, col);
       }
-      if (curr_row - 1 >= 0  && board[curr_row - 1][curr_col] == 1) {
-        if (true == islands_union.union_sets(curr_row * col + curr_col, (curr_row - 1) * col + curr_col)) { total_islands--; }
-      }
-      if (curr_col + 1 < col && board[curr_row][curr_col + 1] == 1) {
-        if (true == islands_union.union_sets(curr_row * col + curr_col, curr_row * col + (curr_col + 1))) { total_islands--; }
-      }
-      if (curr_col - 1 >= 0  && board[curr_row][curr_col - 1] == 1) {
-        if (true == islands_union.union_sets(curr_row * col + curr_col, curr_row * col + (curr_col - 1))) { total_islands--; }
-      }
-      islands_cnts.push_back(total_islands);
+      islands_cnt.push_back(islands_set.get_comp_cnt());
     }
-    return islands_cnts;
+
+    return islands_cnt;
+  }
+
+  static void test_calc_num_of_islands_adp() {
+    cout << "15. calc_num_of_islands" << endl;
+    vector<int> result;
+    vector<vector<int>> test_output = {
+      { 1, 1, 2, 2, 2 },
+      { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 12, 12, 12, 12, 12, 13, 13, 14,
+        15, 16, 17, 18, 18, 18, 19, 19, 18, 17, 16, 16, 16, 16, 16, 16, 17, 17,
+        16, 16, 17, 18, 18, 18, 17, 17, 17 } };
+    vector<vector<vector<int>>> test_input = {
+      { { 0, 0 }, { 0, 1 }, { 2, 2 }, { 2, 2 }, { 2, 1 } },
+      { {0,9},{5,4},{0,12},{6,9},{6,5},{0,4},{4,11},{0,0},
+        {3,5},{6,7},{3,12},{0,5},{6,13},{7,5},{3,6},{4,4},
+        {0,8},{3,1},{4,6},{6,1},{5,12},{3,8},{7,0},{2,9},
+        {1,4},{3,0},{1,13},{2,13},{6,0},{6,4},{0,13},{0,3},
+        {7,4},{1,8},{5,5},{5,7},{5,10},{5,3},{6,10},{6,2},
+        {3,10},{2,7},{1,12},{5,0},{4,5},{7,13},{3,2} }
+    };
+    vector<vector<int>> test_input_cfg = { { 3, 3 }, { 8, 14 } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_num_of_islands_adp(test_input[i], test_input_cfg[i].front(), test_input_cfg[i].back());
+      print_all_elem<int>(result);
+      cout << "<=>" << endl;
+      print_all_elem<int>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
+    }
   }
 };
 
@@ -843,7 +860,7 @@ int main(void) {
   using search_util::restore_ips;
   using search_util::find_first_missing_positive;
   using search_util::test_calc_num_of_islands;
-  using search_util::calc_num_of_islands_adp;
+  using search_util::test_calc_num_of_islands_adp;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -924,12 +941,6 @@ int main(void) {
   cout << "2 <=> " << find_first_missing_positive(vector<int>({ 1, 1, 0, -1, -2 })) << endl;
 
   test_calc_num_of_islands();
-
-  cout << "15. calc_num_of_islands" << endl;
-  cout << "[ 1 1 2 2 2 ] <=> " << endl;
-  print_all_elem<int>(calc_num_of_islands_adp({ { 0, 0 }, { 0, 1 }, { 2, 2 }, { 2, 2 }, { 2, 1 } }, 3, 3));
-  cout << "[ 1 2 3 4 5 6 7 8 9 10 11 11 12 12 12 12 12 13 13 14 15 16 17 18 18 18 19 19 18 17 16 16 16 16 16 16 17 17 16 16 17 18 18 18 17 17 17 ] <=> " << endl;
-  print_all_elem<int>(calc_num_of_islands_adp({{0,9},{5,4},{0,12},{6,9},{6,5},{0,4},{4,11},{0,0},{3,5},{6,7},{3,12},{0,5},{6,13},{7,5},{3,6},{4,4},{0,8},{3,1},{4,6},{6,1},{5,12},{3,8},{7,0},{2,9},{1,4},{3,0},{1,13},{2,13},{6,0},{6,4},{0,13},{0,3},{7,4},{1,8},{5,5},{5,7},{5,10},{5,3},{6,10},{6,2},{3,10},{2,7},{1,12},{5,0},{4,5},{7,13},{3,2}}, 8, 14));
-
+  test_calc_num_of_islands_adp();
   return 0;
 }
