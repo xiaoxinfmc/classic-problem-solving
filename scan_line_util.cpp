@@ -126,6 +126,21 @@ namespace scan_line_util {
    *   which are active excluding the point itself).
    *
    * - {{2, 3}, {12, 30}, {40, 50}, {5, 1}, {12, 10}, {3, 4}}, 1.414214
+   *
+   * Intuition:
+   *    x          - sort points via x & y incr. direction (moving right up)
+   *     x  x    x - loop the points set left->right, bottom->top, each round
+   *  x   x   x      keep a curr-pos (1st node), then find the closest points
+   *     x  x        that ordered before the curr point.
+   *               - the key is to check distance smartly, avoid redundants.
+   *               - for node i, we already know the closest dist to node i
+   *   +----+        is k, then for node i + i, we only need to check points
+   *   | x  |        within the radius of k, if we see smaller one, then upd
+   *   |h   |        the distance limit and move forward.
+   *   +----x      - radius could be tricky, we can use bounding box x & y
+   *   |x   |        instead, say searching range is curr x - h & y +/- h
+   *   |h   |      - keep a balanced tree for search (kd tree? set to start)
+   *   +----+        add curr x to bounding box & move to right & filter left
    */
   class point {
   public:
@@ -133,9 +148,7 @@ namespace scan_line_util {
     virtual ~point() {}
     long long x, y;
     friend bool operator< (const point & l, const point & r) {
-      if (l.x < r.x) { return true; }
-      if (l.x == r.x && l.y < r.y) { return true; }
-      return false;
+      if ((l.x < r.x) || (l.x == r.x && l.y < r.y)) { return true; } else { return false; }
     }
     friend bool operator== (const point & l, const point & r) {
       return (l.x == r.x && l.y == r.y);
@@ -143,7 +156,7 @@ namespace scan_line_util {
   };
 
   static double calc_closest_pair_dist(vector<point> & points) {
-    double dist_limit = numeric_limits<double>::max();
+    double curr_dist_limit = numeric_limits<double>::max();
 
     sort(points.begin(), points.end());
 
@@ -151,19 +164,19 @@ namespace scan_line_util {
     int left_most_point_id = 0;
 
     for (int i = 1; i < points.size(); i++) {
-      while (left_most_point_id < i && (points[i].x - points[left_most_point_id].x) > dist_limit) {
+      while (left_most_point_id < i && ((points[i].x - points[left_most_point_id].x) > curr_dist_limit)) {
         points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
       }
-      point bottom_left(points[i].x - dist_limit, points[i].y - dist_limit);
+      point bottom_left(points[i].x - curr_dist_limit, points[i].y - curr_dist_limit);
       for (set<point>::iterator itr  = points_buffer.lower_bound(bottom_left);
-                                itr != points_buffer.end() && (itr->y <= points[i].y + dist_limit);
+                                itr != points_buffer.end() && (itr->y <= points[i].y + 2 * curr_dist_limit);
                                 itr++) {
-        dist_limit = min(dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
+        curr_dist_limit = min(curr_dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
       }
       points_buffer.insert(points[i]);
     }
 
-    return dist_limit;
+    return curr_dist_limit;
   }
 
   static void test_calc_closest_pair_dist() {
