@@ -296,8 +296,12 @@ namespace tool_util {
   static void test_calc_expr() {
     cout << "1. test_calc_expr" << endl;
     int result = 0;
-    vector<int> test_output = { 3, 3, 2, 3, 23 };
-    vector<string> test_input = { "(((((3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3)))))", "3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3", "1 + 1", " 2-1 + 2 ", "(1+(4+5+2)-3)+(6+8)" };
+    vector<int> test_output = { 2, 4, 21, -12, 3, 3, 2, 3, 23 };
+    vector<string> test_input = {
+      "1 + 1", " 6-4 / 2 ", "2*(5+5*2)/3+(6/2+8)", "(2+6* 3+5- (3*14/7+2)*5)+3",
+      "(((((3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3)))))", "3 + 4 * 2 / ( 1 - 5 ) ^ 2 ^ 3",
+      "1 + 1", " 2-1 + 2 ", "(1+(4+5+2)-3)+(6+8)"
+    };
     for (int i = 0; i < test_input.size(); i++) {
       result = calc_expr(test_input[i]);
       cout << result << " <=> " << test_output[i] << endl;
