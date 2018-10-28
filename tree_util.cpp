@@ -776,6 +776,38 @@ namespace tree_util {
     return is_bst_valid;
   }
 
+  struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+  };
+
+  static int calc_subtree_depth(TreeNode * root, bool & is_bst_balanced) {
+    if (NULL == root) { return 0; }
+    int left_depth = calc_subtree_depth(root->left, is_bst_balanced);
+    int right_depth = calc_subtree_depth(root->right, is_bst_balanced);
+    is_bst_balanced = is_bst_balanced && (abs(left_depth - right_depth) <= 1);
+    return max(left_depth, right_depth) + 1;
+  }
+
+  static int calc_max_subtree_depth(TreeNode * root) {
+    if (NULL == root) { return 0; }
+    int left_subtree_depth = calc_max_subtree_depth(root->left);
+    int right_subtree_depth = calc_max_subtree_depth(root->right);
+    return max(left_subtree_depth, right_subtree_depth) + 1;
+  }
+
+  static int calc_min_subtree_depth(TreeNode * root) {
+    if (NULL == root) { return 0; }
+    int left_subtree_depth = calc_min_subtree_depth(root->left);
+    int right_subtree_depth = calc_min_subtree_depth(root->right);
+    int depth = min(left_subtree_depth, right_subtree_depth) + 1;
+    if (NULL == root->left && NULL != root->right) { depth = right_subtree_depth + 1; }
+    if (NULL != root->left && NULL == root->right) { depth = left_subtree_depth + 1; }
+    return depth;
+  }
+
   class max_subtree_ret {
   public:
     max_subtree_ret(binary_tree_node * fi = NULL,
@@ -909,8 +941,6 @@ namespace tree_util {
    * or if B is true, or if both A and B are true
    */
 /*
-// Definition for a QuadTree node.
-*/
   class Node {
   public:
     bool val;
@@ -963,6 +993,7 @@ namespace tree_util {
   static Node * intersect(Node* quadTree1, Node* quadTree2) {
     return intersect_recur(quadTree1, quadTree2, quadTree1->val, quadTree2->val);
   }
+*/
 
 };
 
