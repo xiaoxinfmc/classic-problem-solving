@@ -4,9 +4,24 @@
 #include <cmath>
 #include <set>
 #include <climits>
+#include <cstdint>
+#include <list>
 
 namespace scan_line_util {
   using namespace std;
+
+  template <class Type>
+  static void print_all_elem(const vector<Type> & input) {
+    cout << "[ ";
+    for (auto & arr : input) { cout << arr << " "; }
+    cout << "]" << endl;
+  }
+  template <class Type>
+  static void print_all_elem_vec(const vector<vector<Type>> & input) {
+    cout << "[" << endl;
+    for (auto & arr : input){ cout << "  "; print_all_elem<Type>(arr); }
+    cout << "]" << endl;
+  }
 
   /**
    * 391 Number of Airplanes in the Sky
@@ -20,18 +35,18 @@ namespace scan_line_util {
    * - [ [1,10], [2,3], [5,8], [4,7] ]
    * - Return 3
    * Intuition:
-   *             v--v
-   *           v-----v
-   *         v---------v
+   *       v--v
+   *     v-----v
+   *   v---------v
    *       v------------v
    *   |---------------------|
    *    1 v-----------v
    *    2 v-------------------v
    *    3     v-----v => end range move ahead
-   *    4        v----------------------------v
-   *    5             X  v---------------------------------v
+   *    4  v----------------------------v
+   *    5       X  v---------------------------------v
    *   |-----------------------------------------------------|
-   *               v-----v
+   *         v-----v
    *      v------v   v-------v
    *   |-------------------------------------------|
    * - observation: max overlapping must contains >= 1 start time point
@@ -128,19 +143,19 @@ namespace scan_line_util {
    * - {{2, 3}, {12, 30}, {40, 50}, {5, 1}, {12, 10}, {3, 4}}, 1.414214
    *
    * Intuition:
-   *    x          - sort points via x & y incr. direction (moving right up)
+   *    x    - sort points via x & y incr. direction (moving right up)
    *     x  x    x - loop the points set left->right, bottom->top, each round
    *  x   x   x      keep a curr-pos (1st node), then find the closest points
-   *     x  x        that ordered before the curr point.
-   *               - the key is to check distance smartly, avoid redundants.
-   *               - for node i, we already know the closest dist to node i
-   *   +----+        is k, then for node i + i, we only need to check points
-   *   | x  |        within the radius of k, if we see smaller one, then upd
-   *   |h   |        the distance limit and move forward.
+   *     x  x  that ordered before the curr point.
+   *         - the key is to check distance smartly, avoid redundants.
+   *         - for node i, we already know the closest dist to node i
+   *   +----+  is k, then for node i + i, we only need to check points
+   *   | x  |  within the radius of k, if we see smaller one, then upd
+   *   |h   |  the distance limit and move forward.
    *   +----x      - radius could be tricky, we can use bounding box x & y
-   *   |x   |        instead, say searching range is curr x - h & y +/- h
+   *   |x   |  instead, say searching range is curr x - h & y +/- h
    *   |h   |      - keep a balanced tree for search (kd tree? set to start)
-   *   +----+        add curr x to bounding box & move to right & filter left
+   *   +----+  add curr x to bounding box & move to right & filter left
    */
   class point {
   public:
@@ -165,13 +180,13 @@ namespace scan_line_util {
 
     for (int i = 1; i < points.size(); i++) {
       while (left_most_point_id < i && ((points[i].x - points[left_most_point_id].x) > curr_dist_limit)) {
-        points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
+  points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
       }
       point bottom_left(points[i].x - curr_dist_limit, points[i].y - curr_dist_limit);
       for (set<point>::iterator itr  = points_buffer.lower_bound(bottom_left);
-                                itr != points_buffer.end() && (itr->y <= points[i].y + 2 * curr_dist_limit);
-                                itr++) {
-        curr_dist_limit = min(curr_dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
+        itr != points_buffer.end() && (itr->y <= points[i].y + 2 * curr_dist_limit);
+        itr++) {
+  curr_dist_limit = min(curr_dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
       }
       points_buffer.insert(points[i]);
     }
@@ -193,14 +208,157 @@ namespace scan_line_util {
       assert(abs(result - test_output[i]) < 0.000001);
     }
   }
+
+  /**
+   * 850. Rectangle Area II
+   * - We are given a list of (axis-aligned) rectangles.
+   *   Each rectangle[i] = [x1, y1, x2, y2], where (x1, y1) are the coordinates
+   *   of the bottom-left corner, and (x2, y2) are the coordinates of the
+   *   top-right corner of the ith rectangle.
+   * - Find the total area covered by all rectangles in the plane. Since the
+   *   answer may be too large, return it modulo 10^9 + 7.
+   * Example 1:
+   * - Input: {{0,0,2,2},{1,0,2,3},{1,0,3,1}}
+   *   Output: 6
+   *   Explanation: As illustrated in the picture.
+   * Example 2:
+   * - Input: {{0,0,1000000000,1000000000}}
+   *   Output: 49
+   *   Explanation: The answer is 10^18 modulo (10^9 + 7), which is (10^9)^2 = (-7)^2 = 49.
+   * Note:
+   * - 1 <= rectangles.length <= 200
+   * - rectanges[i].length = 4
+   * - 0 <= rectangles[i][j] <= 10^9
+   * - The total area covered by all rectangles will never exceed 2^63 - 1 and
+   *   thus will fit in a 64-bit signed integer.
+   * Intuition:
+   * - input will be an array of rectangles by bl & tr points, goal is to calc its area.
+   *     *---* (2,3)     - break down inputs by rec_point with its start pos & max y
+   *     |   |     - sort by its x pos in asc order (with y val as tie breaker)
+   * *---@---* (2,2)     - scan from min x -> right, keep upd the max y available.
+   * |   |   |     - add up the union of their area.
+   * |   *---@---* (3,1) - and its actually more efficient to use the points as star.
+   * |   |   |   |   which means we will be using the tl & tr points(not bl & tr)
+   * x---x---+---+       - [ 0:2:0 1:1:2 1:3:1 2:2:0 2:3:1 3:1:2 ]
+   *(0,0)(1,0)     - again, we actually needs all external intersection points @
+   *         - to insert those intersections, we scan the sorted list of points
+   *     x---x     - if curr point has a higher y_pos & its x_pos is < prev point end-x_pos
+   *     |   |       or curr point has a lower y_pos & its x_pos is > prev point end-x_pos
+   * x---@---*     - ideally we only want to keep x & @ (exactly as skyline problem)
+   * |   |   |
+   * *---|---* (2,2)
+   * |   |   |
+   * |   *---@---x (3,1)
+   * |   |   |   |
+   * x---x---+---+
+   */
+  class rec_point {
+  public:
+    rec_point(int x, int y, int rid, bool is_bl, bool is_srt_by_x) :
+      x_pos(x), y_pos(y), rect_id(rid), is_bottom_left(is_bl), is_sort_by_x_pos(is_srt_by_x) {}
+    virtual ~rec_point(){}
+
+    int x_pos, y_pos, rect_id;
+    bool is_bottom_left, is_sort_by_x_pos;
+
+    static bool sort_by_x_pos(const rec_point & l, const rec_point & r) {
+      if ((l.x_pos < r.x_pos) || (l.x_pos == r.x_pos && l.y_pos < r.y_pos)){ return true; }
+      return false;
+    }
+
+    static bool sort_by_y_pos(const rec_point & l, const rec_point & r) {
+      if ((l.y_pos < r.y_pos) || (l.y_pos == r.y_pos && l.x_pos < r.x_pos)){ return true; }
+      return false;
+    }
+
+    friend bool operator< (const rec_point & l, const rec_point & r) {
+      return ((true == l.is_sort_by_x_pos) ? sort_by_x_pos(l, r) : sort_by_y_pos(l, r));
+    }
+
+    friend bool operator== (const rec_point & l, const rec_point & r) {
+      return (l.x_pos == r.x_pos && l.y_pos == r.y_pos);
+    }
+
+    friend ostream & operator<< (ostream & os, const rec_point & pt) {
+      os << pt.x_pos << ":" << pt.y_pos << ":" << pt.rect_id; return os;
+    }
+  };
+
+  const static int64_t DEF_AREA_MODULO = 1000000007;
+  static int calc_union_of_rectangles(vector<vector<int>>& rectangles) {
+    int64_t union_of_area = 0;
+    if (rectangles.empty()) { return union_of_area; }
+
+    /* 1. scramble all critical points & sort in x & y */
+    vector<bool> rect_active_lookup(rectangles.size(), false);
+
+    vector<rec_point> points_arr_by_x;
+    for (int i = 0; i < rectangles.size(); i++) {
+      assert(4 == rectangles[i].size());
+      points_arr_by_x.push_back(rec_point(rectangles[i][0], rectangles[i][1], i, true, true));
+      points_arr_by_x.push_back(rec_point(rectangles[i][2], rectangles[i][3], i, false, true));
+    }
+    vector<rec_point> points_arr_by_y(points_arr_by_x.begin(), points_arr_by_x.end());
+    for (auto & point : points_arr_by_y) { point.is_sort_by_x_pos = false; }
+    sort(points_arr_by_x.begin(), points_arr_by_x.end());
+    sort(points_arr_by_y.begin(), points_arr_by_y.end());
+
+    /* 2. start scan left -> right, & bottom -> top */
+    rect_active_lookup[points_arr_by_x.front().rect_id] = true;
+    for (int i = 1; i < points_arr_by_x.size(); i++) {
+
+      /* check if curr point actually moving to the right of x-axis, & log active rect */
+      rec_point & curr_point = points_arr_by_x[i];
+      int x_pos_dist = curr_point.x_pos - points_arr_by_x[i - 1].x_pos;
+      if (0 == x_pos_dist) {
+        /* de-activate the rect if we encounter a top-right point */
+        rect_active_lookup[curr_point.rect_id] = curr_point.is_bottom_left; continue;
+      }
+
+      /* 1st point with larger x-pos, we found a region, then start to check overlap in y */
+      int active_rect_cnt = 0, start_y_pos = 0;
+      for (int j = 0; j < points_arr_by_y.size(); j++) {
+        if (false == rect_active_lookup[points_arr_by_y[j].rect_id]) { continue; }
+        if (true == points_arr_by_y[j].is_bottom_left) {
+          if (0 == active_rect_cnt) { start_y_pos = points_arr_by_y[j].y_pos; };
+          active_rect_cnt += 1;
+        } else {
+          active_rect_cnt -= 1;
+          if (0 == active_rect_cnt) {
+            union_of_area += (int64_t)(points_arr_by_y[j].y_pos - start_y_pos) * x_pos_dist;
+          }
+        }
+      }
+      /* de-activate the rect if we encounter a top-right point */
+      rect_active_lookup[curr_point.rect_id] = curr_point.is_bottom_left;
+    }
+
+    return union_of_area % DEF_AREA_MODULO;
+  }
+
+  static void test_calc_union_of_rectangles() {
+    cout << "3. test_calc_union_of_rectangles" << endl;
+    int result = 0;
+    vector<vector<vector<int>>> test_input = {
+      {{0,0,2,2},{1,0,2,3},{1,0,3,1}}, {{0,0,1000000000,1000000000}}
+    };
+    vector<int> test_output = { 6, 49 };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_union_of_rectangles(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
   using scan_line_util::test_count_num_of_planes;
   using scan_line_util::test_calc_closest_pair_dist;
+  using scan_line_util::test_calc_union_of_rectangles;
 
   test_count_num_of_planes();
   test_calc_closest_pair_dist();
+  test_calc_union_of_rectangles();
 }
 
 /**
@@ -236,3 +394,4 @@ int main(void) {
  *   three lines of height 5 should be merged into one in the final output as such:
  *   [...[2 3], [4 5], [12 7], ...]
  */
+
