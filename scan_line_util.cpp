@@ -6,6 +6,7 @@
 #include <climits>
 #include <cstdint>
 #include <list>
+#include <utility>
 
 namespace scan_line_util {
   using namespace std;
@@ -22,6 +23,12 @@ namespace scan_line_util {
     for (auto & arr : input){ cout << "  "; print_all_elem<Type>(arr); }
     cout << "]" << endl;
   }
+  template <class t1, class t2>
+  static void print_all_pairs(const vector<pair<t1, t2>> & input) {
+    cout << "[ ";
+    for (auto & arr : input) { cout << arr.first << "|" << arr.second << " "; }
+    cout << "]" << endl;
+  }
 
   /**
    * 391 Number of Airplanes in the Sky
@@ -35,9 +42,9 @@ namespace scan_line_util {
    * - [ [1,10], [2,3], [5,8], [4,7] ]
    * - Return 3
    * Intuition:
-   *       v--v
-   *     v-----v
-   *   v---------v
+   *           v--v
+   *          v-----v
+   *        v---------v
    *       v------------v
    *   |---------------------|
    *    1 v-----------v
@@ -143,19 +150,19 @@ namespace scan_line_util {
    * - {{2, 3}, {12, 30}, {40, 50}, {5, 1}, {12, 10}, {3, 4}}, 1.414214
    *
    * Intuition:
-   *    x    - sort points via x & y incr. direction (moving right up)
+   *    x          - sort points via x & y incr. direction (moving right up)
    *     x  x    x - loop the points set left->right, bottom->top, each round
    *  x   x   x      keep a curr-pos (1st node), then find the closest points
-   *     x  x  that ordered before the curr point.
-   *         - the key is to check distance smartly, avoid redundants.
-   *         - for node i, we already know the closest dist to node i
-   *   +----+  is k, then for node i + i, we only need to check points
-   *   | x  |  within the radius of k, if we see smaller one, then upd
-   *   |h   |  the distance limit and move forward.
+   *     x  x        that ordered before the curr point.
+   *               - the key is to check distance smartly, avoid redundants.
+   *               - for node i, we already know the closest dist to node i
+   *   +----+        is k, then for node i + i, we only need to check points
+   *   | x  |        within the radius of k, if we see smaller one, then upd
+   *   |h   |        the distance limit and move forward.
    *   +----x      - radius could be tricky, we can use bounding box x & y
-   *   |x   |  instead, say searching range is curr x - h & y +/- h
+   *   |x   |        instead, say searching range is curr x - h & y +/- h
    *   |h   |      - keep a balanced tree for search (kd tree? set to start)
-   *   +----+  add curr x to bounding box & move to right & filter left
+   *   +----+        add curr x to bounding box & move to right & filter left
    */
   class point {
   public:
@@ -180,13 +187,13 @@ namespace scan_line_util {
 
     for (int i = 1; i < points.size(); i++) {
       while (left_most_point_id < i && ((points[i].x - points[left_most_point_id].x) > curr_dist_limit)) {
-  points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
+        points_buffer.erase(points[left_most_point_id]); left_most_point_id += 1;
       }
       point bottom_left(points[i].x - curr_dist_limit, points[i].y - curr_dist_limit);
       for (set<point>::iterator itr  = points_buffer.lower_bound(bottom_left);
-        itr != points_buffer.end() && (itr->y <= points[i].y + 2 * curr_dist_limit);
-        itr++) {
-  curr_dist_limit = min(curr_dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
+                                itr != points_buffer.end() && (itr->y <= points[i].y + 2 * curr_dist_limit);
+                                itr++) {
+        curr_dist_limit = min(curr_dist_limit, sqrt(pow(points[i].x - itr->x, 2.0) + pow(points[i].y - itr->y, 2.0)));
       }
       points_buffer.insert(points[i]);
     }
@@ -231,26 +238,6 @@ namespace scan_line_util {
    * - 0 <= rectangles[i][j] <= 10^9
    * - The total area covered by all rectangles will never exceed 2^63 - 1 and
    *   thus will fit in a 64-bit signed integer.
-   * Intuition:
-   * - input will be an array of rectangles by bl & tr points, goal is to calc its area.
-   *     *---* (2,3)     - break down inputs by rec_point with its start pos & max y
-   *     |   |     - sort by its x pos in asc order (with y val as tie breaker)
-   * *---@---* (2,2)     - scan from min x -> right, keep upd the max y available.
-   * |   |   |     - add up the union of their area.
-   * |   *---@---* (3,1) - and its actually more efficient to use the points as star.
-   * |   |   |   |   which means we will be using the tl & tr points(not bl & tr)
-   * x---x---+---+       - [ 0:2:0 1:1:2 1:3:1 2:2:0 2:3:1 3:1:2 ]
-   *(0,0)(1,0)     - again, we actually needs all external intersection points @
-   *         - to insert those intersections, we scan the sorted list of points
-   *     x---x     - if curr point has a higher y_pos & its x_pos is < prev point end-x_pos
-   *     |   |       or curr point has a lower y_pos & its x_pos is > prev point end-x_pos
-   * x---@---*     - ideally we only want to keep x & @ (exactly as skyline problem)
-   * |   |   |
-   * *---|---* (2,2)
-   * |   |   |
-   * |   *---@---x (3,1)
-   * |   |   |   |
-   * x---x---+---+
    */
   class rec_point {
   public:
@@ -285,6 +272,7 @@ namespace scan_line_util {
   };
 
   const static int64_t DEF_AREA_MODULO = 1000000007;
+
   static int calc_union_of_rectangles(vector<vector<int>>& rectangles) {
     int64_t union_of_area = 0;
     if (rectangles.empty()) { return union_of_area; }
@@ -349,49 +337,93 @@ namespace scan_line_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 218. The Skyline Problem
+   * - A city's skyline is the outer contour of the silhouette formed by all the
+   *   buildings in that city when viewed from a distance. Now suppose you are
+   *   given the locations and height of all the buildings as shown on a cityscape
+   *   photo (Figure A), write a program to output the skyline formed by these
+   *   buildings collectively (Figure B).
+   * - The geometric information of each building is represented by a triplet of
+   *   integers [Li, Ri, Hi], where Li and Ri are the x coordinates of the left
+   *   and right edge of the ith building, respectively, and Hi is its height.
+   *   It is guaranteed 0 ≤ Li, Ri ≤ INT_MAX, 0 < Hi ≤ INT_MAX, Ri - Li > 0
+   *   You may assume all buildings are perfect rectangles grounded on an
+   *   absolutely flat surface at height 0.
+   * - For instance, the dimensions of all buildings in Figure A are recorded
+   *   as: [ [2 9 10], [3 7 15], [5 12 12], [15 20 10], [19 24 8] ] .
+   * - The output is a list of "key points" (red dots in Figure B) in the format
+   *   of [ [x1,y1], [x2, y2], [x3, y3], ... ] that uniquely defines a skyline.
+   *   A key point is the left endpoint of a horizontal line segment. Note that
+   *   the last key point, where the rightmost building ends, is merely used to
+   *   mark the termination of the skyline, and always has zero height. Also,
+   *   the ground in between any two adjacent buildings should be considered
+   *   part of the skyline contour.
+   * - For instance, the skyline in Figure B should be represented as:
+   *   [ [2 10], [3 15], [7 12], [12 0], [15 10], [20 8], [24, 0] ].
+   * Notes:
+   * - The number of buildings in any input list is guaranteed to be in the range [0, 10000].
+   * - The input list is already sorted in ascending order by the left x position Li.
+   * - The output list must be sorted by the x position.
+   * - There must be no consecutive horizontal lines of equal height in the output skyline.
+   *   For instance, [...[2 3], [4 5], [7 5], [11 5], [12 7]...] is not acceptable; the
+   *   three lines of height 5 should be merged into one in the final output as such:
+   *   [...[2 3], [4 5], [12 7], ...]
+   * Intuition:
+   * - input will be an array of rectangles by bl & tr points, goal is to calc its area.
+   *     *---* (2,3)     - break down inputs by rec_point with its start pos & max y
+   *     |   |     - sort by its x pos in asc order (with y val as tie breaker)
+   * *---@---* (2,2)     - scan from min x -> right, keep upd the max y available.
+   * |   |   |     - add up the union of their area.
+   * |   *---@---* (3,1) - and its actually more efficient to use the points as star.
+   * |   |   |   |   which means we will be using the tl & tr points(not bl & tr)
+   * x---x---+---+       - [ 0:2:0 1:1:2 1:3:1 2:2:0 2:3:1 3:1:2 ]
+   *(0,0)(1,0)     - again, we actually needs all external intersection points @
+   *         - to insert those intersections, we scan the sorted list of points
+   *     x---*     - if curr point has a higher y_pos & its x_pos is < prev point end-x_pos
+   *     |   |       or curr point has a lower y_pos & its x_pos is > prev point end-x_pos
+   * x---+---*     - ideally we only want to keep x & @ (exactly as skyline problem)
+   * |   |   |
+   * *---|---* (2,2)
+   * |   |   |
+   * |   *---x---x (3,1)
+   * |   |   |   |
+   * x---x---+---x
+   */
+  vector<pair<int, int>> get_boundary_points(vector<vector<int>> & rectangles) {
+    vector<pair<int, int>> boundary_points;
+    if (rectangles.empty()) { return boundary_points; }
+
+    return boundary_points;
+  }
+
+  static void test_get_boundary_points() {
+    cout << "4. test_get_boundary_points" << endl;
+    vector<pair<int, int>> result;
+    vector<vector<vector<int>>> test_input = {
+      { {2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8} }
+    };
+    vector<vector<pair<int, int>>> test_output = {
+      { {2, 10}, {3, 15}, {7, 12}, {12, 0}, {15, 10}, {20, 8}, {24, 0} }
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = get_boundary_points(test_input[i]);
+      print_all_pairs(result);
+      cout << "<=>" << endl;
+      print_all_pairs(test_output[i]);
+    }
+  }
 };
 
 int main(void) {
   using scan_line_util::test_count_num_of_planes;
   using scan_line_util::test_calc_closest_pair_dist;
   using scan_line_util::test_calc_union_of_rectangles;
+  using scan_line_util::test_get_boundary_points;
 
   test_count_num_of_planes();
   test_calc_closest_pair_dist();
   test_calc_union_of_rectangles();
+  test_get_boundary_points();
 }
-
-/**
- * 218. The Skyline Problem
- * - A city's skyline is the outer contour of the silhouette formed by all the
- *   buildings in that city when viewed from a distance. Now suppose you are
- *   given the locations and height of all the buildings as shown on a cityscape
- *   photo (Figure A), write a program to output the skyline formed by these
- *   buildings collectively (Figure B).
- * - The geometric information of each building is represented by a triplet of
- *   integers [Li, Ri, Hi], where Li and Ri are the x coordinates of the left
- *   and right edge of the ith building, respectively, and Hi is its height.
- *   It is guaranteed 0 ≤ Li, Ri ≤ INT_MAX, 0 < Hi ≤ INT_MAX, Ri - Li > 0
- *   You may assume all buildings are perfect rectangles grounded on an
- *   absolutely flat surface at height 0.
- * - For instance, the dimensions of all buildings in Figure A are recorded
- *   as: [ [2 9 10], [3 7 15], [5 12 12], [15 20 10], [19 24 8] ] .
- * - The output is a list of "key points" (red dots in Figure B) in the format
- *   of [ [x1,y1], [x2, y2], [x3, y3], ... ] that uniquely defines a skyline.
- *   A key point is the left endpoint of a horizontal line segment. Note that
- *   the last key point, where the rightmost building ends, is merely used to
- *   mark the termination of the skyline, and always has zero height. Also,
- *   the ground in between any two adjacent buildings should be considered
- *   part of the skyline contour.
- * - For instance, the skyline in Figure B should be represented as:
- *   [ [2 10], [3 15], [7 12], [12 0], [15 10], [20 8], [24, 0] ].
- * Notes:
- * - The number of buildings in any input list is guaranteed to be in the range [0, 10000].
- * - The input list is already sorted in ascending order by the left x position Li.
- * - The output list must be sorted by the x position.
- * - There must be no consecutive horizontal lines of equal height in the output skyline.
- *   For instance, [...[2 3], [4 5], [7 5], [11 5], [12 7]...] is not acceptable; the
- *   three lines of height 5 should be merged into one in the final output as such:
- *   [...[2 3], [4 5], [12 7], ...]
- */
-
