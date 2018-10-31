@@ -397,94 +397,48 @@ namespace scan_line_util {
     vector<pair<int, int>> boundary_points;
     if (rects.empty()) { return boundary_points; }
 
-    /* 0. padding 0 high block to concate them */
-    vector<vector<int>> rectangles = { rects.front() };
-    for (int i = 1; i < rects.size(); i++) {
-      if (rects[i][0] > rects[i - 1][1]) {
-        rectangles.push_back({ rects[i - 1][1], rects[i][0], 0 });
-      }
-      rectangles.push_back(rects[i]);
+    /* rec_point(int x, int y, int rid, bool is_bl, bool is_srt_by_x) */
+    vector<rec_point> points_sort_by_x_pos;
+    for (int i = 0; i < rects.size(); i++) {
+      points_sort_by_x_pos.push_back(rec_point(rects[i][0], rects[i][2], i, true, true));
+      points_sort_by_x_pos.push_back(rec_point(rects[i][1], rects[i][2], i, false, true));
     }
-    rectangles.push_back({ rects.back()[1], rects.back()[1] + 1, 0 });
-
-    /* { {2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8} }
-     *    lx rx hi rec_point(int x, int y, int rid, bool is_bl, bool is_srt_by_x)
-     * 1. convert the representation from (l, r, h) to point-bottome-left & point-top-right */
-    vector<rec_point> points_sort_by_x;
-    for (int i = 0; i < rectangles.size(); i++) {
-      auto & lrh_tuple = rectangles[i];
-      points_sort_by_x.push_back(rec_point(lrh_tuple[0], 0, i, true, true));
-      if (0 == lrh_tuple[2]) { continue; }
-      points_sort_by_x.push_back(rec_point(lrh_tuple[1], lrh_tuple[2], i, false, true));
-    }
-    vector<rec_point> points_sort_by_y(points_sort_by_x.begin(), points_sort_by_x.end());
-    for (auto & point : points_sort_by_y) { point.is_sort_by_x_pos = false; }
-
-    /* 2. sort all points by x & y pos */
-    sort(points_sort_by_x.begin(), points_sort_by_x.end());
-    sort(points_sort_by_y.begin(), points_sort_by_y.end());
-
-    /* 3. start to scan (from left->right, within each segment, bottom->top)  */
-    vector<rec_point> key_points;
-    vector<bool> active_rect_lookup(rectangles.size(), false);
-    active_rect_lookup[points_sort_by_x.front().rect_id] = true;
-    for (int i = 1; i < points_sort_by_x.size(); i++) {
-      /* 3.1 loop until we can identify 1st segment (x0 -> x1) */
-      rec_point & curr_point = points_sort_by_x[i];
-      active_rect_lookup[curr_point.rect_id] = curr_point.is_bottom_left;
-      if (curr_point.x_pos == points_sort_by_x[i - 1].x_pos) {
-        /* if curr point x pos overlap with previous one, then either a end
-         * point (top-right, no need to check intersection) or a start point
-         * (bottom-left, need to check) */
-        //active_rect_lookup[curr_point.rect_id] = curr_point.is_bottom_left;
-        continue;
+    sort(points_sort_by_x_pos.begin(), points_sort_by_x_pos.end());
+    multiset<int> y_pos_set = {0};
+    int prev_y_pos = 0;
+    for (auto & curr_point : points_sort_by_x_pos) {
+      if (curr_point.is_bottom_left) {
+        /* enter here we see a begin of a new rect, we insert its y_pos */
+        y_pos_set.insert(curr_point.y_pos);
+      } else {
+        /* we see an end of a rect, obviously only 1 y_pos needs to rm */
+        y_pos_set.erase(y_pos_set.find(curr_point.y_pos));
       }
-      /* 3.2 reaching here, means curr_point is a point diff than x0, either
-       *     start of a new rect or end of existing one, start check intersect
-       *     within segment x0 -> x1, instead start from bottom min y pos to
-       *     top y pos, we only need to check the top y pos got intersected */
-      if (key_points.empty()) {
-        key_points.push_back(rec_point(points_sort_by_x[i - 1].x_pos,
-                                       rectangles[points_sort_by_x[i - 1].rect_id][2],
-                                       points_sort_by_x[i - 1].rect_id, false, false)); }
-      int max_x_intersec_pos = 0;
-      for (int j = points_sort_by_y.size() - 1; j >= 0; j--) {
-        if (false == active_rect_lookup[points_sort_by_y[j].rect_id]) { continue; }
-        if (!key_points.empty()) {
-          /* skip if the rect of curr intersection is or within the rectangle
-           * of prev key points, to qualify, it should either taller or wider */
-          if (points_sort_by_y[j].rect_id == key_points.back().rect_id) { continue; }
-          int min_x_pos = rectangles[key_points.back().rect_id][1];
-          int min_y_pos = rectangles[key_points.back().rect_id][2];
-          int jud_x_pos = rectangles[points_sort_by_y[j].rect_id][1];
-          int jud_y_pos = rectangles[points_sort_by_y[j].rect_id][2];
-          if ((points_sort_by_y[j].y_pos < min_y_pos && curr_point.x_pos < min_x_pos) ||
-              (jud_y_pos <= min_y_pos && jud_x_pos <= min_x_pos)) { continue; }
+      if (* y_pos_set.rbegin() != prev_y_pos) {
+        prev_y_pos = * y_pos_set.rbegin();
+        if (!boundary_points.empty() && boundary_points.back().first  == curr_point.x_pos &&
+                                        boundary_points.back().second == 0) {
+          boundary_points.pop_back();
+        } else {
+          boundary_points.push_back(pair<int, int>(curr_point.x_pos, prev_y_pos));
         }
-        key_points.push_back(rec_point(curr_point.x_pos,
-                                       points_sort_by_y[j].y_pos,
-                                       points_sort_by_y[j].rect_id, false, false));
-        break;
       }
-    }
-    for (auto & curr_point : key_points) {
-      boundary_points.push_back(pair<int, int>(curr_point.x_pos, curr_point.y_pos));
     }
     return boundary_points;
   }
 
-/*
-if (!key_points.empty()) { cout << curr_point << " <> kp " << key_points.back() << " <> ln " << points_sort_by_y[j] << " <> pt " << rec_point(curr_point.x_pos, points_sort_by_y[j].y_pos, points_sort_by_y[j].rect_id, false, false) << endl; }
-cout << ">>>" << endl;
-*/
   static void test_get_boundary_points() {
     cout << "4. test_get_boundary_points" << endl;
     vector<pair<int, int>> result;
     vector<vector<vector<int>>> test_input = {
-      { {2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8} }
+      { {2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8} },
+      { {0,2147483647,2147483647} },
+      { {0,2,3},{2,5,3} }
     };
     vector<vector<pair<int, int>>> test_output = {
-      { {2, 10}, {3, 15}, {7, 12}, {12, 0}, {15, 10}, {20, 8}, {24, 0} }
+      { {2, 10}, {3, 15}, {7, 12}, {12, 0}, {15, 10}, {20, 8}, {24, 0} },
+      { {0,2147483647}, {2147483647, 0} },
+      { { 0, 3 }, { 5, 0 } }
     };
     for (int i = 0; i < test_input.size(); i++) {
       result = get_boundary_points(test_input[i]);
