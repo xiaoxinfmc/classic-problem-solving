@@ -29,6 +29,12 @@ namespace scan_line_util {
     for (auto & arr : input) { cout << arr.first << "|" << arr.second << " "; }
     cout << "]" << endl;
   }
+  template <class t1, class t2>
+  static void print_all_pair_list(const list<pair<t1, t2>> & input) {
+    cout << "[ ";
+    for (auto & arr : input) { cout << arr.first << "|" << arr.second << " "; }
+    cout << "]" << endl;
+  }
 
   /**
    * 391 Number of Airplanes in the Sky
@@ -393,9 +399,28 @@ namespace scan_line_util {
    * | 1 | 2 | 3 |       |    4    |
    * +---+---+---@-------+---------@ (@ -> all top-left point of any union of rectangle)
    */
+
+  static void dedup_x_pos(list<pair<int, int>> & boundary_points) {
+    for (auto pt_itr = boundary_points.begin(); pt_itr != boundary_points.end();) {
+      auto next_itr = pt_itr; next_itr++;
+      if (next_itr != boundary_points.end() && pt_itr->first == next_itr->first) {
+        pt_itr = boundary_points.erase(pt_itr);
+      } else {  pt_itr++; }
+    }
+  }
+
+  static void dedup_y_pos(list<pair<int, int>> & boundary_points) {
+    for (auto pt_itr = boundary_points.begin(); pt_itr != boundary_points.end();) {
+      auto next_itr = pt_itr; next_itr++;
+      if (next_itr != boundary_points.end() && pt_itr->second == next_itr->second) {
+        pt_itr = boundary_points.erase(next_itr);
+      } else {  pt_itr++; }
+    }
+  }
+
   vector<pair<int, int>> get_boundary_points(vector<vector<int>> & rects) {
-    vector<pair<int, int>> boundary_points;
-    if (rects.empty()) { return boundary_points; }
+    list<pair<int, int>> boundary_points;
+    if (rects.empty()) { return vector<pair<int, int>>(); }
 
     /* rec_point(int x, int y, int rid, bool is_bl, bool is_srt_by_x) */
     vector<rec_point> points_sort_by_x_pos;
@@ -406,6 +431,7 @@ namespace scan_line_util {
     sort(points_sort_by_x_pos.begin(), points_sort_by_x_pos.end());
     multiset<int> y_pos_set = {0};
     int prev_y_pos = 0;
+    vector<rec_point> key_points;
     for (auto & curr_point : points_sort_by_x_pos) {
       if (curr_point.is_bottom_left) {
         /* enter here we see a begin of a new rect, we insert its y_pos */
@@ -416,15 +442,13 @@ namespace scan_line_util {
       }
       if (* y_pos_set.rbegin() != prev_y_pos) {
         prev_y_pos = * y_pos_set.rbegin();
-        if (!boundary_points.empty() && boundary_points.back().first  == curr_point.x_pos &&
-                                        boundary_points.back().second == 0) {
-          boundary_points.pop_back();
-        } else {
-          boundary_points.push_back(pair<int, int>(curr_point.x_pos, prev_y_pos));
-        }
+        boundary_points.push_back(pair<int, int>(curr_point.x_pos, prev_y_pos));
       }
     }
-    return boundary_points;
+    dedup_x_pos(boundary_points);
+    dedup_y_pos(boundary_points);
+    dedup_y_pos(boundary_points);
+    return vector<pair<int, int>>(boundary_points.begin(), boundary_points.end());
   }
 
   static void test_get_boundary_points() {
@@ -433,12 +457,14 @@ namespace scan_line_util {
     vector<vector<vector<int>>> test_input = {
       { {2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8} },
       { {0,2147483647,2147483647} },
-      { {0,2,3},{2,5,3} }
+      { {0,2,3},{2,5,3} },
+      { {2,9,10},{9,12,15} }, { {0,2,3},{2,4,3},{4,6,3},{6,8,3}}
     };
     vector<vector<pair<int, int>>> test_output = {
       { {2, 10}, {3, 15}, {7, 12}, {12, 0}, {15, 10}, {20, 8}, {24, 0} },
       { {0,2147483647}, {2147483647, 0} },
-      { { 0, 3 }, { 5, 0 } }
+      { { 0, 3 }, { 5, 0 } },
+      { {2,10},{9,15},{12,0} }, {{0, 3}, {8, 0}}
     };
     for (int i = 0; i < test_input.size(); i++) {
       result = get_boundary_points(test_input[i]);
