@@ -1676,6 +1676,123 @@ namespace string_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 829. Word Pattern II
+   * Description
+   * - Given a pattern and a string str, find if str follows the same pattern.
+   * - Here follow means a full match, such that there is a bijection
+   *   between a letter in pattern and a non-empty substring in str.
+   *   (i.e if a corresponds to s, then b cannot correspond to s. For example,
+   *    given pattern = "ab", str = "ss", return false.)
+   * - You may assume both pattern and str contains only lowercase letters.
+   * Example
+   * - Given pattern = "abab", str = "redblueredblue", return true.
+   * - Given pattern = "aaaa", str = "asdasdasdasd", return true.
+   * - Given pattern = "aabb", str = "xyzabcxzyabc", return false.
+   * Intuition:
+   * - given a pattern, say pat, judge if str conforms to it.
+   * - string problem & pattern related (chr in pat can be replaced with substr)
+   * - only true | false required, DP?
+   * - bijection -> pat[i] <=> substr[i..j] in text.
+   * - let check_pattern_lookup(i, j) denotes substr[0..j] conforms with pat[0..i]
+   *   goal is to calc check_pattern_lookup(m, n)
+   * - to calc check_pattern_lookup(i, j), we already know check_pattern_lookup(i - 1, 0..j - 1)
+   *   for k in (0..j - 1) exist a k, such that
+   *     check_pattern_lookup(i - 1, k) is good, 
+   *     pattern[i] <=> substr(k + 1, j) does not conflicts with prev mapping.
+   * - key is to detect any conflicts in bijection mapping in state transition,
+   *   then recur + map? also maintain the curr bijection will be a hard part
+   * - base case:
+   *   when i = 0, always true, as any substr can be a pattern.
+   *   when i < j, always false, as not enough substr can be assigned.
+   * - inheriently, DFS like recur & curr bijection would be easier to implement.
+   *   due to the complexity to maintain curr bijection.
+   *     x y z a b c x z y a b c
+   *   a 1 1 1 1 1 1 1 1 1 1 1 1
+   *   a 0 0 0
+   *   b (a-x), (a-y) | a -> xy, a -> z, or a -> x, a -> yz
+   *   b
+  static void is_word_follows_pattern_recur(const string & pattern,
+                                            const string & str, int i, int j,
+                                            vector<vector<bool>> & check_pattern_lookup,
+                                            unordered_map<char, string> & curr_bijection) {
+    if (i >= pattern.size() || j >= str.size() || check_pattern_lookup.back().back()) { return; }
+
+    int next_i = i, next_j = j + 1;
+    if (next_j >= str.size()) { next_j = 0; next_i += 1; };
+
+    if (i <= j) {
+      // curr pat k -> pat[i] <--> token -> substr[j], token starts between i & j
+      for (int k = i; k <= j; k++) {
+        // check any conflicts for mapping of pat[i] -> substr
+        if ((0 == i || true == check_pattern_lookup[i - 1][k - 1]) &&
+            (curr_bijection.count(pattern[i]) == 0 ||
+             curr_bijection[pattern[i]] == str.substr(k, k - i + 1))) {
+          curr_bijection[pattern[i]] = str.substr(k, k - i + 1);
+          check_pattern_lookup[i][j] = true;
+          is_word_follows_pattern_recur(pattern, str, next_i, next_j, check_pattern_lookup, curr_bijection);
+          if (check_pattern_lookup.back().back()) { return; }
+          check_pattern_lookup[i][j] = false;
+          curr_bijection.erase(pattern[i]);
+        }
+      }
+    }
+    is_word_follows_pattern_recur(pattern, str, next_i, next_j, check_pattern_lookup, curr_bijection);
+  }
+   */
+  static bool is_word_follows_pattern_recur(const string & pattern, int pid,
+                                            const string & str, int sid,
+                                            unordered_set<string> & tested_substr_set,
+                                            unordered_map<char, string> & curr_bijection) {
+    if (str.empty() || pattern.empty() || str.size() < pattern.size()) { return false; }
+
+    /* reach the end at the same time, return true */
+    if (pid == pattern.size() && sid == str.size()) { return true; }
+    if (pid == pattern.size() || sid == str.size()) { return false; }
+
+    /* curr pattern k already existed in mapping, then just check the substr */
+    if (curr_bijection.count(pattern[pid]) > 0) {
+      string curr_token = curr_bijection[pattern[pid]];
+      string curr_subst = str.substr(sid, curr_token.size());
+      if (curr_subst == curr_token) {
+        return is_word_follows_pattern_recur(
+          pattern, pid + 1, str, sid + curr_token.size(), tested_substr_set, curr_bijection
+        );
+      }
+    } else {
+    /* curr pattern k not existed in mapping, then just check all possible substr */
+      for (int end_pos = sid; end_pos < str.size(); end_pos++) {
+        string curr_subst = str.substr(sid, end_pos - sid + 1);
+        if (tested_substr_set.count(curr_subst) > 0) { continue; }
+        tested_substr_set.insert(curr_subst);
+        curr_bijection[pattern[pid]] = curr_subst;
+        if (is_word_follows_pattern_recur(pattern, pid + 1, str, end_pos + 1,
+                                          tested_substr_set, curr_bijection)) { return true; }
+        curr_bijection.erase(pattern[pid]);
+        tested_substr_set.erase(curr_subst);
+      }
+    }
+    return false;
+  }
+
+  static bool is_word_follows_pattern(const string & pattern, const string & str) {
+    unordered_set<string> tested_substr_set;
+    unordered_map<char, string> curr_bijection;
+    return is_word_follows_pattern_recur(pattern, 0, str, 0, tested_substr_set, curr_bijection);
+  }
+
+  static void test_is_word_follows_pattern() {
+    cout << "19. test_is_word_follows_pattern" << endl;
+    bool result;
+    vector<bool> test_output = { true, true, true, false };
+    vector<vector<string>> test_input = { { "abba", "redbluebluered" }, { "abab", "redblueredblue" }, { "aaaa", "asdasdasdasd" }, { "aabb", "xyzabcxzyabc" } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = is_word_follows_pattern(test_input[i].front(), test_input[i].back());
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 
@@ -1700,6 +1817,7 @@ int main(void) {
   using string_util::test_find_all_concat_words;
   using string_util::test_find_all_palindrome_pairs;
   using string_util::test_calc_correct_order;
+  using string_util::test_is_word_follows_pattern;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1721,6 +1839,7 @@ int main(void) {
   test_find_all_concat_words();
   test_find_all_palindrome_pairs();
   test_calc_correct_order();
+  test_is_word_follows_pattern();
 
   return 0;
 }
