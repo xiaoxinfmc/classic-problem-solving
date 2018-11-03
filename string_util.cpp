@@ -1442,6 +1442,7 @@ namespace string_util {
   }
 
   static void test_find_all_concat_words() {
+    cout << "16. test_find_all_concat_words" << endl;
     vector<string> result;
     vector<vector<string>> test_output = { { "catsdogcats","dogcatsdog","ratcatdogcat" }, { "ab", "cd", "abcd", "abc", "abcc" }, { "abbcd" } };
     vector<vector<string>> test_input = { { "cat","cats","catsdogcats","dog","dogcatsdog","hippopotamuses","rat","ratcatdogcat" }, { "a", "b", "ab", "c", "d", "cd", "abcd", "abc", "abcc" }, { "a", "abbc", "abbcd", "bbcd" } };
@@ -1451,6 +1452,59 @@ namespace string_util {
       sort(test_output[i].begin(), test_output[i].end());
       print_all_elem<string>(result); cout << "<=>" << endl;
       print_all_elem<string>(test_output[i]);
+    }
+  }
+
+  /**
+   * 336. Palindrome Pairs
+   * Given a list of unique words, find all pairs of distinct indices (i, j) in
+   * the given list, so that the concatenation of the two words
+   * i.e. words[i] + words[j] is a palindrome.
+   * Example 1:
+   * Input: ["abcd","dcba","lls","s","sssll"]
+   * Output: [[0,1],[1,0],[3,2],[2,4]] 
+   * Explanation: The palindromes are ["dcbaabcd","abcddcba","slls","llssssll"]
+   * Example 2:
+   * Input: ["bat","tab","cat"]
+   * Output: [[0,1],[1,0]] 
+   * Explanation: The palindromes are ["battab","tabbat"]
+   * Intuition:
+   * - BF -> for every pair O(n2), check its mirror property -> T(n) ~ O(n2*m)
+   * - problem scope: worst case, all pairs are palindrome -> T(n) >= O(n2)
+   * - optimization may relies on avoid redundant checking?
+   * - abc + cba is good, not vice versa (same as abc & ba)
+   * - directed graph? (bit too far)
+   */
+  static bool is_str_palin(const string & input) {
+    if (input.empty()) { return true; }
+    for (int i = 0, j = input.size() - 1; i <= j; i++, j--) {
+      if (input[i] != input[j]) { return false; }
+    }
+    return true;
+  }
+
+  static vector<vector<int>> find_all_palindrome_pairs(const vector<string> & words) {
+    vector<vector<int>> palin_pairs;
+    string curr_token;
+    for (int i = 0; i < words.size(); i++) {
+      for (int j = 0; j < words.size(); j++) {
+        if (i == j) { continue; }
+        curr_token = words[i] + words[j];
+        if (true == is_str_palin(curr_token)) { palin_pairs.push_back({ i, j }); }
+      }
+    }
+    return palin_pairs;
+  }
+
+  static void test_find_all_palindrome_pairs() {
+    cout << "17. test_find_all_palindrome_pairs" << endl;
+    vector<vector<int>> result;
+    vector<vector<string>> test_input = { { "abcd","dcba","lls","s","sssll" }, {"bat","tab","cat"} };
+    vector<vector<vector<int>>> test_output { {{0,1},{1,0},{2,4},{3,2}}, {{0,1},{1,0}} };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_all_palindrome_pairs(test_input[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < test_output[i].size(); j++) { assert(result[j] == test_output[i][j]); }
     }
   }
 };
@@ -1475,6 +1529,7 @@ int main(void) {
   using string_util::test_is_regex_matched;
   using string_util::test_is_number_valid;
   using string_util::test_find_all_concat_words;
+  using string_util::test_find_all_palindrome_pairs;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1494,6 +1549,7 @@ int main(void) {
   test_is_regex_matched();
   test_is_number_valid();
   test_find_all_concat_words();
+  test_find_all_palindrome_pairs();
 
   return 0;
 }
