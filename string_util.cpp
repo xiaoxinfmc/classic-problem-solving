@@ -1545,6 +1545,137 @@ namespace string_util {
       for (int j = 0; j < test_output[i].size(); j++) { assert(result[j] == test_output[i][j]); }
     }
   }
+
+  /**
+   * 892. Alien Dictionary
+   * - There is a new alien language which uses the latin alphabet. However,
+   *   the order among letters are unknown to you. You receive a list of
+   *   non-empty words from the dictionary, where words are sorted
+   *   lexicographically by the rules of this new language. Derive the order
+   *   of letters in this language.
+   *
+   * - You may assume all letters are in lowercase.
+   * - You may assume that if a is a prefix of b, then a must appear before b
+   *   in the given dictionary.
+   * - If the order is invalid, return an empty string.
+   * - There may be multiple valid order of letters, return the smallest in
+   *   lexicographical order
+   *
+   * Example
+   * Given the following words in dictionary,
+   * { "wrt", "wrf", "er", "ett", "rftt" }
+   * The correct order is: "wertf"
+   * Given the following words in dictionary,
+   * { "z", "x" }
+   * The correct order is: "zx".
+   *
+   * Intuition:
+   * - alphabet are included in dictionary, which also give out order of words
+   * - by each pair of words, we can derive order of each char (at least some)
+   * - essentially a dag, where each each node is a char, our goal is:
+   *   1. derive whole dag with in-out degrees
+   *   2. serialize whole dag by topological sorting (if we can).
+   * - could be simplified as we only have 26 chars, use array.
+   */
+  const static int VERTEX_CNT = (int)'z' - (int)'a' + 1;
+  class dag_vertex {
+  public:
+    dag_vertex(int v = -1) : vid(v) {}
+    virtual ~dag_vertex() {}
+    int vid;
+    unordered_set<int> incoming_vids;
+    unordered_set<int> outgoing_vids;
+  };
+  static int get_char_idx(const char c) { return int(c) - int('a'); }
+  static string calc_correct_order(vector<string> & words) {
+    string char_order_str;
+    if (words.empty()) { return char_order_str; }
+
+    unordered_set<char> char_lookup;
+    /* 1. try to derive all possible edges, char_dag[i][j] -> 1 means char i < char j */
+    vector<dag_vertex> char_dag;
+    for (int i = 0; i < VERTEX_CNT; i++) { char_dag.push_back(dag_vertex(i)); }
+    int l_token_id = 0, r_token_id = 0, total_link_cnt = 0, l_vid = 0, r_vid = 0;
+    for (int i = 0; i < words.size(); i++) {
+      for (int j = i + 1; j < words.size(); j++) {
+        l_token_id = 0, r_token_id = 0;
+        while(l_token_id < words[i].size() && r_token_id < words[j].size() &&
+              words[i][l_token_id] == words[j][r_token_id]) {
+          l_token_id += 1; r_token_id += 1;
+        }
+        if (!(l_token_id < words[i].size() && r_token_id < words[j].size())) { continue; }
+        char_lookup.insert(words[i][l_token_id]);
+        char_lookup.insert(words[j][r_token_id]);
+        l_vid = get_char_idx(words[i][l_token_id]);
+        r_vid = get_char_idx(words[j][r_token_id]);
+        if (char_dag[l_vid].outgoing_vids.count(r_vid) == 0) {
+          total_link_cnt += 1;
+          char_dag[l_vid].outgoing_vids.insert(r_vid);
+          char_dag[r_vid].incoming_vids.insert(l_vid);
+        }
+      }
+    }
+    for (int i = 0; i < words.size(); i++) {
+      for (int k = 0; k < words[i].size(); k++) {
+        l_vid = get_char_idx(words[i][k]);
+        if (char_dag[l_vid].outgoing_vids.empty() && char_dag[l_vid].incoming_vids.empty()) {
+          for (int j = 0; j < l_vid; j++) {
+            if (char_lookup.count(char(j + int('a'))) == 0) { continue; }
+            total_link_cnt += 1;
+            char_dag[j].outgoing_vids.insert(l_vid);
+            char_dag[l_vid].incoming_vids.insert(j);
+          }
+          for (int j = l_vid + 1; j < VERTEX_CNT; j++) {
+            if (char_lookup.count(char(j + int('a'))) == 0) { continue; }
+            total_link_cnt += 1;
+            char_dag[l_vid].outgoing_vids.insert(j);
+            char_dag[j].incoming_vids.insert(l_vid);
+          }
+        }
+      }
+    }
+
+    if (char_lookup.size() == 1) {
+      char_order_str.append(1, * char_lookup.begin()); return char_order_str;
+    }
+    /* 2. beyond this, char_dag have all chars & edges, start toplogical sort */
+    dag_vertex start_vertex;
+    for (auto & v : char_dag) {
+      if (v.outgoing_vids.size() > 0 && v.incoming_vids.size() == 0) { start_vertex = v; break; }
+    }
+    if (start_vertex.vid < 0) { return char_order_str; }
+
+    vector<dag_vertex> vid_buffer = { start_vertex };
+    while (!vid_buffer.empty()) {
+      start_vertex = vid_buffer.back();
+      char_order_str.append(1, (char)(start_vertex.vid + (int)('a')));
+      vid_buffer.pop_back();
+      for (int vid = 0; vid < VERTEX_CNT; vid++) {
+        if (start_vertex.outgoing_vids.count(vid) == 0) { continue; }
+        char_dag[vid].incoming_vids.erase(start_vertex.vid);
+        total_link_cnt -= 1;
+        if (char_dag[vid].incoming_vids.empty()) {
+          vid_buffer.push_back(char_dag[vid]);
+        }
+      }
+    }
+
+    if (total_link_cnt != 0) { char_order_str = ""; }
+
+    return char_order_str;
+  }
+
+  static void test_calc_correct_order() {
+    string result;
+    vector<string> test_output = { "wertf", "zx", "yxz" };
+    vector<vector<string>> test_input = { { "wrt", "wrf", "er", "ett", "rftt" }, { "z", "x" }, { "zy", "zx" }};
+    cout << "18. test_calc_correct_order" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_correct_order(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 
@@ -1568,6 +1699,7 @@ int main(void) {
   using string_util::test_is_number_valid;
   using string_util::test_find_all_concat_words;
   using string_util::test_find_all_palindrome_pairs;
+  using string_util::test_calc_correct_order;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1588,6 +1720,7 @@ int main(void) {
   test_is_number_valid();
   test_find_all_concat_words();
   test_find_all_palindrome_pairs();
+  test_calc_correct_order();
 
   return 0;
 }
