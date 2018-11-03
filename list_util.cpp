@@ -4,6 +4,7 @@
  * sorted list. The given node can be any single node in the list.
  */
 #include <iostream>
+#include <algorithm>
 #include <cassert>
 #include <vector>
 
@@ -68,6 +69,61 @@ namespace list_util {
     curr_node_ptr->next_ptr = temp_node_ptr->next_ptr;
     temp_node_ptr->next_ptr = curr_node_ptr;
     return curr_node_ptr;
+  }
+
+  /**
+   * 23. Merge k Sorted Lists
+   * Merge k sorted linked lists and return it as one sorted list. Analyze
+   * and describe its complexity.
+   * Example:
+   * Input:
+   * [ 1->4->5, 1->3->4, 2->6 ]
+   * Output: 1->1->2->3->4->4->5->6
+   * Intuition:
+   * - for k lists avg size of n, -> lower bound would be O(kn)
+   * - all lists are sorted, each time we need to pick the min ptr from k
+   *   lists to append and move foward(until certain list is empty).
+   * - pick min from ordered k list head took O(logk)
+   * - overall ~ O(knlogk)
+   * - tool to use, min heap of size k?
+   */
+  class list_node {
+  public:
+    list_node(int v) : val(v), next(NULL) {}
+    virtual ~list_node() {}
+    int val;
+    list_node * next;
+  };
+
+  static bool list_ptr_compare_for_min_heap(list_node * l_ptr, list_node * r_ptr) {
+    return (r_ptr->val < l_ptr->val);
+  }
+
+  static list_node * merge_k_lists(vector<list_node *> & lists) {
+    list_node * new_root = NULL, * curr_ptr = NULL, * prev_ptr = NULL;
+    if (lists.empty()) { return new_root; }
+
+    /* 1. init curr. heap */
+    vector<list_node *> k_list_min_heap;
+    for (auto & curr_ptr : lists) {
+      if (NULL != curr_ptr) { k_list_min_heap.push_back(curr_ptr); }
+    }
+    make_heap(k_list_min_heap.begin(), k_list_min_heap.end(), list_ptr_compare_for_min_heap);
+
+    /* 2. start to merge until all elem combined */
+    while (!k_list_min_heap.empty()) {
+      curr_ptr = k_list_min_heap.front();
+      if (NULL == new_root){ new_root = curr_ptr; }
+      if (NULL != prev_ptr) { prev_ptr->next = curr_ptr; }
+      pop_heap(k_list_min_heap.begin(), k_list_min_heap.end(), list_ptr_compare_for_min_heap);
+      k_list_min_heap.pop_back();
+      if (NULL != curr_ptr->next) {
+        k_list_min_heap.push_back(curr_ptr->next);
+        push_heap(k_list_min_heap.begin(), k_list_min_heap.end(), list_ptr_compare_for_min_heap);
+      }
+      prev_ptr = curr_ptr;
+    }
+    return new_root;
   }
 };
 
