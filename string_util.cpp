@@ -1474,10 +1474,14 @@ namespace string_util {
    * - optimization may relies on avoid redundant checking?
    * - abc + cba is good, not vice versa (same as abc & ba)
    * - directed graph? (bit too far)
+   * - instead of matching against all diff word, matching all possible tokens
+   * - for abccacc, start from end pos right, expanding left
+   *     if str[j..n] is a palindrome, then check if we have str[0..j - 1].reverse
+   * - after all done, check str.reverse.
    */
-  static bool is_str_palin(const string & input) {
+  static bool is_str_palin(const string & input, int i, int j) {
     if (input.empty()) { return true; }
-    for (int i = 0, j = input.size() - 1; i <= j; i++, j--) {
+    for (; i <= j; i++, j--) {
       if (input[i] != input[j]) { return false; }
     }
     return true;
@@ -1485,14 +1489,48 @@ namespace string_util {
 
   static vector<vector<int>> find_all_palindrome_pairs(const vector<string> & words) {
     vector<vector<int>> palin_pairs;
-    string curr_token;
+    if (words.empty()) { return palin_pairs; }
+
+    unordered_map<string, int> token_to_idx_map;
+    unordered_map<string, int>::iterator entry_itr;
+    for (int i = 0; i < words.size(); i++) { token_to_idx_map[words[i]] = i; }
+
+    string curr_token, remaining_part;
     for (int i = 0; i < words.size(); i++) {
-      for (int j = 0; j < words.size(); j++) {
-        if (i == j) { continue; }
-        curr_token = words[i] + words[j];
-        if (true == is_str_palin(curr_token)) { palin_pairs.push_back({ i, j }); }
+      curr_token = words[i];
+      for (int j = curr_token.size() - 1; j >= 0; j--) {
+        if (!is_str_palin(curr_token, j, curr_token.size() - 1)) { continue; }
+        if (j == 0) { remaining_part = ""; } else {
+          remaining_part = curr_token.substr(0, j);
+          reverse(remaining_part.begin(), remaining_part.end());
+        }
+        entry_itr = token_to_idx_map.find(remaining_part);
+        if (token_to_idx_map.end() != entry_itr && i != entry_itr->second) {
+          palin_pairs.push_back({ i, entry_itr->second });
+        }
+      }
+      for (int j = 0; j < curr_token.size(); j++) {
+        if (!is_str_palin(curr_token, 0, j)) { continue; }
+        if (j == curr_token.size() - 1) {
+          remaining_part = "";
+        } else {
+          remaining_part = curr_token.substr(j + 1);
+          reverse(remaining_part.begin(), remaining_part.end());
+        }
+        entry_itr = token_to_idx_map.find(remaining_part);
+        if (token_to_idx_map.end() != entry_itr && i != entry_itr->second) {
+          palin_pairs.push_back({ entry_itr->second, i });
+        }
+      }
+
+      remaining_part = curr_token;
+      reverse(remaining_part.begin(), remaining_part.end());
+      entry_itr = token_to_idx_map.find(remaining_part);
+      if (token_to_idx_map.end() != entry_itr && i != entry_itr->second) {
+        palin_pairs.push_back({ i, entry_itr->second });
       }
     }
+
     return palin_pairs;
   }
 
@@ -1500,7 +1538,7 @@ namespace string_util {
     cout << "17. test_find_all_palindrome_pairs" << endl;
     vector<vector<int>> result;
     vector<vector<string>> test_input = { { "abcd","dcba","lls","s","sssll" }, {"bat","tab","cat"} };
-    vector<vector<vector<int>>> test_output { {{0,1},{1,0},{2,4},{3,2}}, {{0,1},{1,0}} };
+    vector<vector<vector<int>>> test_output { {{0,1},{1,0},{3,2},{2,4}}, {{0,1},{1,0}} };
     for (int i = 0; i < test_input.size(); i++) {
       result = find_all_palindrome_pairs(test_input[i]);
       assert(result.size() == test_output[i].size());
