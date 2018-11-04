@@ -2,6 +2,10 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
+#include <cmath>
+#include <cassert>
+#include <utility>
 
 namespace cache {
 
@@ -10,113 +14,148 @@ using std::endl;
 using std::pair;
 using std::list;
 using std::unordered_map;
+using std::unordered_set;
 
 const static int DEF_CACHE_SIZE_CAP = 65536;
 
 template<typename key_t, typename value_t>
-class cache_lfu {
+class lfu_entry {
 public:
-  typedef typename unordered_map<key_t, pair<value_t, int>>::iterator kv_pair_itr;
-  typedef typename list<kv_pair_itr>::iterator freq_list_itr;
+  lfu_entry() : freq(1) {}
+  lfu_entry(const key_t & k, const value_t & v, int f = 1) : freq(f), key(k), value(v) {}
+  virtual ~lfu_entry() {}
+  int freq;
+  key_t key;
+  value_t value;
+};
 
-  cache_lfu(int max_cap = DEF_CACHE_SIZE_CAP) : max_item_cnt(max_cap),
-                                                min_freq_cnt(INT_MAX) {}
+template<typename key_t, typename value_t>
+class cache_lfu {
+  typedef class lfu_entry<key_t, value_t> lfu_entry_t;
+  typedef typename list<unordered_map<key_t, lfu_entry_t>>::iterator freq_list_entry_itr;
+  typedef typename unordered_map<key_t, freq_list_entry_itr>::iterator kv_lookup_pair_itr;
+
+public:
+  cache_lfu(int max_cap = DEF_CACHE_SIZE_CAP) : max_size_cap(max_cap), total_item_cnt(0) {}
   virtual ~cache_lfu() {}
 
   bool set(const key_t & key, const value_t & value) {
-    int curr_entry_cnt = 1;
-    kv_pair_itr curr_entry_itr = kv_pair_lookup.find(key);
-    if (kv_pair_lookup.end() == curr_entry_itr) {
-      /* completely new, not exist, then check size 1st */
-      if (kv_pair_lookup.size() >= max_item_cnt) {
-        /* execeed size limit, evict first */
-        kv_pair_lookup.erase(freq_lookup[min_freq_cnt].back());
-        freq_list_itr_lookup.erase(freq_lookup[min_freq_cnt].back()->first);
-        freq_lookup[min_freq_cnt].pop_back();
-        if (freq_lookup[min_freq_cnt].empty()) { freq_lookup.erase(min_freq_cnt); }
-      }
-      /* after evict if needed, start insert */
-      kv_pair_lookup[key] = pair<value_t, int>(value, curr_entry_cnt);
-      if (freq_lookup.end() == freq_lookup.find(curr_entry_cnt)) {
-        freq_lookup[curr_entry_cnt] = list<kv_pair_itr>();
-      }
-      freq_lookup[curr_entry_cnt].push_front(kv_pair_lookup.find(key));
-      freq_list_itr_lookup[key] = freq_lookup[curr_entry_cnt].begin();
-      min_freq_cnt = curr_entry_cnt;
+    bool is_set_op_succes = false;
+    /* 1. check to see if curr. entry already exists, if yes, then just update & upd freq. */
+    kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
+    if (kv_pair_lookup.end() != curr_pair_itr) {
+      curr_pair_itr->second->find(key)->second.value = value;
+      is_set_op_succes = increment_entry_freq(curr_pair_itr);
     } else {
-      /* exist already, then update value & incr. freq */
-      curr_entry_cnt = curr_entry_itr->second.second;
-      freq_lookup[curr_entry_cnt].erase(freq_list_itr_lookup[key]);
-      if (freq_lookup[curr_entry_cnt].empty()) { 
-        freq_lookup.erase(curr_entry_cnt);
-        if (min_freq_cnt == curr_entry_cnt) { min_freq_cnt += 1; }
+    /* 2. enter here means we need to insert a new entry with freq of 1 */
+      /* check & evict entry if needed */
+      check_and_evict_for_new_entry();
+      lfu_entry_t new_lfu_entry(key, value, 1);
+      /* check the head of the list to see if they share same freq,
+       * actions to insert new needed iff:
+       * 1. freq-list is empty
+       * 2. 1st map in freq-list has a diff freq than 1 */
+      if (lfu_freq_list.empty() || (!lfu_freq_list.begin()->empty() && 
+                                     lfu_freq_list.begin()->begin()->second.freq != 1)) {
+        lfu_freq_list.push_front(unordered_map<key_t, lfu_entry_t>());
       }
-      curr_entry_cnt += 1;
-      curr_entry_itr->second = pair<value_t, int>(value, curr_entry_cnt);
-      if (freq_lookup.end() == freq_lookup.find(curr_entry_cnt)) {
-        freq_lookup[curr_entry_cnt] = list<kv_pair_itr>();
-      }
-      freq_lookup[curr_entry_cnt].push_front(curr_entry_itr);
-      freq_list_itr_lookup[key] = freq_lookup[curr_entry_cnt].begin();
+      lfu_freq_list.front()[key] = new_lfu_entry;
+      kv_pair_lookup[key] = lfu_freq_list.begin();
+      total_item_cnt += 1;
+      is_set_op_succes = true;
     }
-    return true;
+
+    return is_set_op_succes;
   }
 
+  /* basically pass by ref., true if we found a val, false if not */
   bool get(const key_t & key, value_t & value_ret) {
-    bool ret = false;
-    kv_pair_itr curr_entry_itr = kv_pair_lookup.find(key);
-    if (kv_pair_lookup.end() != curr_entry_itr) {
-      int curr_freq_cnt = curr_entry_itr->second.second;
-      value_ret = curr_entry_itr->second.first;
-      freq_lookup[curr_freq_cnt].erase(freq_list_itr_lookup[key]);
-      if (freq_lookup[curr_freq_cnt].empty()) { 
-        freq_lookup.erase(curr_freq_cnt);
-        if (min_freq_cnt == curr_freq_cnt) { min_freq_cnt += 1; }
-      }
-      curr_freq_cnt += 1;
-      curr_entry_itr->second.second = curr_freq_cnt;
-      if (freq_lookup[curr_freq_cnt].empty()) {
-        freq_lookup[curr_freq_cnt] = list<kv_pair_itr>();
-      }
-      freq_lookup[curr_freq_cnt].push_front(curr_entry_itr);
-      freq_list_itr_lookup[key] = freq_lookup[curr_freq_cnt].begin();
-      ret = true;
-    }
-    return ret;
+    kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
+    /* if no key found, short circuit */
+    if (kv_pair_lookup.end() == curr_pair_itr) { return false; }
+    /* return the value, list<unordered_map<key_t, lfu_entry_t>> lfu_freq_list */
+    value_ret = curr_pair_itr->second->find(key)->second.value;
+    /* update freq list & adjusting kv-lookup entry */
+    return increment_entry_freq(curr_pair_itr);
   }
 
   bool del(const key_t & key) {
-    bool ret = false;
-    kv_pair_itr curr_entry_itr = kv_pair_lookup.find(key);
-    if (kv_pair_lookup.end() != curr_entry_itr) {
-      int curr_freq_cnt = curr_entry_itr->second.second;
-      freq_lookup[curr_freq_cnt].erase(freq_list_itr_lookup[key]);
-      if (freq_lookup[curr_freq_cnt].empty()) { freq_lookup.erase(curr_freq_cnt); }
-      kv_pair_lookup.erase(curr_entry_itr);
-      freq_list_itr_lookup.erase(key);
-      ret = true;
+    bool is_del_op_succes = false;
+    /* 1. check to see if curr. entry already exists, if no, then just return false */
+    kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
+    if (kv_pair_lookup.end() == curr_pair_itr) { return is_del_op_succes; }
+    /* 2. start to remove from both lists */
+    curr_pair_itr->second->erase(key);
+    /* check if curr entry in freq is empty, remove if true */
+    if (curr_pair_itr->second->empty()) {
+      lfu_freq_list.erase(curr_pair_itr->second);
     }
-    return ret;
+    kv_pair_lookup.erase(curr_pair_itr);
+    total_item_cnt -= 1;
+    is_del_op_succes = true;
+    return is_del_op_succes;
   }
 
   void show_all_kv_pairs() {
-    for (auto & entry : kv_pair_lookup) {
-      cout << "min-freq: " << min_freq_cnt << " " << entry.first << ":"
-           << entry.second.first << ":" << entry.second.second
-           << ":" << freq_lookup.find(entry.second.second)->first << " ";
-    } cout << endl;
+    /* freq_entry_map -> a map if key -> lfu_entry<freq, key, value> */
+    cout << "[ ";
+    for (auto & freq_entry_map : lfu_freq_list) {
+      cout << "{ ";
+      for (auto & entry_map_pair : freq_entry_map) {
+        cout << "(" << entry_map_pair.second.freq << ":"
+                    << entry_map_pair.second.key << ":"
+                    << entry_map_pair.second.value << ") ";
+      }
+      cout << "} ";
+    }
+    cout << "]";
   }
 
 private:
-  /* used to store the mapping from key -> <value, freq_cnt> */
-  unordered_map<key_t, pair<value_t, int>> kv_pair_lookup;
-  /* used to store the mapping from freq -> list of itr. in kv_pair_lookup */
-  unordered_map<int, list<kv_pair_itr>> freq_lookup;
-  /* used to store the mapping from key -> iterator in freq list in freq_lookup */
-  unordered_map<key_t, freq_list_itr> freq_list_itr_lookup;
 
-  /* minimum freq cnt for all cached items */
-  int min_freq_cnt, max_item_cnt;
+  /* true if eviction happens, false if not */
+  bool check_and_evict_for_new_entry() {
+    bool is_item_evicted = false;
+    if (total_item_cnt == max_size_cap) {
+      is_item_evicted = del(lfu_freq_list.begin()->begin()->first);
+    }
+    return is_item_evicted;
+  }
+
+  bool increment_entry_freq(kv_lookup_pair_itr curr_kv_pair_itr) {
+    /* 1. get new freq value */
+    key_t key_to_lookup = curr_kv_pair_itr->first;
+    freq_list_entry_itr curr_freq_entry_itr = curr_kv_pair_itr->second;
+    int new_freq = curr_freq_entry_itr->begin()->second.freq + 1;
+    curr_freq_entry_itr->begin()->second.freq = new_freq;
+
+    /* 2. check to see if need to insert a new entry, we add a new entry iff:
+     *    - next_freq_entry_itr has a diff freq value than new_freq.
+     *    - next_freq_entry_itr reach the end of the list */
+    freq_list_entry_itr next_freq_entry_itr = curr_freq_entry_itr;
+    next_freq_entry_itr++;
+    if (lfu_freq_list.end() == next_freq_entry_itr ||
+        next_freq_entry_itr->begin()->second.freq > new_freq) {
+      next_freq_entry_itr = lfu_freq_list.insert(next_freq_entry_itr, unordered_map<key_t, lfu_entry_t>());
+    }
+    (* next_freq_entry_itr)[key_to_lookup] = curr_freq_entry_itr->begin()->second;
+
+    /* after prop the new elem, remove its old entry */
+    curr_freq_entry_itr->erase(key_to_lookup);
+    if (curr_freq_entry_itr->empty()) { lfu_freq_list.erase(curr_freq_entry_itr); }
+    kv_pair_lookup[key_to_lookup] = next_freq_entry_itr;
+
+    return true;
+  }
+
+  /* main entry for kv lookup, directing to the corresponding map in freq list */
+  unordered_map<key_t, freq_list_entry_itr> kv_pair_lookup;
+  /* each entry represents a map contains key -> lfu-entry, all pairs has same
+   * freq, while whole list is ordered by the freq of each map in asc order.
+   * each time if we need a eviction, it will always happens at head of list
+   * which shares the min. freq value */
+  list<unordered_map<key_t, lfu_entry_t>> lfu_freq_list;
+  int max_size_cap, total_item_cnt;
 };
 
 };
