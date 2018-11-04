@@ -5,12 +5,15 @@
 #include <unordered_map>
 #include <cstdlib>
 #include <cmath>
+#include <limits>
+#include <list>
 
 namespace tool_util {
   using std::string;
   using std::cout;
   using std::endl;
   using std::vector;
+  using std::list;
   using std::pair;
   using std::unordered_map;
   using std::ostream;
@@ -308,10 +311,146 @@ namespace tool_util {
       assert(result == test_output[i]);
     }
   }
+  /**
+   * 432. All O1 Data Structure
+   * Implement a data structure supporting the following operations:
+   * Inc(Key) - Inserts a new key with value 1. Or increments an existing key
+   *            by 1. Key is guaranteed to be a non-empty string.
+   * Dec(Key) - If Key's value is 1, remove it from the data structure.
+   *            Otherwise decrements an existing key by 1. If the key does not
+   *            exist, this function does nothing. Key is guaranteed to be a
+   *            non-empty string.
+   * GetMaxKey() - Returns one of the keys with maximal value.
+   *               If no element exists, return an empty string "".
+   * GetMinKey() - Returns one of the keys with minimal value.
+   *               If no element exists, return an empty string "".
+   * Challenge: Perform all these in O(1) time complexity.
+   * Intuition:
+   * - incr/decr -> unordered_map<string, int>
+   * - inc/dec, get_max/min in o(1), then no bs, no sorted arr, no heap
+   * - incr/decr is easily supported by map, then use list for max/min?
+   * - an entry <k, v> can only be removed if its value drop to zero, or
+   *   each entry can only be inc/dec at most by 1, then we actually can
+   *   be fully aware of the change of curr. min & max.
+   * - in addition to <string, int>, also maintain <int, set<string>>
+   * - concept similar to lfu?
+   *
+   *   kv-entry key -> pair<value-list-entry, actual-entry>
+   * - a-50, b-46, c-46, d-5, e-4, f-4
+   *     |      |----+     |   +----|
+   *   50-(a), 46-(b, c), 5-(d), 1-(e, f) list of sets ordered by value
+   *    ^                          ^
+   *   max                        min
+   */
+  class min_max_map {
+  public:
+    /** Initialize your data structure here. */
+    min_max_map() {}
+    virtual ~min_max_map(){}
+
+    /** Inserts a new key <Key> with value 1. Or increments an existing key by 1. */
+    void inc(string key) {
+      int new_val = 1;
+      if (kv_lookup.count(key) <= 0) {
+        /* check empty list or if 1st entry is used for value 1 */
+        if ((kv_map_by_freq_list.empty()) ||
+            (!(kv_map_by_freq_list.front().empty()) &&
+             !(kv_map_by_freq_list.front().begin()->second == new_val))) {
+          kv_map_by_freq_list.push_front(unordered_map<string, int>());
+        }
+        kv_map_by_freq_list.front()[key] = new_val;
+        kv_lookup[key] = kv_map_by_freq_list.begin();
+      } else {
+        new_val = (* kv_lookup[key])[key] + 1;
+        /* check if freq list for new value is ready */
+        list<unordered_map<string, int>>::iterator curr_itr = kv_lookup[key],
+                                                   next_itr = kv_lookup[key];
+        next_itr++;
+        kv_lookup[key]->erase(key);
+        if (next_itr == kv_map_by_freq_list.end() || next_itr->begin()->second != new_val) {
+          kv_lookup[key] = kv_map_by_freq_list.insert(next_itr, unordered_map<string, int>());
+        } else {
+          kv_lookup[key] = next_itr;
+        }
+        if (curr_itr->empty()) { kv_map_by_freq_list.erase(curr_itr); }
+        (* kv_lookup[key])[key] = new_val;
+      }
+    }
+
+    /** Decrements an existing key by 1. If Key's value is 1, remove it from the data structure. */
+    void dec(string key) {
+      if (kv_lookup.count(key) <= 0) { return; }
+      int new_val = (* kv_lookup[key])[key] - 1;
+
+      /* check if freq list for new value is ready */
+      list<unordered_map<string, int>>::iterator curr_itr = kv_lookup[key],
+                                                 prev_itr = kv_lookup[key];
+      if (prev_itr != kv_map_by_freq_list.begin()) { prev_itr--; }
+      if (0 == new_val) {
+        curr_itr->erase(key);
+        if (curr_itr->empty()) { kv_map_by_freq_list.erase(curr_itr); }
+        kv_lookup.erase(key);
+        return;
+      }
+      if (prev_itr->begin()->second != new_val) {
+        kv_lookup[key] = kv_map_by_freq_list.insert(kv_lookup[key], unordered_map<string, int>());
+      } else {
+        kv_lookup[key] = prev_itr;
+      }
+      curr_itr->erase(key);
+      if (curr_itr->empty()) { kv_map_by_freq_list.erase(curr_itr); }
+      (* kv_lookup[key])[key] = new_val;
+    }
+
+    /** Returns one of the keys with maximal value. */
+    string get_max_key() {
+      if (kv_lookup.empty()) { return ""; }
+      return kv_map_by_freq_list.back().begin()->first;
+    }
+
+    /** Returns one of the keys with Minimal value. */
+    string get_min_key() {
+      if (kv_lookup.empty()) { return ""; }
+      return kv_map_by_freq_list.front().begin()->first;
+    }
+
+    void print_all_elem() {
+      cout << "[";
+      for (auto & curr_map : kv_map_by_freq_list) {
+        cout << "{ ";
+        for (auto & curr_pair : curr_map) {
+          cout << curr_pair.first << ":" << curr_pair.second << " ";
+        }
+        cout << "} ";
+      }
+      cout << "]"<< endl;
+    }
+
+    unordered_map<string, list<unordered_map<string, int>>::iterator> kv_lookup;
+    /* in asc order */
+    list<unordered_map<string, int>> kv_map_by_freq_list;
+  };
+
+  static void test_min_max_map() {
+    cout << "2. test_min_max_map" << endl;
+    /* ["AllOne","inc",   "inc",    "inc",    "dec",    "inc",    "inc",   "getMaxKey"]
+     * [  [],   ["hello"],["world"],["hello"],["world"],["hello"],["leet"],[]] */
+    min_max_map obj;
+    obj.inc("hello"); obj.print_all_elem(); obj.inc("world"); obj.print_all_elem();
+    obj.inc("hello"); obj.print_all_elem(); obj.dec("world"); obj.print_all_elem();
+    obj.inc("hello"); obj.print_all_elem(); obj.inc("leet"); obj.print_all_elem();
+    cout << obj.get_max_key() << endl;
+    cout << obj.get_min_key() << endl;
+    obj.dec("leet"); obj.print_all_elem(); obj.dec("leet"); obj.print_all_elem();
+    obj.dec("hello"); obj.print_all_elem(); obj.dec("hello"); obj.print_all_elem();
+    obj.dec("hello"); obj.print_all_elem(); obj.dec("hello"); obj.print_all_elem();
+  }
 };
 
 int main(void) {
   using tool_util::test_calc_expr;
+  using tool_util::test_min_max_map;
   test_calc_expr();
+  test_min_max_map();
   return 0;;
 }
