@@ -29,10 +29,10 @@ public:
 template<typename key_t, typename value_t>
 class cache_lfu {
   typedef class lfu_entry<key_t, value_t> lfu_entry_t;
-  typedef typename list<lfu_entry_t>::iterator lfu_entry_list_itr;
-  typedef typename list<list<lfu_entry_t>>::iterator freq_list_entry_itr;
-  typedef pair<freq_list_entry_itr, lfu_entry_list_itr> freq_list_entry_itr_pair;
-  typedef typename unordered_map<key_t, freq_list_entry_itr_pair>::iterator kv_lookup_pair_itr;
+  typedef typename std::list<lfu_entry_t>::iterator lfu_entry_list_itr;
+  typedef typename std::list<list<lfu_entry_t>>::iterator freq_list_entry_itr;
+  typedef typename std::pair<freq_list_entry_itr, lfu_entry_list_itr> freq_list_entry_itr_pair;
+  typedef typename std::unordered_map<key_t, freq_list_entry_itr_pair>::iterator kv_lookup_pair_itr;
 
 public:
   cache_lfu(int max_cap = DEF_CACHE_SIZE_CAP) : max_size_cap(max_cap), total_item_cnt(0) {}
