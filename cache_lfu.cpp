@@ -2,9 +2,7 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
-#include <unordered_set>
 #include <cmath>
-#include <cassert>
 #include <utility>
 
 namespace cache {
@@ -14,7 +12,6 @@ using std::endl;
 using std::pair;
 using std::list;
 using std::unordered_map;
-using std::unordered_set;
 
 const static int DEF_CACHE_SIZE_CAP = 65536;
 
@@ -43,6 +40,7 @@ public:
 
   bool set(const key_t & key, const value_t & value) {
     bool is_set_op_succes = false;
+    if (0 >= max_size_cap) { return is_set_op_succes; }
     kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
     if (kv_pair_lookup.end() != curr_pair_itr) {
       /* 1. check to see if curr. entry already exists, if yes, then just update & upd freq. */
@@ -75,6 +73,7 @@ public:
 
   /* basically pass by ref., true if we found a val, false if not */
   bool get(const key_t & key, value_t & value_ret) {
+    if (0 >= max_size_cap) { return false; }
     kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
     /* if no key found, short circuit */
     if (kv_pair_lookup.end() == curr_pair_itr) { return false; }
@@ -86,6 +85,7 @@ public:
 
   bool del(const key_t & key) {
     bool is_del_op_succes = false;
+    if (0 >= max_size_cap) { return is_del_op_succes; }
     /* 1. check to see if curr. entry already exists, if no, then just return false */
     kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
     if (kv_pair_lookup.end() == curr_pair_itr) { return is_del_op_succes; }
