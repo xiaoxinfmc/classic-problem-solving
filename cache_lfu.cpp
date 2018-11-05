@@ -108,7 +108,7 @@ public:
       }
       cout << "} ";
     }
-    cout << "]";
+    cout << "]" << endl;
   }
 
 private:
@@ -127,7 +127,7 @@ private:
     key_t key_to_lookup = curr_kv_pair_itr->first;
     freq_list_entry_itr curr_freq_entry_itr = curr_kv_pair_itr->second;
     int new_freq = curr_freq_entry_itr->begin()->second.freq + 1;
-    curr_freq_entry_itr->begin()->second.freq = new_freq;
+    (* curr_freq_entry_itr)[key_to_lookup].freq = new_freq;
 
     /* 2. check to see if need to insert a new entry, we add a new entry iff:
      *    - next_freq_entry_itr has a diff freq value than new_freq.
@@ -138,7 +138,7 @@ private:
         next_freq_entry_itr->begin()->second.freq > new_freq) {
       next_freq_entry_itr = lfu_freq_list.insert(next_freq_entry_itr, unordered_map<key_t, lfu_entry_t>());
     }
-    (* next_freq_entry_itr)[key_to_lookup] = curr_freq_entry_itr->begin()->second;
+    (* next_freq_entry_itr)[key_to_lookup] = (* curr_freq_entry_itr)[key_to_lookup];
 
     /* after prop the new elem, remove its old entry */
     curr_freq_entry_itr->erase(key_to_lookup);
