@@ -1793,8 +1793,198 @@ namespace string_util {
       assert(result == test_output[i]);
     }
   }
-};
 
+  /**
+   * 634. Word Squares
+   * - Given a set of words without duplicates, find all word squares you can
+   *   build from them. A sequence of words forms a valid word square if the
+   *   kth row and column read the exact same string, where 0 ≤ k < max
+   *   (numRows, numColumns).
+   *
+   * - For example, the word sequence ["ball","area","lead","lady"] forms a word
+   *   square because each word reads the same both horizontally and vertically.
+   *   b a l l
+   *   a r e a
+   *   l e a d
+   *   l a d y
+   * Notice
+   * - There are at least 1 and at most 1000 words.
+   * - All words will have the exact same length.
+   * - Word length is at least 1 and at most 5.
+   * - Each word contains only lowercase English alphabet a-z.
+   * Example
+   * - Given a set ["area","lead","wall","lady","ball"]
+   * - return [["wall","area","lead","lady"],["ball","area","lead","lady"]]
+   * Explanation:
+   * - The output consists of two word squares. The order of output does not
+   *   matter (just the order of words in each word square matters).
+   * - Given a set ["abat","baba","atan","atal"]
+   *   return [["baba","abat","baba","atan"],["baba","abat","baba","atal"]]
+   * Explanation:
+   * - The output consists of two word squares. The order of output does not
+   *   matter (just the order of words in each word square matters).
+   * Intuition:
+   * - any word square has same # of words compared to word length.
+   * - bf way to start out would be pick out len(word) # of words(can have dups)
+   *   and verify if it meet the criteria. but exp. -> n ^ len(word) * verify-time
+   * - although early pruning is possible, still very expensive.
+   * - focus would be how to do a better job when pruning bad paths.
+   * - taking a step back, whenever we choose the 1st word, we essentially picked
+   *   1. first word of the squre
+   *   2. the very 1st initial for all remaining possible words
+   *      backtracking on a prefix-trie?
+   *   3. when one of 2nd word is picked, then effectively dictate 1st 2 chars
+   * - we may still use dfs-similar tech to do the backtracking, but whenever
+   *   picking the next word, we will be only going to try paths based on trie.
+   */
+
+  const static int BRANCHING_FACTOR = 26;
+  class prefix_trie_entry {
+  public:
+    prefix_trie_entry(char val = '\0', int wid = -1) : chr_val(val), word_id(wid) { }
+    virtual ~prefix_trie_entry() {}
+
+    prefix_trie_entry * get_branching_ptr(char val) {
+      return entry_ptr_arr[((int)val - (int)'a') % BRANCHING_FACTOR];
+    }
+
+    void add_branching_ptr(char val, prefix_trie_entry * new_entry_ptr) {
+      entry_ptr_arr[((int)val - (int)'a') % BRANCHING_FACTOR] = new_entry_ptr;
+    }
+
+    static prefix_trie_entry * initialize_prefix_trie(const vector<string> & words) {
+      /* sential with empty char */
+      prefix_trie_entry * trie_root = new prefix_trie_entry(),
+                        * curr_tptr = trie_root;
+      for (int j = 0; j < words.size(); j++) {
+        string word = words[j];
+        curr_tptr = trie_root;
+        for (int i = 0; i < word.size(); i++) {
+          if (NULL == curr_tptr->get_branching_ptr(word[i])) {
+            curr_tptr->add_branching_ptr(
+              word[i], new prefix_trie_entry(word[i], (i == word.size() - 1) ? j : -1)
+            );
+          }
+          curr_tptr = curr_tptr->get_branching_ptr(word[i]);
+        }
+      }
+      return trie_root;
+    }
+
+    static void destroy_prefix_trie(prefix_trie_entry * trie_root) {
+      vector<prefix_trie_entry *> trie_ptr_buffer = { trie_root };
+      prefix_trie_entry * curr_trie_ptr = NULL;
+      while (!trie_ptr_buffer.empty()) {
+        curr_trie_ptr = trie_ptr_buffer.back();
+        trie_ptr_buffer.pop_back();
+        for (int i = 0; i < BRANCHING_FACTOR; i++) {
+          if (NULL == curr_trie_ptr->entry_ptr_arr[i]) { continue; }
+          trie_ptr_buffer.push_back(curr_trie_ptr->entry_ptr_arr[i]);
+        }
+        delete curr_trie_ptr;
+      }
+    }
+
+    static void get_all_words_with_same_prefix(prefix_trie_entry * trie_root,
+                                               const string & prefix,
+                                               vector<int> & word_ids) {
+      if (NULL == trie_root) { return; }
+      prefix_trie_entry * start_ptr = trie_root;
+      for (auto & chr : prefix) { start_ptr = start_ptr->get_branching_ptr(chr);
+                                  if (NULL == start_ptr) { return; } }
+      /* start dfs to get the path, return all word id(except the start_ptr) */
+      vector<prefix_trie_entry *> trie_ptr_buffer = { start_ptr };
+      prefix_trie_entry * curr_trie_ptr = NULL;
+      while (!trie_ptr_buffer.empty()) {
+        curr_trie_ptr = trie_ptr_buffer.back();
+        trie_ptr_buffer.pop_back();
+        if (curr_trie_ptr != start_ptr && curr_trie_ptr->word_id >= 0) {
+          word_ids.push_back(curr_trie_ptr->word_id);
+        }
+        for (int i = 0; i < BRANCHING_FACTOR; i++) {
+          if (NULL == curr_trie_ptr->entry_ptr_arr[i]) { continue; }
+          trie_ptr_buffer.push_back(curr_trie_ptr->entry_ptr_arr[i]);
+        }
+      }
+    }
+
+    char chr_val;
+    int word_id;
+    prefix_trie_entry * entry_ptr_arr[BRANCHING_FACTOR] = { NULL };
+  };
+
+  /*
+"area","lead","wall","lady","ball"
+"area" -> all word start with r
+   *   b a l l
+   *   a r e a
+   *   l e a d
+   *   l a d y
+ball -> no pfx
+area -> sq[0][1]
+lead -> sq[0][2] & sq[1][2]
+lady -> sq[0][3] & sq[1][3] & sq[2][3]
+   */
+
+  static string get_prefix_constraint(vector<string> & curr_square) {
+    string prefix = "";
+    int prefix_len = curr_square.size();
+    for (int i = 0; i < prefix_len; i++) {
+      if (prefix_len < curr_square[i].size()) {
+        prefix.append(1, curr_square[i][prefix_len]);
+      }
+    }
+    return prefix;
+  }
+
+  static void get_all_word_squares_recur(prefix_trie_entry * trie_ptr,
+                                         const vector<string> & words,
+                                         vector<string> & curr_square,
+                                         vector<vector<string>> & all_squares_ret) {
+    int curr_prefix_len = curr_square.size();
+    if (curr_prefix_len > 0 && curr_prefix_len >= curr_square.front().size()) {
+      all_squares_ret.push_back(curr_square); return;
+    }
+    vector<int> word_ids_to_try;
+    string prefix = get_prefix_constraint(curr_square);
+    prefix_trie_entry::get_all_words_with_same_prefix(trie_ptr, prefix, word_ids_to_try);
+    for (auto curr_id : word_ids_to_try) {
+      curr_square.push_back(words[curr_id]);
+      get_all_word_squares_recur(trie_ptr, words, curr_square, all_squares_ret);
+      curr_square.pop_back();
+    }
+  }
+
+  static vector<vector<string>> get_all_word_squares(const vector<string> & words) {
+    vector<string> curr_square;
+    vector<vector<string>> square_arr;
+    if (words.empty() || words.front().empty()) { return square_arr; }
+    prefix_trie_entry * trie_ptr = prefix_trie_entry::initialize_prefix_trie(words);
+    get_all_word_squares_recur(trie_ptr, words, curr_square, square_arr);
+    prefix_trie_entry::destroy_prefix_trie(trie_ptr);
+    return square_arr;
+  }
+
+  static void test_get_all_word_squares() {
+    cout << "20. test_get_all_word_squares" << endl;
+    vector<vector<string>> result;
+    vector<vector<string>> test_input = {
+      { "area","lead","wall","lady","ball" }, { "abat","baba","atan","atal" },
+    };
+    vector<vector<vector<string>>> test_output = {
+      { { "wall","area","lead","lady" }, { "ball","area","lead","lady" } },
+      { { "baba","abat","baba","atan" }, { "baba","abat","baba","atal" } }
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = get_all_word_squares(test_input[i]);
+      print_all_elem_vec<string>(result);
+      cout << "<=>" << endl;
+      print_all_elem_vec<string>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
+    }
+  }
+};
 
 int main(void) {
   using string_util::test_find_word_in_batch;
@@ -1818,6 +2008,7 @@ int main(void) {
   using string_util::test_find_all_palindrome_pairs;
   using string_util::test_calc_correct_order;
   using string_util::test_is_word_follows_pattern;
+  using string_util::test_get_all_word_squares;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -1840,6 +2031,7 @@ int main(void) {
   test_find_all_palindrome_pairs();
   test_calc_correct_order();
   test_is_word_follows_pattern();
+  test_get_all_word_squares();
 
   return 0;
 }
