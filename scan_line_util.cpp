@@ -507,11 +507,11 @@ namespace scan_line_util {
    *   path of (point-a -> point-b) can be cached efficiently, "i$j$k$l" -> dist
    */
   static int gen_point_key(int i, int j, const vector<vector<int>> & grid) {
-    return i * grid.size() + j;
+    return i * grid.front().size() + j;
   }
 
-  static bool is_point_valid(int x, int y, int max_row_id, int max_col_id, int value) {
-    return (x >= 0 && x <= max_row_id && y >= 0 && y <= max_col_id && 2 != value);
+  static bool is_point_valid(int x, int y, int max_row_id, int max_col_id) {
+    return (x >= 0 && x <= max_row_id && y >= 0 && y <= max_col_id);
   }
 
   static void search_and_update_dist_map(const vector<vector<int>> & grid,
@@ -527,19 +527,17 @@ namespace scan_line_util {
       pair<int, point> entry_pair = bfs_buffer.front();
       int curr_dist = entry_pair.first;
       point curr_point = entry_pair.second;
-      int curr_point_key = gen_point_key(curr_point.x, curr_point.y, grid);
 
       /* skip out of bound cases & mark flag as needed */
-      bfs_buffer.pop_back();
-      if (!is_point_valid(curr_point.x, curr_point.y, max_row_id, max_col_id,
-                          grid[curr_point.x][curr_point.y])) { continue; }
+      bfs_buffer.pop_front();
+      if (!is_point_valid(curr_point.x, curr_point.y, max_row_id, max_col_id) ||
+          2 == grid[curr_point.x][curr_point.y]) { continue; }
+      int curr_point_key = gen_point_key(curr_point.x, curr_point.y, grid);
       if (true == visit_lookup[curr_point_key]) { continue; }
       visit_lookup[curr_point_key] = true;
 
       /* check to see if we already reach a building */
-      if (1 == grid[curr_point.x][curr_point.y]) {
-        shortest_dist_map[curr_point_key] = curr_dist;
-      }
+      if (1 == grid[curr_point.x][curr_point.y]) { shortest_dist_map[curr_point_key] = curr_dist; }
 
       /* appending new nodes on the path */
       bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x + 1, curr_point.y)));
@@ -550,10 +548,11 @@ namespace scan_line_util {
   }
 
   static int calc_shortest_dist_to_all(const vector<vector<int>> & grid) {
-    int min_dist_sum = 0, curr_dist_sum = 0;
+    int min_dist_sum = INT_MAX, curr_dist_sum = 0, total_cnt = 0;
     vector<point> free_points;
     for (int i = 0; i < grid.size(); i++) {
       for (int j = 0; j < grid[i].size(); j++) {
+        if (1 == grid[i][j]) { total_cnt += 1; }
         if (0 == grid[i][j]) { free_points.push_back(point(i, j)); }
       }
     }
@@ -562,11 +561,29 @@ namespace scan_line_util {
     unordered_map<int, int> shortest_dist_map;
     for (auto & start_pnt : free_points) {
       search_and_update_dist_map(grid, start_pnt, shortest_dist_map);
-      for (auto & dist_pair : shortest_dist_map) { curr_dist_sum += dist_pair.second; }
-      min_dist_sum = min(min_dist_sum, curr_dist_sum);
+      if (total_cnt == shortest_dist_map.size()) {
+        for (auto & dist_pair : shortest_dist_map) { curr_dist_sum += dist_pair.second; }
+        min_dist_sum = min(min_dist_sum, curr_dist_sum);
+      }
       shortest_dist_map.clear();
+      curr_dist_sum = 0;
     }
     return min_dist_sum;
+  }
+
+  static void test_calc_shortest_dist_to_all() {
+    cout << "5. test_calc_shortest_dist_to_all" << endl;
+    int result = 0;
+    vector<int> test_output = { 7, 88 };
+    vector<vector<vector<int>>> test_input = {
+      { { 1, 0, 2, 0, 1 }, { 0, 0, 0, 0, 0 }, { 0, 0, 1, 0, 0 } },
+      {{1,1,1,1,1,0},{0,0,0,0,0,1},{0,1,1,0,0,1},{1,0,0,1,0,1},{1,0,1,0,0,1},{1,0,0,0,0,1},{0,1,1,1,1,0}}
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_shortest_dist_to_all(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
   }
 };
 
@@ -575,9 +592,11 @@ int main(void) {
   using scan_line_util::test_calc_closest_pair_dist;
   using scan_line_util::test_calc_union_of_rectangles;
   using scan_line_util::test_get_boundary_points;
+  using scan_line_util::test_calc_shortest_dist_to_all;
 
   test_count_num_of_planes();
   test_calc_closest_pair_dist();
   test_calc_union_of_rectangles();
   test_get_boundary_points();
+  test_calc_shortest_dist_to_all();
 }
