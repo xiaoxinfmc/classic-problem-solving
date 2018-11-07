@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <list>
 #include <utility>
+#include <deque>
+#include <unordered_map>
 
 namespace scan_line_util {
   using namespace std;
@@ -172,7 +174,7 @@ namespace scan_line_util {
    */
   class point {
   public:
-    point(long long xv, long long yv) : x(xv), y(yv) {}
+    point(long long xv = -1, long long yv = -1) : x(xv), y(yv) {}
     virtual ~point() {}
     long long x, y;
     friend bool operator< (const point & l, const point & r) {
@@ -477,6 +479,94 @@ namespace scan_line_util {
         assert(result[j] == test_output[i][j]);
       }
     }
+  }
+
+  /**
+   * 803. Shortest Distance from All Buildings
+   * - You want to build a house on an empty land which reaches all buildings
+   *   in the shortest amount of distance. You can only move up, down, left
+   *   and right. You are given a 2D grid of values 0, 1 or 2, where:
+   * - Each **0** marks an empty land which you can pass by freely.
+   *   Each **1** marks a building which you cannot pass through.
+   *   Each **2** marks an obstacle which you cannot pass through.
+   * Example
+   * - For example, given three buildings at (0,0), (0,4), (2,2), and an
+   *   obstacle at (0,2) (row, col):
+   *   1 - 0 - 2 - 0 - 1
+   *   |   |   |   |   |
+   *   0 - 0 - x - 0 - 0
+   *   |   |   |   |   |
+   *   0 - 0 - 1 - 0 - 0
+   * - The point (1,2) is an ideal empty land to build a house, as the total
+   *   travel distance of 3+3+1=7 is minimal. So return 7.
+   * Intuition:
+   * - need to find a free point where it can reach all buildings with min cost
+   * - all source shortest path? -> O(n^3), again, may not be that bad, because
+   *   diff edges share the same weight, bfs on every free point -> O(n^2) ?
+   * - optimization would be avoid redudant calc, as the relation of shortest
+   *   path of (point-a -> point-b) can be cached efficiently, "i$j$k$l" -> dist
+   */
+  static int gen_point_key(int i, int j, const vector<vector<int>> & grid) {
+    return i * grid.size() + j;
+  }
+
+  static bool is_point_valid(int x, int y, int max_row_id, int max_col_id, int value) {
+    return (x >= 0 && x <= max_row_id && y >= 0 && y <= max_col_id && 2 != value);
+  }
+
+  static void search_and_update_dist_map(const vector<vector<int>> & grid,
+                                         point & start_pnt,
+                                         unordered_map<int, int> & shortest_dist_map) {
+    vector<bool> visit_lookup(grid.size() * grid.front().size(), false);
+    deque<pair<int, point>> bfs_buffer = { pair<int, point>(0, start_pnt) };
+    int max_row_id = grid.size() - 1, max_col_id = grid.front().size() - 1;
+
+    /* start bfs search for all buildings */
+    while (!bfs_buffer.empty()) {
+      /* read out curr pos info */
+      pair<int, point> entry_pair = bfs_buffer.front();
+      int curr_dist = entry_pair.first;
+      point curr_point = entry_pair.second;
+      int curr_point_key = gen_point_key(curr_point.x, curr_point.y, grid);
+
+      /* skip out of bound cases & mark flag as needed */
+      bfs_buffer.pop_back();
+      if (!is_point_valid(curr_point.x, curr_point.y, max_row_id, max_col_id,
+                          grid[curr_point.x][curr_point.y])) { continue; }
+      if (true == visit_lookup[curr_point_key]) { continue; }
+      visit_lookup[curr_point_key] = true;
+
+      /* check to see if we already reach a building */
+      if (1 == grid[curr_point.x][curr_point.y]) {
+        shortest_dist_map[curr_point_key] = curr_dist;
+      }
+
+      /* appending new nodes on the path */
+      bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x + 1, curr_point.y)));
+      bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x - 1, curr_point.y)));
+      bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x, curr_point.y + 1)));
+      bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x, curr_point.y - 1)));
+    }
+  }
+
+  static int calc_shortest_dist_to_all(const vector<vector<int>> & grid) {
+    int min_dist_sum = 0, curr_dist_sum = 0;
+    vector<point> free_points;
+    for (int i = 0; i < grid.size(); i++) {
+      for (int j = 0; j < grid[i].size(); j++) {
+        if (0 == grid[i][j]) { free_points.push_back(point(i, j)); }
+      }
+    }
+
+    /* holds all pos-key -> dist from a certain pt to all building */
+    unordered_map<int, int> shortest_dist_map;
+    for (auto & start_pnt : free_points) {
+      search_and_update_dist_map(grid, start_pnt, shortest_dist_map);
+      for (auto & dist_pair : shortest_dist_map) { curr_dist_sum += dist_pair.second; }
+      min_dist_sum = min(min_dist_sum, curr_dist_sum);
+      shortest_dist_map.clear();
+    }
+    return min_dist_sum;
   }
 };
 
