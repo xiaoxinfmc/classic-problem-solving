@@ -536,8 +536,10 @@ namespace scan_line_util {
       if (true == visit_lookup[curr_point_key]) { continue; }
       visit_lookup[curr_point_key] = true;
 
-      /* check to see if we already reach a building */
-      if (1 == grid[curr_point.x][curr_point.y]) { shortest_dist_map[curr_point_key] = curr_dist; }
+      /* check to see if we already reach a building & cannot pass a building */
+      if (1 == grid[curr_point.x][curr_point.y]) {
+        shortest_dist_map[curr_point_key] = curr_dist; continue;
+      }
 
       /* appending new nodes on the path */
       bfs_buffer.push_back(pair<int, point>(curr_dist + 1, point(curr_point.x + 1, curr_point.y)));
@@ -556,7 +558,6 @@ namespace scan_line_util {
         if (0 == grid[i][j]) { free_points.push_back(point(i, j)); }
       }
     }
-
     /* holds all pos-key -> dist from a certain pt to all building */
     unordered_map<int, int> shortest_dist_map;
     for (auto & start_pnt : free_points) {
