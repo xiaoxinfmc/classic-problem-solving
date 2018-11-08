@@ -445,12 +445,77 @@ namespace tool_util {
     obj.dec("hello"); obj.print_all_elem(); obj.dec("hello"); obj.print_all_elem();
     obj.dec("hello"); obj.print_all_elem(); obj.dec("hello"); obj.print_all_elem();
   }
+
+  /**
+   * 707. Optimal Account Balancing
+   * - Given a directed graph where each edge is represented by a tuple, such as
+   *   [u, v, w] represents an edge with a weight w from u to v.
+   * - You need to calculate at least the need to add the number of edges to
+   *   ensure that each point of the weight are balancing. That is, the sum of
+   *   weight of the edge pointing to this point is equal to the sum of weight
+   *   of the edge of the point that points to the other point.
+   * For example:
+   * - Given a graph [[0,1,10],[2,0,5]] 0 give 1 $10
+   *   Return 2
+   *   Two edges are need to added. There are [1,0,5] and [1,2,5]
+   * - Given a graph [[0,1,10],[1,0,1],[1,2,5],[2,0,5]]
+   *   Return 1
+   *   Only one edge need to added. There is [1,0,4]
+   * Notice
+   * 1.Note that u <> v and w > 0.
+   * 2.index may not be linear, e.g. we could have the points 0, 1, 2 or we
+   *   could also have the points 0, 2, 6.
+   * Intuition:
+   * - all src max flow?
+   */
+  static int get_settlement_cost(vector<int> & balances,
+                                 int curr_id, int cost) {
+    while (curr_id < balances.size() && 0 == balances[curr_id]) { curr_id++; }
+    int total_cost = std::numeric_limits<int>::max();
+    for (long i = curr_id + 1, prev_bal = 0; i < balances.size(); i++) {
+      if (balances[i] != prev_bal && balances[i] * balances[curr_id] < 0) {
+        balances[i] += balances[curr_id];
+        total_cost = std::min(total_cost, get_settlement_cost(balances, curr_id + 1, cost + 1));
+        balances[i] -= balances[curr_id];
+        prev_bal = balances[i];
+      }
+    }
+    return total_cost < std::numeric_limits<int>::max() ? total_cost : cost;
+  }
+
+  static int calc_min_trxns(vector<vector<int>> & trxns) {
+    unordered_map<int, long> balance_map;
+    for (auto & trxn : trxns) { balance_map[trxn[0]] -= trxn[2];
+                                balance_map[trxn[1]] += trxn[2]; }
+    /* record all outstanding balance, either credit or debt */
+    vector<int> outstanding_balances;
+    for (auto & balance_pair : balance_map) {
+      if (balance_pair.second != 0) {
+        outstanding_balances.push_back(balance_pair.second);
+      }
+    }
+    /* start to resolve balances with min trxns, [ -5, 3, 2, 10, -10 ] */
+    return get_settlement_cost(outstanding_balances, 0, 0);
+  }
+
+  static void test_calc_min_trxns() {
+    int result = 0;
+    vector<int> test_output = { 2, 1 };
+    vector<vector<vector<int>>> test_input = { {{0,1,10},{2,0,5}}, {{0,1,10},{1,0,1},{1,2,5},{2,0,5}} };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_min_trxns(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
   using tool_util::test_calc_expr;
   using tool_util::test_min_max_map;
+  using tool_util::test_calc_min_trxns;
   test_calc_expr();
   test_min_max_map();
+  test_calc_min_trxns();
   return 0;;
 }
