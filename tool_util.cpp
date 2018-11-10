@@ -508,6 +508,117 @@ namespace tool_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 398. Random Pick Index
+   * - Given an array of integers with possible duplicates, randomly output the
+   *   index of a given target number. You can assume that the given target
+   *   number must exist in the array.
+   * Note:
+   * - The array size can be very large. Solution that uses too much extra space
+   *   will not pass the judge.
+   * Example:
+   * - int[] nums = new int[] {1,2,3,3,3};
+   * - Solution solution = new Solution(nums);
+   * - pick(3) should return either index 2, 3, or 4 randomly. Each index should
+   *   have equal probability of returning.
+   * - solution.pick(3);
+   * - pick(1) should return 0. Since in the array only nums[0] is equal to 1.
+   * - solution.pick(1);
+   * Intuition:
+   * - no extra space is required, but only 1 id from target is needed.
+   * - input may not be sorted.
+   * - all we care are those indices related to the target number.
+   * - only 1 -> 1/1, { 1, 1 } -> 50% each, { 1, 1, 1 } -> p 33% of each idx.
+   *      rand() % 1  rand() % 2 == 0       rand() % 3 == 0
+   *                               { 0, 1, 2 } -> 0 -> 1 * 1/2 * 2/3 -> 1/3
+   *                                              1 -> 1/2 * 2/3 -> 1/3
+   *                                              2 -> 1/3
+   * - maintain a cnt of curr target number, each time try replace existing id
+   *   if we see a new target.
+   */
+  static int random_pick_index_by_value(const vector<int> & input, int target) {
+    int target_cnt = 0, target_id = 0;
+    for (int i = 0; i < input.size(); i++) {
+      if (input[i] == target) {
+        target_cnt += 1;
+        if (0 == std::rand() % target_cnt) {
+          target_id = i;
+        }
+      }
+    }
+    return target_id;
+  }
+
+  /**
+   * 528. Random Pick with Weight
+   * - Given an array w of positive integers, where w[i] describes the weight
+   *   of index i, write a function pickIndex which randomly picks an index in
+   *   proportion to its weight.
+   * Note:
+   * - 1 <= w.length <= 10000
+   * - 1 <= w[i] <= 10^5
+   * - pickIndex will be called at most 10000 times.
+   * Example 1:
+   * - Input:
+   * - ["Solution","pickIndex"]
+   * - [[[1]],[]]
+   * - Output: [null,0]
+   * Example 2:
+   * - Input:
+   * - ["Solution","pickIndex","pickIndex","pickIndex","pickIndex","pickIndex"]
+   * - [[[1,3]],[],[],[],[],[]]
+   * - Output: [null,0,1,1,1,0]
+   * Explanation of Input Syntax:
+   * - The input is two lists: the subroutines called and their arguments.
+   * - Solution's constructor has one argument, the array w.
+   * - pickIndex has no arguments. Arguments are always wrapped with a list,
+   *   even if there aren't any
+   * Intuition:
+   * - simplest assumption for all equal weights { 1, 1, 1, 1 }
+   *   then each index has a p dist. of 1/4, simply do random() % 4
+   * - for { 1, 3, 2, 4 }, p dist. should be { 1/10, 3/10, 2/10, 4/10 }
+   * - ideally our method should be adptive, one pass & const space.
+   *   the goal is to return just one random idx consistent with w dist
+   *   { 1 } -> 1, 1
+   *   { 1, 3 } -> idx(1) sum(4), curr-val(3) -> 3/4 of p that we pick 1 => (random() % 4) < curr-val(3)
+   *   { 1, 3, 2 } -> for 2, -> random % 6 < 2, for 3 -> 3/4 * 4/6 (pick 3 & not pick 2) => 3/6 Y
+   *               -> for 1, -> 1 * 1/4 * 4/6 -> 1/6 (pick 1 & not pick 3 & 2);
+   * - could expensive to gen random each time, then sum up 1st, then do a bsearch.
+   *   { 1, 3, 2, 4 }
+   *   { 1, 4, 6, 10 } => { 0 ~ 1, 1 ~ 4, 4 ~ 6, 6 ~ 10 }
+   */
+  static int fast_random_pick_index_by_weight(const vector<int> & weight_arr) {
+    vector<int> prefix_sum;
+    int curr_sum = 0, target_id = INT_MIN;
+    for (int i = 0; i < weight_arr.size(); i++) {
+      curr_sum += weight_arr[i];
+      prefix_sum.push_back(curr_sum);
+    }
+    int target_sum = (random() % curr_sum) + 1;
+    int low = 0, high = prefix_sum.size() - 1, mid = 0;
+    while (low <= high) {
+      mid = (low + high) / 2;
+      if (prefix_sum[mid] == target_sum) { target_id = mid; break; }
+      else if (prefix_sum[mid] < target_sum) { low = mid + 1; }
+      else { high = mid - 1; }
+    }
+    /* enter here, low & high actually crossed(as value is surely within range) */
+    if (target_id != mid) { target_id = std::max(low, high); }
+
+    return target_id;
+  }
+
+  static int random_pick_index_by_weight(const vector<int> & weight_arr) {
+    int curr_sum = 0, target_id = 0;
+    for (int i = 0; i < weight_arr.size(); i++) {
+      curr_sum += weight_arr[i];
+      if ((random() % curr_sum) < weight_arr[i]) {
+        target_id = i;
+      }
+    }
+    return target_id;
+  }
 };
 
 int main(void) {
