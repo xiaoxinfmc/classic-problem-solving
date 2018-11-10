@@ -1984,6 +1984,117 @@ lady -> sq[0][3] & sq[1][3] & sq[2][3]
       for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
     }
   }
+
+  /**
+   * 885. Encode String with Shortest Length
+   * - Given a non-empty string, encode the string such that its encoded length
+   *   is the shortest.
+   * - The encoding rule is: k[encoded_string], where the encoded_string inside
+   *   the square brackets is being repeated exactly k times.
+   * Example
+   * - Given s = "aaa", return "aaa".
+   * Explanation:
+   * - There is no way to encode it such that it is shorter than the input
+   *   string, so we do not encode it.
+   * - Given s = "aaaaa", return "5[a]".
+   * Explanation:
+   * - "5[a]" is shorter than "aaaaa" by 1 character.
+   * - Given s = "aaaaaaaaaa", return "10[a]"
+   * Explanation:
+   * - "a9[a]" or "9[a]a" are also valid solutions, both of them have the same
+   *   length = 5, which is the same as "10[a]".
+   * - Given s = "aabcaabcd", return "2[aabc]d".
+   * Explanation: 
+   * - "aabc" occurs twice, so one answer can be "2[aabc]d".
+   * - Given s = "abbbabbbcabbbabbbc", return "2[2[abbb]c]".
+   * Explanation: 
+   * - "abbbabbbc" occurs twice, but "abbbabbbc" can also be encoded to
+   *   "2[abbb]c", so one answer can be "2[2[abbb]c]".
+   * Notice
+   * - k will be a positive integer and encoded string will not be empty or
+   *   have extra space.
+   * - You may assume that the input string contains only lowercase English
+   *   letters. The string's length is at most 160.
+   * - If an encoding process does not make the string shorter, then do not
+   *   encode it. If there are several solutions, return any of them is fine.
+   * - "abbbabbbcabbbabbbc"
+   * Intuition:
+   * - encoding -> f(aaaaa) -> 5[a], f(aaaaabaaaaab) -> f(f(aaaaa)bf(aaaaa)b)
+   *                        -> f(f(5a)b) -> 2[5[a]b]
+   *   natrually fits in dfs backtracking scheme.
+   * - also as need the actual encoding plan, so DP may not have advantage.
+   * - natrual way of thinking is sth similar to find out an optimal AST doing
+   *   non-lossy compression (variation of run-length-encoding & huffman tree)
+   * - specific to this problem, requirement is diff from strict compression,
+   *   as len(str) <= 160, lowercase only & only encode if becoming shorter.
+   * - rle can be applied to only partial of the input & mulitple times.
+   *              f(abbbabbbcabbbabbbc)
+   *                    /        \
+   *              f(abbbabbbc) f(abbbabbbc)
+   *              /         \
+   *          f(abbbabbb)    c
+   *            /     \
+   *         f(abbb)  f(abbb)
+   * - bf way of thinking is to try every possible break point to apply rle
+   *   but unrealistic, as it blows to 2^n
+   * - then dp again ? as it does not seems to be an very straight way for it
+   *   hard part is to figure out the overlapping part of diff. sub problem.
+   * - assume input is str of size n, we already know the optimal encoding of
+   *   str[n-1], 9[x]2[5[a]b]c -> { 9[x], 2[5[a]b], c }
+   *           2:[5:[a], b],
+   * - { 9[x], 2[5[a]b], c } input -> c, then look prev group until things done
+   * - fact: each time to judge whether or not to encode, we always check with
+   *   its curr. neighboring group, sth similar to union-find?
+   * - or considering optimal encoding is a multi-step thing, each round of job
+   *   depends on the result of previous round.
+   *
+   * - DP require not just simple index/true/false lookup, it require actual
+   *   state (say actual value of curr. encoded token), very diff. cases here.
+   * - let encode_lookup(i, j) => string from index i to index j in encoded form
+   *   then the goal is to calc encode_lookup(0, n)
+   * - when str[n] is coming, then encode_lookup(0, n) = { 0 <= k <= n - 1,
+   *     can str[0, k] & str[k + 1, n - 1] + n form a better encoding
+   *   }
+   * - base case:
+   *   if the # of repeation >= 5, say aaaaa -> 5[a] then we def. need rle
+   *   if rle is not applied, then 1st char is a-z, then
+   */
+  static string encode_str(const string & str) {
+    vector<vector<string>> encode_lookup(str.size(), vector<string>(str.size(), ""));
+    for (int step = 1; step <= str.size(); step++) {
+      for (int i = 0; i + step - 1 < str.size(); i++) {
+        int j = i + step - 1;
+        encode_lookup[i][j] = str.substr(i, step);
+        string prev_token = str.substr(i, j - i + 1);
+        string replace_tk = "";
+        int pos = (prev_token + prev_token).find(prev_token, 1);
+        if (pos < prev_token.size()) {
+          replace_tk = std::to_string(prev_token.size() / pos) + "[" + encode_lookup[i][i + pos - 1] + "]";
+          if (replace_tk.size() < encode_lookup[i][j].size()) { encode_lookup[i][j] = replace_tk; }
+          continue;
+        }
+        for (int k = i; k < j; k++) {
+          string left = encode_lookup[i][k];
+          string right = encode_lookup[k + 1][j];
+          if (left.size() + right.size() < encode_lookup[i][j].size()) {
+            encode_lookup[i][j] = left + right;
+          }
+        }
+      }
+    }
+    return encode_lookup.front().back();
+  }
+
+  static void test_encode_str() {
+    string result = "";
+    vector<string> test_input = { "aaa", "aaaaa", "aaaaaaaaaa", "aabcaabcd", "abbbabbbcabbbabbbc" };
+    vector<string> test_output = { "aaa", "5[a]", "10[a]", "2[aabc]d", "2[2[abbb]c]" };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = encode_str(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(test_output[i] == result);
+    }
+  }
 };
 
 int main(void) {
@@ -2009,6 +2120,7 @@ int main(void) {
   using string_util::test_calc_correct_order;
   using string_util::test_is_word_follows_pattern;
   using string_util::test_get_all_word_squares;
+  using string_util::test_encode_str;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -2032,6 +2144,7 @@ int main(void) {
   test_calc_correct_order();
   test_is_word_follows_pattern();
   test_get_all_word_squares();
+  test_encode_str();
 
   return 0;
 }
