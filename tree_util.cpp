@@ -1095,13 +1095,28 @@ namespace tree_util {
 
     tree_str = binary_tree_codec::serialize_binary_tree(NULL);
     x = binary_tree_codec::deserialize_binary_tree(tree_str);
-    cout << tree_str << " <=> []" << endl;
+    cout << tree_str << " <=>" << endl << "[]" << endl;
     cout << "in-order: "; lvr_bst_print(x); cout << endl;
     cout << "pe-order: "; vlr_bst_print(x); cout << endl;
 
     tree_str = binary_tree_codec::serialize_binary_tree(&y);
     x = binary_tree_codec::deserialize_binary_tree(tree_str);
-    cout << tree_str << " <=> [15,]" << endl;
+    cout << tree_str << " <=>" << endl << "[0|15,]" << endl;
+    cout << "in-order: "; lvr_bst_print(x); cout << endl;
+    cout << "pe-order: "; vlr_bst_print(x); cout << endl;
+
+    tree_str = binary_tree_codec::serialize_binary_tree(&d);
+    x = binary_tree_codec::deserialize_binary_tree(tree_str);
+    cout << tree_str << " <=>" << endl << "[0|1,2|2,6|3,]" << endl;
+    cout << "in-order: "; lvr_bst_print(x); cout << endl;
+    cout << "pe-order: "; vlr_bst_print(x); cout << endl;
+
+    binary_tree_node aa(6);  binary_tree_node cc(8);
+    binary_tree_node gg(10); binary_tree_node hh(11);
+    aa.right_ptr = &cc; cc.right_ptr = &gg; gg.right_ptr = &hh;
+    tree_str = binary_tree_codec::serialize_binary_tree(&aa);
+    x = binary_tree_codec::deserialize_binary_tree(tree_str);
+    cout << tree_str << " <=>" << endl << "[0|6,2|8,6|10,14|11,]" << endl;
     cout << "in-order: "; lvr_bst_print(x); cout << endl;
     cout << "pe-order: "; vlr_bst_print(x); cout << endl;
   }
