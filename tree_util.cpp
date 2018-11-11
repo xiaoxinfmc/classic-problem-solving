@@ -1003,14 +1003,13 @@ namespace tree_util {
   const static string TREE_START_CHAR = "[";
   const static string TREE_END_CHAR = "]";
   const static string TREE_DELIM = ",";
-  const static string TREE_EMPTY_NODE = "|";
+  const static string TREE_NUM_DELIM = "|";
   const static string NEGATIVE_SIGN = "-";
   class binary_tree_codec {
   public:
     static string serialize_binary_tree(binary_tree_node * root_ptr) {
       if (NULL == root_ptr) { return TREE_START_CHAR + TREE_END_CHAR; }
-      string tree_str;
-      vector<binary_tree_node * > all_ptr_buffer;
+      string tree_str = TREE_START_CHAR;
       deque<pair<int, binary_tree_node *>> ptr_visit_buffer = {
         pair<int, binary_tree_node *>(0, root_ptr)
       };
@@ -1019,11 +1018,7 @@ namespace tree_util {
         pair<int, binary_tree_node *> & curr_pair = ptr_visit_buffer.front();
         curr_ptr_id = curr_pair.first; curr_ptr = curr_pair.second;
         ptr_visit_buffer.pop_front();
-        /* check if we need to append null ptr */
-        for (int i = all_ptr_buffer.size(); i < curr_ptr_id; i++) {
-          all_ptr_buffer.push_back(NULL);
-        }
-        all_ptr_buffer.push_back(curr_ptr);
+        tree_str.append(std::to_string(curr_ptr_id) + TREE_NUM_DELIM + std::to_string(curr_ptr->value) + TREE_DELIM);
         if (NULL != curr_ptr->left_ptr) {
           ptr_visit_buffer.push_back(pair<int, binary_tree_node *>(curr_ptr_id * 2 + 1, curr_ptr->left_ptr));
         }
@@ -1031,44 +1026,39 @@ namespace tree_util {
           ptr_visit_buffer.push_back(pair<int, binary_tree_node *>(curr_ptr_id * 2 + 2, curr_ptr->right_ptr));
         }
       }
-      tree_str = TREE_START_CHAR;
-      for (int i = 0; i < all_ptr_buffer.size(); i++) {
-        if (NULL == all_ptr_buffer[i]) { tree_str += TREE_EMPTY_NODE; }
-        else { tree_str += std::to_string(all_ptr_buffer[i]->value); }
-        tree_str += TREE_DELIM;
-      }
       tree_str += TREE_END_CHAR;
       return tree_str;
     }
 
     static binary_tree_node * deserialize_binary_tree(const string & data) {
       if (data.size() <= 2) { return NULL; }
-      vector<binary_tree_node *> all_ptr_buffer;
+      unordered_map<int, binary_tree_node *> all_ptr_buffer;
+      int max_id = -1;
       for (int i = 0; i < data.size(); ) {
         if (TREE_START_CHAR[0] == data[i] || TREE_END_CHAR[0] == data[i] ||
             TREE_DELIM[0] == data[i]) { i++; continue; }
-        string curr_value = "";
+        string curr_token = "";
         int j = i;
-        for (; TREE_DELIM[0] != data[j]; j++) { curr_value.append(1, data[j]); }
-        if (TREE_EMPTY_NODE == curr_value) {
-          all_ptr_buffer.push_back(NULL);
-        } else {
-          all_ptr_buffer.push_back(new binary_tree_node(atoi(data.substr(i, j - i).c_str())));
-        }
+        for (; TREE_DELIM[0] != data[j]; j++) { curr_token.append(1, data[j]); }
+        int delim_pos = curr_token.find(TREE_NUM_DELIM);
+        max_id = atoi(curr_token.substr(0, delim_pos).c_str());
+        all_ptr_buffer[max_id] = new binary_tree_node(atoi(curr_token.substr(delim_pos + 1).c_str()));
         i = j;
       }
-      for (int i = 0; i < all_ptr_buffer.size(); i++) {
-        if (NULL == all_ptr_buffer[i]) { continue; }
+      unordered_map<int, binary_tree_node *>::iterator curr_pair_itr = all_ptr_buffer.end();
+      for (int i = 0; i <= max_id; i++) {
+        curr_pair_itr = all_ptr_buffer.find(i);
+        if (curr_pair_itr == all_ptr_buffer.end()) { continue; }
         int left_child_id = 2 * i + 1,
             right_child_id = left_child_id + 1;
-        if (left_child_id < all_ptr_buffer.size()) {
+        if (all_ptr_buffer.count(left_child_id) > 0) {
           all_ptr_buffer[i]->left_ptr = all_ptr_buffer[left_child_id];
         }
-        if (right_child_id < all_ptr_buffer.size()) {
+        if (all_ptr_buffer.count(right_child_id) > 0) {
           all_ptr_buffer[i]->right_ptr = all_ptr_buffer[right_child_id];
         }
       }
-      return all_ptr_buffer.empty() ? NULL : all_ptr_buffer.front();
+      return all_ptr_buffer.empty() ? NULL : all_ptr_buffer[0];
     }
   };
 
@@ -1096,7 +1086,7 @@ namespace tree_util {
     cout << "15. test_binary_tree_codec" << endl;
     string tree_str = binary_tree_codec::serialize_binary_tree(& a);
     cout << tree_str << " <=>" << endl
-         << "[6,4,8,1,5,7,10,|,2,|,|,|,|,9,11,|,|,|,3,|,|,|,|,|,|,|,|,|,|,15,]" << endl;
+         << "[0|6,1|4,2|8,3|1,4|5,5|7,6|10,8|2,13|9,14|11,18|3,29|15,]" << endl;
     binary_tree_node * x = binary_tree_codec::deserialize_binary_tree(tree_str);
     cout << "in-order: 1 2 3 4 5 6 7 8 9 10 15 11" << endl
          << "pe-order: 6 4 1 2 3 5 8 7 10 9 11 15" << endl;
