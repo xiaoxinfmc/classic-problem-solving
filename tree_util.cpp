@@ -4,6 +4,7 @@
 #include <deque>
 #include <cmath>
 #include <cassert>
+#include <climits>
 #include <unordered_map>
 
 using namespace std;
@@ -871,6 +872,104 @@ namespace tree_util {
     find_largest_sub_bst_recur(root_ptr, &max_area, &subtree_ptr);
     return max_area;
   }
+
+  /**
+   * 124. Binary Tree Maximum Path Sum
+   * - Given a non-empty binary tree, find the maximum path sum.
+   * - For this problem, a path is defined as any sequence of nodes from some
+   *   starting node to any node in the tree along the parent-child connections.
+   *   The path must contain at least one node & does not need to go through root.
+   * Example 1:
+   * - Input: [1,2,3]
+   *        1
+   *       / \
+   *      2   3
+   * - Output: 6
+   * Example 2:
+   * - Input: [-10,9,20,null,null,15,7]
+   *    -10
+   *    / \
+   *   9  20
+   *     /  \
+   *    15   7
+   * - Output: 42
+   * Intuition:
+   * - Any path contains >= 1 node, let's call the pivot to be the key node.
+   *   if there is only 1 node, then that one is the key node.
+   *   or the path could just end at key node, say $path-of-left-subtree + keynode
+   *   or the path also has right half, say $path-of-left-subtree + keynode + $path-of-right-subtree
+   * - let max-subpath-sum(key-ptr) denote the max-sum for path ends at key-ptr
+   *   (just the left/right portion of the entire path), then
+   *   max-subpath-sum(key-ptr) = { max { max-subpath-sum(key-ptr->left) + key-ptr->val,
+   *                                      max-subpath-sum(key-ptr->right) + key-ptr->val,
+   *                                      key-ptr->val } }
+   *                          key-ptr (ends at key-ptr)
+   *         /------------------  ---------------\
+   *  max-left-path-sum                   max-left-path-sum
+   *   (ends at key-ptr-left)            (ends at key-ptr-right)
+   * - after pre-calc all sub-path-sum ends at each node, then treverse again to get the
+   *   real max path sum for entire path of left-child-sum + keynode->val + right-child-sum
+   * - T(n) ~ O(n), S(n) -> O(n)
+   */
+  static int treverse_and_pre_calc_path_sum(binary_tree_node * root_ptr, int & max_path_sum) {
+    if (NULL == root_ptr) { return 0; }
+    int left_path_sum = treverse_and_pre_calc_path_sum(root_ptr->left_ptr, max_path_sum);
+    int right_path_sum = treverse_and_pre_calc_path_sum(root_ptr->right_ptr, max_path_sum);
+    int curr_path_sum = max(root_ptr->value, max(left_path_sum + root_ptr->value,
+                                                 right_path_sum + root_ptr->value));
+    max_path_sum = max(
+      curr_path_sum, max(max_path_sum, max(root_ptr->value, left_path_sum + root_ptr->value + right_path_sum))
+    );
+    return curr_path_sum;
+  }
+
+  static int get_max_path_sum(binary_tree_node * root_ptr) {
+    if (NULL == root_ptr) { return 0; }
+    int max_path_sum = std::numeric_limits<int>::min();
+    /* 1. pre-calc all sub-path-sum ends at each node */
+    treverse_and_pre_calc_path_sum(root_ptr, max_path_sum);
+    /* 2. after pre-calc all sub-path-sum ends at each node, then treverse again */
+    // max_path_sum = treverse_and_calc_max_path_sum(root_ptr, max_path_sum_lookup);
+    return max_path_sum;
+  }
+
+  static void test_get_max_path_sum() {
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     *    -10l
+     *    / \
+     *   9m 20n
+     *     /  \
+     *    15o  7p
+     */
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    cout << "14. test_get_max_path_sum" << endl;
+    cout << get_max_path_sum(& a) << " <=> " << 45 << endl;
+
+    binary_tree_node l(-10);  binary_tree_node m(9);  binary_tree_node n(20);
+    binary_tree_node o(15);  binary_tree_node p(7);
+    l.left_ptr = &m; l.right_ptr = &n; n.left_ptr = & o; n.right_ptr = & p;
+
+    cout << get_max_path_sum(& l) << " <=> " << 42 << endl;
+    cout << get_max_path_sum(NULL) << " <=> " << 0 << endl;
+  }
+
   /**
    * 558. Quad Tree Intersection
    * A quadtree is a tree data in which each internal node has exactly four
@@ -1018,6 +1117,7 @@ int main(void) {
   using tree_util::boundary_traverse_bt;
   using tree_util::is_bst_valid;
   using tree_util::find_largest_sub_bst;
+  using tree_util::test_get_max_path_sum;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -1179,6 +1279,8 @@ int main(void) {
   b.value = 10; c.value = 11;
   cout << "3 <=> " << find_largest_sub_bst(&a) << endl;
   b.value = 4; c.value = 8;
+
+  test_get_max_path_sum();
 
   return 0;
 }
