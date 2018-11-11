@@ -971,6 +971,152 @@ namespace tree_util {
   }
 
   /**
+   * 297. Serialize and Deserialize Binary Tree
+   * - Serialization is the process of converting a data structure or object
+   *   into a sequence of bits so that it can be stored in a file or memory
+   *   buffer, or transmitted across a network connection link to be
+   *   reconstructed later in the same or another computer environment.
+   * - Design an algorithm to serialize and deserialize a binary tree. There
+   *   is no restriction on how your serialization/deserialization algorithm
+   *   should work. You just need to ensure that a binary tree can be
+   *   serialized to a string and this string can be deserialized to the
+   *   original tree structure.
+   * Example: 
+   * - You may serialize the following tree:
+   *     1
+   *    / \
+   *   2   3(2)
+   *      / \
+   *     4(5)5
+   *   as "[1,2,3,null,null,4,5]"
+   * Intuition:
+   * - all value are int only, so good news for string parsing?
+   * - easiest way is to flat whole bt into complete tree array (heap like)
+   *   while padding missing node with special char '|'?
+   * - may be bad when tree is skewed, but that's a rle issue.
+   * - bfs from left->right along each level & put them in the right vector
+   *   with id information. assume curr-ptr has id of 2 (v->3), then its left
+   *   child should be placed on pos. 2 * 2 + 1 & right on 2*2 + 2
+   * - for deserialize, tokenization could be important, after that, we just
+   *   do a scan & append the child.
+   */
+  const static string TREE_START_CHAR = "[";
+  const static string TREE_END_CHAR = "]";
+  const static string TREE_DELIM = ",";
+  const static string TREE_EMPTY_NODE = "|";
+  const static string NEGATIVE_SIGN = "-";
+  class binary_tree_codec {
+  public:
+    static string serialize_binary_tree(binary_tree_node * root_ptr) {
+      if (NULL == root_ptr) { return TREE_START_CHAR + TREE_END_CHAR; }
+      string tree_str;
+      vector<binary_tree_node * > all_ptr_buffer;
+      deque<pair<int, binary_tree_node *>> ptr_visit_buffer = {
+        pair<int, binary_tree_node *>(0, root_ptr)
+      };
+      int curr_ptr_id = 0; binary_tree_node * curr_ptr = NULL;
+      while (!ptr_visit_buffer.empty()) {
+        pair<int, binary_tree_node *> & curr_pair = ptr_visit_buffer.front();
+        curr_ptr_id = curr_pair.first; curr_ptr = curr_pair.second;
+        ptr_visit_buffer.pop_front();
+        /* check if we need to append null ptr */
+        for (int i = all_ptr_buffer.size(); i < curr_ptr_id; i++) {
+          all_ptr_buffer.push_back(NULL);
+        }
+        all_ptr_buffer.push_back(curr_ptr);
+        if (NULL != curr_ptr->left_ptr) {
+          ptr_visit_buffer.push_back(pair<int, binary_tree_node *>(curr_ptr_id * 2 + 1, curr_ptr->left_ptr));
+        }
+        if (NULL != curr_ptr->right_ptr) {
+          ptr_visit_buffer.push_back(pair<int, binary_tree_node *>(curr_ptr_id * 2 + 2, curr_ptr->right_ptr));
+        }
+      }
+      tree_str = TREE_START_CHAR;
+      for (int i = 0; i < all_ptr_buffer.size(); i++) {
+        if (NULL == all_ptr_buffer[i]) { tree_str += TREE_EMPTY_NODE; }
+        else { tree_str += std::to_string(all_ptr_buffer[i]->value); }
+        tree_str += TREE_DELIM;
+      }
+      tree_str += TREE_END_CHAR;
+      return tree_str;
+    }
+
+    static binary_tree_node * deserialize_binary_tree(const string & data) {
+      if (data.size() <= 2) { return NULL; }
+      vector<binary_tree_node *> all_ptr_buffer;
+      for (int i = 0; i < data.size(); ) {
+        if (TREE_START_CHAR[0] == data[i] || TREE_END_CHAR[0] == data[i] ||
+            TREE_DELIM[0] == data[i]) { i++; continue; }
+        string curr_value = "";
+        int j = i;
+        for (; TREE_DELIM[0] != data[j]; j++) { curr_value.append(1, data[j]); }
+        if (TREE_EMPTY_NODE == curr_value) {
+          all_ptr_buffer.push_back(NULL);
+        } else {
+          all_ptr_buffer.push_back(new binary_tree_node(atoi(data.substr(i, j - i).c_str())));
+        }
+        i = j;
+      }
+      for (int i = 0; i < all_ptr_buffer.size(); i++) {
+        if (NULL == all_ptr_buffer[i]) { continue; }
+        int left_child_id = 2 * i + 1,
+            right_child_id = left_child_id + 1;
+        if (left_child_id < all_ptr_buffer.size()) {
+          all_ptr_buffer[i]->left_ptr = all_ptr_buffer[left_child_id];
+        }
+        if (right_child_id < all_ptr_buffer.size()) {
+          all_ptr_buffer[i]->right_ptr = all_ptr_buffer[right_child_id];
+        }
+      }
+      return all_ptr_buffer.empty() ? NULL : all_ptr_buffer.front();
+    }
+  };
+
+  static void test_binary_tree_codec() {
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \        /
+     *      3k      y15
+     */
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node y(15);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h; h.left_ptr = &y;
+
+    cout << "15. test_binary_tree_codec" << endl;
+    string tree_str = binary_tree_codec::serialize_binary_tree(& a);
+    cout << tree_str << " <=>" << endl
+         << "[6,4,8,1,5,7,10,|,2,|,|,|,|,9,11,|,|,|,3,|,|,|,|,|,|,|,|,|,|,15,]" << endl;
+    binary_tree_node * x = binary_tree_codec::deserialize_binary_tree(tree_str);
+    cout << "in-order: 1 2 3 4 5 6 7 8 9 10 15 11" << endl
+         << "pe-order: 6 4 1 2 3 5 8 7 10 9 11 15" << endl;
+    cout << "in-order: "; lvr_bst_print(x); cout << endl;
+    cout << "pe-order: "; vlr_bst_print(x); cout << endl;
+
+    tree_str = binary_tree_codec::serialize_binary_tree(NULL);
+    x = binary_tree_codec::deserialize_binary_tree(tree_str);
+    cout << tree_str << " <=> []" << endl;
+    cout << "in-order: "; lvr_bst_print(x); cout << endl;
+    cout << "pe-order: "; vlr_bst_print(x); cout << endl;
+
+    tree_str = binary_tree_codec::serialize_binary_tree(&y);
+    x = binary_tree_codec::deserialize_binary_tree(tree_str);
+    cout << tree_str << " <=> [15,]" << endl;
+    cout << "in-order: "; lvr_bst_print(x); cout << endl;
+    cout << "pe-order: "; vlr_bst_print(x); cout << endl;
+  }
+
+  /**
    * 558. Quad Tree Intersection
    * A quadtree is a tree data in which each internal node has exactly four
    * children: topLeft, topRight, bottomLeft and bottomRight. Quad trees are
@@ -1118,6 +1264,7 @@ int main(void) {
   using tree_util::is_bst_valid;
   using tree_util::find_largest_sub_bst;
   using tree_util::test_get_max_path_sum;
+  using tree_util::test_binary_tree_codec;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -1281,6 +1428,7 @@ int main(void) {
   b.value = 4; c.value = 8;
 
   test_get_max_path_sum();
+  test_binary_tree_codec();
 
   return 0;
 }
