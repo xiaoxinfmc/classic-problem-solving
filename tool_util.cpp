@@ -619,14 +619,106 @@ namespace tool_util {
     }
     return target_id;
   }
+
+  /**
+   * 710. Random Pick with Blacklist
+   * - Given a blacklist B containing unique integers from [0, N), write a
+   *   function to return a uniform random integer from [0, N) NOT in B.
+   * - Optimize it such that it minimizes the call to system’s Math.random().
+   * Note:
+   * - 1 <= N <= 1,000,000,000
+   * - 0 <= B.length < min(100,000, N)
+   * - [0, N) does NOT include N. See interval notation.
+   * Intuition:
+   * - bf way could be init every single possible value & pick random id
+   *   while not realistic as it won't fits.
+   * - another way could be sort the backlist, such that we get a bunch of
+   *   interupted intervals, & all we need to do is just do a range sum like
+   *   op to get the right entry point
+   * - ideally, goal is to pre-process, run random & return;
+   * - given the size of backlist is < min(100,000, N), then sorting should
+   *   be good, with produced intervals no more than 10k.
+   * Plan will be:
+   * - sort the black list asc 1st.
+   * - based on the sorting result, generate disjoint intervals with min & max
+   *   with each interval has diff weight with value wi of elems cnt
+   * - random pick a range (% # of interval), & within range, random pick val.
+   *   [ 0, 4 ], [ 6, 8 ] [ 11, 11 ]
+   *       5         3         1       -> total 9 -> 3 | 5/9 * 1/5 => 1/9
+   */
+  class filtered_random_picker {
+  public:
+    class range_interval {
+    public:
+      range_interval(int mi, int ma) :
+        min(mi), max(ma), elem_cnt(ma - mi) { assert(max > min); }
+      virtual ~range_interval() {}
+      int pick_random_val() { return (min + (random() % elem_cnt)); }
+      int min, max, elem_cnt;
+      /* [ min, max), min included, not max */
+    };
+  public:
+    filtered_random_picker(int max_val, vector<int> blacklist) {
+      init_filtered_random_picker(max_val, blacklist);
+    }
+    virtual ~filtered_random_picker() {}
+    int random_pick_value_with_fitler() {
+      /* start to pick the range based on weight */
+      int low = 0, mid = 0, high = prefix_range_elem_cnt.size() - 1;
+      int range_to_pick = random() % total_elem_cnt + 1;
+      while (low <= high) {
+        mid = (low + high) / 2;
+        if (prefix_range_elem_cnt[mid] == range_to_pick) { range_to_pick = mid; break; }
+        else if (prefix_range_elem_cnt[mid] < range_to_pick) { low = mid + 1; }
+        else { high = mid - 1; }
+      }
+      if (mid != range_to_pick) { range_to_pick = std::max(low, high); }
+      return interval_arr[range_to_pick].pick_random_val();
+    }
+  private:
+    void init_filtered_random_picker(int max_val, vector<int> blacklist) {
+      int curr_min = 0;
+      sort(blacklist.begin(), blacklist.end());
+      /* curr_min will always be the min of any new interval */
+      for (int i = 0; i < blacklist.size(); i++) {
+        if (curr_min < blacklist[i]) {
+          interval_arr.push_back(range_interval(curr_min, blacklist[i]));
+          total_elem_cnt += interval_arr.back().elem_cnt;
+          prefix_range_elem_cnt.push_back(total_elem_cnt);
+        }
+        curr_min = blacklist[i] + 1;
+      }
+      if (curr_min < max_val) {
+        interval_arr.push_back(range_interval(curr_min, max_val));
+        total_elem_cnt += interval_arr.back().elem_cnt;
+        prefix_range_elem_cnt.push_back(total_elem_cnt);
+      }
+    }
+
+    vector<range_interval> interval_arr;
+    vector<int> prefix_range_elem_cnt;
+    int total_elem_cnt = 0;
+  };
+
+  static void test_filtered_random_picker() {
+    std::cout << "4. test_filtered_random_picker" << std::endl;
+    filtered_random_picker frp(1000000000, vector<int>({ 0, 999, 9999, 99999, 1000,9999999, 999999999 }));
+    std::cout << frp.random_pick_value_with_fitler() << std::endl;
+    filtered_random_picker frp1(1, vector<int>({ }));
+    std::cout << frp1.random_pick_value_with_fitler() << std::endl;
+  }
 };
 
 int main(void) {
   using tool_util::test_calc_expr;
   using tool_util::test_min_max_map;
   using tool_util::test_calc_min_trxns;
+  using tool_util::test_filtered_random_picker;
+
   test_calc_expr();
   test_min_max_map();
   test_calc_min_trxns();
+  test_filtered_random_picker();
+
   return 0;;
 }
