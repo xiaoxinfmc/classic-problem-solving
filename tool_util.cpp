@@ -707,6 +707,87 @@ namespace tool_util {
     filtered_random_picker frp1(1, vector<int>({ }));
     std::cout << frp1.random_pick_value_with_fitler() << std::endl;
   }
+
+  /**
+   * 380. Insert Delete GetRandom O(1)
+   * - Design a data structure that supports all following operations in
+   *   average O(1) time.
+   * - insert(val): Inserts an item val to the set if not already present.
+   * - remove(val): Removes an item val from the set if present.
+   * - getRandom: Returns a random element from current set of elements.
+   *   Each element must have the same probability of being returned.
+   * Example:
+   *   // Init an empty set.
+   *   RandomizedSet randomSet = new RandomizedSet();
+   *   // Inserts 1 to the set. Returns true as 1 was inserted successfully.
+   *   randomSet.insert(1);
+   *   // Returns false as 2 does not exist in the set.
+   *   randomSet.remove(2);
+   *   // Inserts 2 to the set, returns true. Set now contains [1,2].
+   *   randomSet.insert(2);
+   *   // getRandom should return either 1 or 2 randomly.
+   *   randomSet.getRandom();
+   *   // Removes 1 from the set, returns true. Set now contains [2].
+   *   randomSet.remove(1);
+   *   // 2 was already in the set, so return false.
+   *   randomSet.insert(2);
+   *   // Since 2 is the only number in the set, getRandom always return 2.
+   *   randomSet.getRandom();
+   * Intuition:
+   * - insert & del needs to be o(1) -> needs to be ditch the order
+   * - support get random uniformly from our set -> needs to have a "range"
+   * - also range should be updated accordingly when set changed.
+   * - random access requires value should be the key
+   *   maintain a umap { value -> curr-id } & { curr-id -> value }, hard part
+   *   comes when value del, then we have holes.
+   * - say id range from 0 -> n, & we know the size of elem -> m, & max-id n
+   *   then we want pick a valid random id, from [ 0 ~ curr-size - 1 ]
+   * - idea:
+   *   when delete, we just delete entry from map, while swap id in array.
+   *   { 1 => 1, 3 => 2, 4 => 3, 5 => 4 } => { 1 => 1, 5 => 4 }
+   *   { 1 => 1, 2 => 3, 3 => 4, 4 => 5 } => { 1 => 1, 4 => 5 }
+   *     [ 0 1 2 3 ] -> [ 0 1 3 | 2 ] , old-size -> 4
+   *           ^ ^(size-1)
+   */
+  class random_set {
+  public:
+    bool insert_item(int val) {
+      if (value_to_id_map.count(val) > 0) { return false; }
+      /* seq id is monotonic inr, curr_id mark where to put in id_arr */
+      int curr_id = value_to_id_map.size();
+      value_to_id_map[val] = curr_seq_id;
+      id_to_value_map[curr_seq_id] = val;
+      if (curr_id >= id_arr.size()) {
+        id_arr.push_back(curr_seq_id);
+      } else {
+        id_arr[curr_id] = curr_seq_id;
+      }
+      curr_seq_id += 1;
+      return true;
+    }
+
+    bool remove_item(int val) {
+      if (value_to_id_map.count(val) <= 0) { return false; }
+      int idx_in_id_arr_to_swap = value_to_id_map[val];
+      if (value_to_id_map[val] != idx_in_id_arr_to_swap) {
+        idx_in_id_arr_to_swap = id_arr[value_to_id_map[val]];
+      }
+      std::swap(id_arr[idx_in_id_arr_to_swap], id_arr[value_to_id_map.size() - 1]);
+      id_to_value_map.erase(value_to_id_map[val]);
+      value_to_id_map.erase(val);
+      return true;
+    }
+
+    int pick_random_item() {
+      return id_to_value_map[id_arr[random() % value_to_id_map.size()]];
+    }
+    random_set() : curr_seq_id(0) {}
+    virtual ~random_set() {}
+    unordered_map<int, int> value_to_id_map;
+    unordered_map<int, int> id_to_value_map;
+    vector<int> id_arr;
+    int curr_seq_id;
+  };
 };
 
 int main(void) {
