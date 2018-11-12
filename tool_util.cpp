@@ -744,50 +744,52 @@ namespace tool_util {
    *   then we want pick a valid random id, from [ 0 ~ curr-size - 1 ]
    * - idea:
    *   when delete, we just delete entry from map, while swap id in array.
-   *   { 1 => 1, 3 => 2, 4 => 3, 5 => 4 } => { 1 => 1, 5 => 4 }
-   *   { 1 => 1, 2 => 3, 3 => 4, 4 => 5 } => { 1 => 1, 4 => 5 }
-   *     [ 0 1 2 3 ] -> [ 0 1 3 | 2 ] , old-size -> 4
-   *           ^ ^(size-1)
+   *   { 1 => 0, 3 => 1, 4 => 2, 5 => 3 } => { 1 => 1, 5 => 4 }
+   *   [ 1 3 4 5 ] -> rm 3 -> [ 1 5 4 | 3 ], { 1 => 0, 4 => 2, 5 => 3 }
+   *                                       =>{ 1 => 0, 4 => 2, 5 => 1 }
+   *   each time swap the del elem to the end & pop, while upd its entry in map.
    */
   class random_set {
   public:
     bool insert_item(int val) {
       if (value_to_id_map.count(val) > 0) { return false; }
-      /* seq id is monotonic inr, curr_id mark where to put in id_arr */
       int curr_id = value_to_id_map.size();
-      value_to_id_map[val] = curr_seq_id;
-      id_to_value_map[curr_seq_id] = val;
-      if (curr_id >= id_arr.size()) {
-        id_arr.push_back(curr_seq_id);
-      } else {
-        id_arr[curr_id] = curr_seq_id;
-      }
-      curr_seq_id += 1;
+      value_to_id_map[val] = curr_id;
+      value_arr.push_back(val);
       return true;
     }
 
     bool remove_item(int val) {
       if (value_to_id_map.count(val) <= 0) { return false; }
       int idx_in_id_arr_to_swap = value_to_id_map[val];
-      if (value_to_id_map[val] != idx_in_id_arr_to_swap) {
-        idx_in_id_arr_to_swap = id_arr[value_to_id_map[val]];
-      }
-      std::swap(id_arr[idx_in_id_arr_to_swap], id_arr[value_to_id_map.size() - 1]);
-      id_to_value_map.erase(value_to_id_map[val]);
+      std::swap(value_arr[idx_in_id_arr_to_swap], value_arr[value_arr.size() - 1]);
+      value_to_id_map[value_arr[idx_in_id_arr_to_swap]] = idx_in_id_arr_to_swap;
       value_to_id_map.erase(val);
+      value_arr.pop_back();
       return true;
     }
 
     int pick_random_item() {
-      return id_to_value_map[id_arr[random() % value_to_id_map.size()]];
+      return value_arr[random() % value_arr.size()];
     }
-    random_set() : curr_seq_id(0) {}
+    random_set() {}
     virtual ~random_set() {}
+
     unordered_map<int, int> value_to_id_map;
-    unordered_map<int, int> id_to_value_map;
-    vector<int> id_arr;
-    int curr_seq_id;
+    vector<int> value_arr;
   };
+
+  static void test_random_set() {
+    cout << "5. test_random_set" << endl;
+    random_set rf;
+    rf.insert_item(0);
+    rf.insert_item(1);
+    rf.remove_item(0);
+    rf.insert_item(2);
+    rf.remove_item(1);
+    cout << rf.pick_random_item() << " <=> " << 2 << endl;
+    assert(2 == rf.pick_random_item());
+  }
 };
 
 int main(void) {
@@ -795,11 +797,13 @@ int main(void) {
   using tool_util::test_min_max_map;
   using tool_util::test_calc_min_trxns;
   using tool_util::test_filtered_random_picker;
+  using tool_util::test_random_set;
 
   test_calc_expr();
   test_min_max_map();
   test_calc_min_trxns();
   test_filtered_random_picker();
+  test_random_set();
 
   return 0;;
 }
