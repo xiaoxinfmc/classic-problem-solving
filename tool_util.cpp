@@ -821,13 +821,12 @@ namespace tool_util {
 
     bool remove_item(int val) {
       if (value_to_id_map.count(val) <= 0) { return false; }
-
-      int idx_in_id_arr_to_swap = * (value_to_id_map[val].begin());
-      std::swap(value_arr[idx_in_id_arr_to_swap], value_arr[value_arr.size() - 1]);
-
-      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].erase(value_arr.size() - 1);
-      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].insert(idx_in_id_arr_to_swap);
-
+      if (val != value_arr.back()) {
+        int idx_in_id_arr_to_swap = * (value_to_id_map[val].begin());
+        std::swap(value_arr[idx_in_id_arr_to_swap], value_arr[value_arr.size() - 1]);
+        value_to_id_map[value_arr[idx_in_id_arr_to_swap]].erase(value_arr.size() - 1);
+        value_to_id_map[value_arr[idx_in_id_arr_to_swap]].insert(idx_in_id_arr_to_swap);
+      }
       value_to_id_map[val].erase(value_to_id_map[val].begin());
       if (value_to_id_map[val].empty()) { value_to_id_map.erase(val); }
       value_arr.pop_back();
@@ -841,6 +840,10 @@ namespace tool_util {
         cout << p.first << ": "; for (auto x : p.second) { cout << x << " "; }; cout << " | ";
       }
       cout << endl;
+    }
+
+    void clear() {
+      value_to_id_map.clear(); value_arr.clear();
     }
 
     int pick_random_item() {
@@ -868,7 +871,21 @@ namespace tool_util {
     rf.remove_item(30);
     for (int i = 0; i < 10; i++) {
       assert(20 == rf.pick_random_item());
-    };
+    }
+    rf.clear();
+    rf.insert_item(1);
+    rf.insert_item(1);
+    rf.insert_item(2);
+    rf.insert_item(1);
+    rf.insert_item(2);
+    rf.insert_item(2);
+    rf.remove_item(1);
+    rf.remove_item(2);
+    rf.remove_item(2);
+    rf.remove_item(2);
+    for (int i = 0; i < 10; i++) {
+      assert(1 == rf.pick_random_item());
+    }
   }
 };
 
