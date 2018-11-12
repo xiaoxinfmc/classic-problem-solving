@@ -3,6 +3,7 @@
 #include <cassert>
 #include <utility>
 #include <unordered_map>
+#include <unordered_set>
 #include <cstdlib>
 #include <cmath>
 #include <limits>
@@ -17,6 +18,7 @@ namespace tool_util {
   using std::pair;
   using std::unordered_map;
   using std::ostream;
+  using std::unordered_set;
 
   template <class type>
   static void print_all_elem(const vector<type> & input) {
@@ -809,10 +811,10 @@ namespace tool_util {
       if (value_to_id_map.count(val) > 0) {
         is_elem_uniq = false;
       } else {
-        value_to_id_map[val] = vector<int>();
+        value_to_id_map[val] = unordered_set<int>();
       }
       int curr_id = value_arr.size();
-      value_to_id_map[val].push_back(curr_id);
+      value_to_id_map[val].insert(curr_id);
       value_arr.push_back(val);
       return is_elem_uniq;
     }
@@ -820,17 +822,25 @@ namespace tool_util {
     bool remove_item(int val) {
       if (value_to_id_map.count(val) <= 0) { return false; }
 
-      int idx_in_id_arr_to_swap = value_to_id_map[val].back();
+      int idx_in_id_arr_to_swap = * (value_to_id_map[val].begin());
       std::swap(value_arr[idx_in_id_arr_to_swap], value_arr[value_arr.size() - 1]);
 
-      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].pop_back();
-      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].push_back(idx_in_id_arr_to_swap);
+      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].erase(value_arr.size() - 1);
+      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].insert(idx_in_id_arr_to_swap);
 
-      value_to_id_map[val].pop_back();
+      value_to_id_map[val].erase(value_to_id_map[val].begin());
       if (value_to_id_map[val].empty()) { value_to_id_map.erase(val); }
       value_arr.pop_back();
 
       return true;
+    }
+
+    void print_set() {
+      print_all_elem<int>(value_arr);
+      for (auto & p : value_to_id_map) {
+        cout << p.first << ": "; for (auto x : p.second) { cout << x << " "; }; cout << " | ";
+      }
+      cout << endl;
     }
 
     int pick_random_item() {
@@ -839,20 +849,26 @@ namespace tool_util {
     dup_random_set() {}
     virtual ~dup_random_set() {}
 
-    unordered_map<int, vector<int>> value_to_id_map;
+    unordered_map<int, unordered_set<int>> value_to_id_map;
     vector<int> value_arr;
   };
 
   static void test_dup_random_set() {
     cout << "6. test_dup_random_set" << endl;
     dup_random_set rf;
-    rf.insert_item(0);
-    rf.insert_item(1);
-    rf.remove_item(0);
-    rf.insert_item(2);
-    rf.remove_item(1);
-    cout << rf.pick_random_item() << " <=> " << 2 << endl;
-    assert(2 == rf.pick_random_item());
+    rf.insert_item(10);
+    rf.insert_item(10);
+    rf.insert_item(20);
+    rf.insert_item(20);
+    rf.insert_item(30);
+    rf.insert_item(30);
+    rf.remove_item(10);
+    rf.remove_item(10);
+    rf.remove_item(30);
+    rf.remove_item(30);
+    for (int i = 0; i < 10; i++) {
+      assert(20 == rf.pick_random_item());
+    };
   }
 };
 
