@@ -10,6 +10,7 @@
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
+#include <climits>
 
 using namespace std;
 
@@ -878,6 +879,94 @@ namespace search_util{
       for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
     }
   }
+
+  /**
+   * 295. Find Median from Data Stream
+   * - Median is the middle value in an ordered integer list. If the size of
+   *   the list is even, there is no middle value. So the median is the mean
+   *   of the two middle value.
+   * For example,
+   * - [2,3,4], the median is 3
+   * - [2,3], the median is (2 + 3) / 2 = 2.5
+   * - Design a data structure that supports the following two operations:
+   * - void addNum(int num) - Add a integer number from the data stream
+   * - double findMedian() - Return the median of all elements so far.
+   * Example:
+   * - addNum(1)
+   * - addNum(2)
+   * - findMedian() -> 1.5
+   * - addNum(3) 
+   * - findMedian() -> 2
+   * - Follow up:
+   * - If all integer numbers from the stream are between 0 and 100
+   * - If 99% of all integer numbers from the stream are between 0 and 100
+   * Intuition:
+   * - goal is to find a way to maintain the ability to do quick median query
+   *   for dynamic number set.
+   * - use 2 heap?
+   *   max-heap : [ ......... ] min-heap : [ .............. ]
+   *                1 2 3 4 5                 6 7 8 9 10
+   *   each time add a new number, if > max-heap -> push to min-heap, vice versa.
+   *   unless it cause heap to diff > 1 in size, 
+   *   { 5 } {} < 6
+   *   { 5 } { 6 } < 1
+   *   { 1, 5 } { 6 } < 2 => cause size to diff > 1
+   *   { 1, 2 }, { 5 }
+   * - add-number => O(logn), query -> O(1)
+   */
+  class median_finder {
+  public:
+    median_finder() : curr_median(numeric_limits<double>::max()) { }
+    virtual ~median_finder() { }
+    void add_number(int new_value) { append_and_adjust_heaps(new_value); }
+    double find_median() { return curr_median; }
+  private:
+    struct min_heap_less_op {
+      bool operator() (const int & a, const int & b) { return b < a; }
+    };
+    void append_and_adjust_heaps(int new_value) {
+      /* simply push the heap 1st */
+      if (new_value < curr_median) {
+        max_heap.push_back(new_value);
+        push_heap(max_heap.begin(), max_heap.end());
+        curr_median = max_heap.front();
+      } else {
+        min_heap.push_back(new_value);
+        push_heap(min_heap.begin(), min_heap.end(), min_heap_less_op());
+        curr_median = min_heap.front();
+      }
+      /* check to see any adjust needed for heaps */
+      int size_diff = abs((int)max_heap.size() - (int)min_heap.size());
+      if (size_diff >= 2) {
+        if (max_heap.size() > min_heap.size()) {
+          min_heap.push_back(max_heap.front());
+          push_heap(min_heap.begin(), min_heap.end(), min_heap_less_op());
+          pop_heap(max_heap.begin(), max_heap.end());
+          max_heap.pop_back();
+        } else {
+          max_heap.push_back(min_heap.front());
+          push_heap(max_heap.begin(), max_heap.end());
+          pop_heap(min_heap.begin(), min_heap.end(), min_heap_less_op());
+          min_heap.pop_back();
+        }
+        curr_median = (min_heap.front() + max_heap.front()) / 2.0;
+      } else if (size_diff == 0) {
+        curr_median = (min_heap.front() + max_heap.front()) / 2.0;
+      }
+    }
+    double curr_median;
+    vector<int> max_heap, min_heap;
+  };
+
+  static void test_median_finder() {
+    cout << "16. test_median_finder" << endl;
+    median_finder mf;
+    for (int i = 0; i < 999; i++) {
+      mf.add_number(i);
+      if (i % 2 == 0) { assert(i / 2 == mf.find_median()); }
+      else { assert((i / 2 + i / 2 + 1)/2.0 == mf.find_median()); }
+    }
+  }
 };
 
 int main(void) {
@@ -900,6 +989,7 @@ int main(void) {
   using search_util::test_find_first_missing_positive;
   using search_util::test_calc_num_of_islands;
   using search_util::test_calc_num_of_islands_adp;
+  using search_util::test_median_finder;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -977,5 +1067,7 @@ int main(void) {
   test_find_first_missing_positive();
   test_calc_num_of_islands();
   test_calc_num_of_islands_adp();
+  test_median_finder();
+
   return 0;
 }
