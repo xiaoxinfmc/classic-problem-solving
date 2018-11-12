@@ -790,6 +790,70 @@ namespace tool_util {
     cout << rf.pick_random_item() << " <=> " << 2 << endl;
     assert(2 == rf.pick_random_item());
   }
+
+  /**
+   * 381. Insert Delete GetRandom O(1) - Duplicates allowed
+   * - Design a data structure that supports all following operations in
+   *   average O(1) time.
+   * Note: Duplicate elements are allowed.
+   * - insert(val): Inserts an item val to the collection.
+   * - remove(val): Removes an item val from the collection if present.
+   * - getRandom: Returns a random element from current collection of elements.
+   *              The probability of each element being returned is linearly
+   *              related to the number of same value the collection contains.
+   */
+  class dup_random_set {
+  public:
+    bool insert_item(int val) {
+      int is_elem_uniq = true;
+      if (value_to_id_map.count(val) > 0) {
+        is_elem_uniq = false;
+      } else {
+        value_to_id_map[val] = vector<int>();
+      }
+      int curr_id = value_arr.size();
+      value_to_id_map[val].push_back(curr_id);
+      value_arr.push_back(val);
+      return is_elem_uniq;
+    }
+
+    bool remove_item(int val) {
+      if (value_to_id_map.count(val) <= 0) { return false; }
+
+      int idx_in_id_arr_to_swap = value_to_id_map[val].back();
+      std::swap(value_arr[idx_in_id_arr_to_swap], value_arr[value_arr.size() - 1]);
+
+      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].pop_back();
+      value_to_id_map[value_arr[idx_in_id_arr_to_swap]].push_back(idx_in_id_arr_to_swap);
+
+      value_to_id_map[val].pop_back();
+      if (value_to_id_map[val].empty()) { value_to_id_map.erase(val); }
+      value_arr.pop_back();
+
+      return true;
+    }
+
+    int pick_random_item() {
+      return value_arr[random() % value_arr.size()];
+    }
+    dup_random_set() {}
+    virtual ~dup_random_set() {}
+
+    unordered_map<int, vector<int>> value_to_id_map;
+    vector<int> value_arr;
+  };
+
+  static void test_dup_random_set() {
+    cout << "6. test_dup_random_set" << endl;
+    dup_random_set rf;
+    rf.insert_item(0);
+    rf.insert_item(1);
+    rf.remove_item(0);
+    rf.insert_item(2);
+    rf.remove_item(1);
+    cout << rf.pick_random_item() << " <=> " << 2 << endl;
+    assert(2 == rf.pick_random_item());
+  }
 };
 
 int main(void) {
@@ -798,12 +862,14 @@ int main(void) {
   using tool_util::test_calc_min_trxns;
   using tool_util::test_filtered_random_picker;
   using tool_util::test_random_set;
+  using tool_util::test_dup_random_set;
 
   test_calc_expr();
   test_min_max_map();
   test_calc_min_trxns();
   test_filtered_random_picker();
   test_random_set();
+  test_dup_random_set();
 
   return 0;;
 }
