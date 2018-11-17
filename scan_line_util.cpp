@@ -586,6 +586,97 @@ namespace scan_line_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 391. Perfect Rectangle
+   * - Given N axis-aligned rectangles where N > 0, determine if they all
+   *   together form an exact cover of a rectangular region.
+   * - Each rectangle is represented as a bottom-left point and a top-right
+   *   point. For example, a unit square is represented as [1,1,2,2].
+   *   (coordinate of bottom-left point is (1, 1) and top-right point is (2, 2))
+   * Example 1:
+   *   rectangles = { {1,1,3,3}, {3,1,4,2}, {3,2,4,4}, {1,3,2,4}, {2,3,3,4} }
+   *   Return true. All 5 rectangles together form an exact cover of a rectangular region.
+   * Example 2:
+   *   rectangles = { {1,1,2,3}, {1,3,2,4}, {3,1,4,2}, {3,2,4,4} }
+   *   Return false. Because there is a gap between the two rectangular regions.
+   * Example 3:
+   *   rectangles = { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {3,2,4,4} }
+   *   Return false. Because there is a gap in the top center.
+   * Example 4:
+   *   rectangles = { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {2,2,4,4} }
+   *   Return false. Because two of the rectangles overlap with each other.
+   * Intuition:
+   * - a perfect rect? - area should match, no shadowing, boundary smooth.
+   * +---xr--xr-rx     - points should not cover each other or by rect.
+   * | 1 | 2 | 3 |     - all max y-pos of top-right point should be same
+   * xl-rxl--xl-rx     - all min x-pos of bottom-left point should be same
+   * | 1 |   4   |     - sum of all rect area should be same compare to whole
+   * xl--xl------@
+   */
+  class rpoint {
+  public:
+    rpoint(int x, int y, int max_y) : x_pos(x), y_pos(y), max_y_pos(max_y) { }
+    virtual ~rpoint() {}
+    bool is_point_top_right() { return (y_pos == max_y_pos); }
+    friend bool operator< (const rpoint & a, const rpoint & b) {
+      return ((a.x_pos < b.x_pos) || (a.x_pos == b.x_pos && a.y_pos < b.y_pos));
+    }
+    friend ostream & operator<< (ostream & os, const rpoint x) {
+      os << "(" << x.x_pos << ", " << x.y_pos << ")"; return os;
+    }
+    int x_pos, y_pos, max_y_pos;
+  };
+
+  static bool is_rects_perfect(vector<vector<int>>& rects) {
+    bool is_rects_perfect = false;
+    /* gen all points, sort by x/y pos */
+    vector<rpoint> points;
+    rpoint bt_point(std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
+                    std::numeric_limits<int>::max());
+    rpoint tr_point(std::numeric_limits<int>::min(), std::numeric_limits<int>::min(),
+                    std::numeric_limits<int>::min());;
+    int min_x_pos = std::numeric_limits<int>::max(),
+        min_y_pos = std::numeric_limits<int>::max(),
+        max_x_pos = std::numeric_limits<int>::min(),
+        max_y_pos = std::numeric_limits<int>::min(),
+        area_sum = 0;
+    for (int i = 0; i < rects.size(); i++) {
+      points.push_back(rpoint(rects[i][0], rects[i][1], rects[i][3]));
+      bt_point = min(bt_point, points.back());
+      min_x_pos = min(min_x_pos, points.back().x_pos);
+      min_y_pos = min(min_x_pos, points.back().y_pos);
+
+      points.push_back(rpoint(rects[i][2], rects[i][3], rects[i][3]));
+      tr_point = max(tr_point, points.back());
+      max_x_pos = max(max_x_pos, points.back().x_pos);
+      max_y_pos = max(max_x_pos, points.back().y_pos);
+
+      area_sum += ((rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]));
+    }
+    if (bt_point.x_pos != min_x_pos || bt_point.y_pos != min_y_pos) { return is_rects_perfect; }
+    if (tr_point.x_pos != max_x_pos || tr_point.y_pos != max_y_pos) { return is_rects_perfect; }
+    if (area_sum != ((max_x_pos - min_x_pos) * (max_y_pos - min_y_pos))) { return is_rects_perfect; }
+    is_rects_perfect = true;
+    return is_rects_perfect;
+  }
+
+  static void test_is_rects_perfect() {
+    cout << "6. test_is_rects_perfect" << endl;
+    bool result = false;
+    vector<bool> test_output = { true, false, false, false };
+    vector<vector<vector<int>>> test_input = {
+      { {1,1,3,3}, {3,1,4,2}, {3,2,4,4}, {1,3,2,4}, {2,3,3,4} },
+      { {1,1,2,3}, {1,3,2,4}, {3,1,4,2}, {3,2,4,4} },
+      { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {3,2,4,4} },
+      { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {2,2,4,4} }
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = is_rects_perfect(test_input[i]);
+      cout << test_output[i] << " <=> " << result << endl;
+      assert(test_output[i] == result);
+    }
+  }
 };
 
 int main(void) {
@@ -594,10 +685,12 @@ int main(void) {
   using scan_line_util::test_calc_union_of_rectangles;
   using scan_line_util::test_get_boundary_points;
   using scan_line_util::test_calc_shortest_dist_to_all;
+  using scan_line_util::test_is_rects_perfect;
 
   test_count_num_of_planes();
   test_calc_closest_pair_dist();
   test_calc_union_of_rectangles();
   test_get_boundary_points();
   test_calc_shortest_dist_to_all();
+  test_is_rects_perfect();
 }
