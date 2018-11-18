@@ -967,6 +967,80 @@ namespace search_util{
       else { assert((i / 2 + i / 2 + 1)/2.0 == mf.find_median()); }
     }
   }
+
+  /**
+   * 302. Smallest Rectangle Enclosing Black Pixels
+   * - An image is represented by a binary matrix with 0 as a white pixel and 1
+   *   as a black pixel. The black pixels are connected, i.e., there is only one
+   *   black region. Pixels are connected horizontally and vertically. Given the
+   *   location (x, y) of one of the black pixels, return the area of the
+   *   smallest (axis-aligned) rectangle that encloses all black pixels.
+   * - For example, given the following image:
+   *   { "0010", "0110", "0100" } and x = 0, y = 2,
+   *   Return 6.
+   * Intuition:
+   * - goal is to calc the bounding box of black pixels, obviously, it is to get
+   *   the min/max-x-pos/y-pos.
+   * - as it is mentioned, all black pixels are connected, such that identify
+   *   the area should be easy, similar to flood-fill + dfs/bfs.
+   */
+  static bool is_pixel_black(const vector<string> & image, int x, int y) {
+    return (x >= 0 && x < image.size() && y >= 0 &&
+            y < image[x].size() && '1' == image[x][y]);
+  }
+
+  static int get_pixel_key(const vector<string> & image, int x, int y) {
+    return (x * image.front().size() + y);
+  }
+
+  static int get_enclosed_area(const vector<string> & image, int x, int y) {
+    int total_pixel_cnt = image.size() * image.front().size();
+    vector<bool> visit_lookup(total_pixel_cnt, false);
+    vector<pair<int, int>> visit_buffer = { pair<int, int>(x, y) };
+    pair<int, int> curr_pixel;
+    int curr_pixel_key = 0, min_x_pos = INT_MAX, min_y_pos = INT_MAX,
+                            max_x_pos = INT_MIN, max_y_pos = INT_MIN;
+    while (!visit_buffer.empty()) {
+      curr_pixel = visit_buffer.back();
+      visit_buffer.pop_back();
+      curr_pixel_key = get_pixel_key(image, curr_pixel.first, curr_pixel.second);
+      if (true == visit_lookup[curr_pixel_key]) { continue; }
+      else { visit_lookup[curr_pixel_key] = true; }
+      if (true == is_pixel_black(image, curr_pixel.first + 1, curr_pixel.second)) {
+        visit_buffer.push_back(pair<int, int>(curr_pixel.first + 1, curr_pixel.second));
+      }
+      if (true == is_pixel_black(image, curr_pixel.first, curr_pixel.second + 1)) {
+        visit_buffer.push_back(pair<int, int>(curr_pixel.first, curr_pixel.second + 1));
+      }
+      if (true == is_pixel_black(image, curr_pixel.first - 1, curr_pixel.second)) {
+        visit_buffer.push_back(pair<int, int>(curr_pixel.first - 1, curr_pixel.second));
+      }
+      if (true == is_pixel_black(image, curr_pixel.first, curr_pixel.second - 1)) {
+        visit_buffer.push_back(pair<int, int>(curr_pixel.first, curr_pixel.second - 1));
+      }
+      min_x_pos = min(min_x_pos, curr_pixel.first);
+      min_y_pos = min(min_y_pos, curr_pixel.second);
+      max_x_pos = max(max_x_pos, curr_pixel.first);
+      max_y_pos = max(max_y_pos, curr_pixel.second);
+    }
+    return (max_x_pos - min_x_pos + 1) * (max_y_pos - min_y_pos + 1);
+  }
+
+  static void test_get_enclosed_area() {
+    cout << "17. test_get_enclosed_area" << endl;
+    int result = 0;
+    vector<vector<string>> test_input = {
+      { "0010", "0110", "0100" }
+    };
+    vector<vector<int>> test_pos_input = { { 0, 2 } };
+    vector<int> test_output = { 6 };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = get_enclosed_area(test_input[i], test_pos_input[i][0],
+                                                test_pos_input[i][1]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -990,6 +1064,7 @@ int main(void) {
   using search_util::test_calc_num_of_islands;
   using search_util::test_calc_num_of_islands_adp;
   using search_util::test_median_finder;
+  using search_util::test_get_enclosed_area;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -1068,6 +1143,7 @@ int main(void) {
   test_calc_num_of_islands();
   test_calc_num_of_islands_adp();
   test_median_finder();
+  test_get_enclosed_area();
 
   return 0;
 }
