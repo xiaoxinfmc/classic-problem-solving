@@ -9,6 +9,8 @@
 #include <utility>
 #include <deque>
 #include <unordered_map>
+#include <unordered_set>
+#include <functional>
 
 namespace scan_line_util {
   using namespace std;
@@ -608,68 +610,91 @@ namespace scan_line_util {
    *   Return false. Because two of the rectangles overlap with each other.
    * Intuition:
    * - a perfect rect? - area should match, no shadowing, boundary smooth.
-   * +---xr--xr-rx     - points should not cover each other or by rect.
+   * +--- r-- r-rx     - points should not cover each other or by rect.
    * | 1 | 2 | 3 |     - all max y-pos of top-right point should be same
-   * xl-rxl--xl-rx     - all min x-pos of bottom-left point should be same
+   *  l-r l-- l-r      - all min x-pos of bottom-left point should be same
    * | 1 |   4   |     - sum of all rect area should be same compare to whole
-   * xl--xl------@
+   * xl-- l------@     - when all rect adjacent each other, see 4 points end
    */
   class rpoint {
   public:
-    rpoint(int x, int y, int max_y) : x_pos(x), y_pos(y), max_y_pos(max_y) { }
+    rpoint(int x, int y) : x_pos(x), y_pos(y) {
+      hash_key = std::to_string(x_pos) + "$" + std::to_string(y_pos);
+    }
     virtual ~rpoint() {}
-    bool is_point_top_right() { return (y_pos == max_y_pos); }
     friend bool operator< (const rpoint & a, const rpoint & b) {
       return ((a.x_pos < b.x_pos) || (a.x_pos == b.x_pos && a.y_pos < b.y_pos));
+    }
+    friend bool operator== (const rpoint & a, const rpoint & b) {
+      return (a.x_pos == b.x_pos && a.y_pos == b.y_pos);
     }
     friend ostream & operator<< (ostream & os, const rpoint x) {
       os << "(" << x.x_pos << ", " << x.y_pos << ")"; return os;
     }
-    int x_pos, y_pos, max_y_pos;
+    struct rpoint_hash_func {
+      size_t operator()(const rpoint & pt) const { return std::hash<string>()(pt.hash_key); }
+    };
+    int x_pos, y_pos;
+    string hash_key;
   };
 
+  static void check_and_update_points_set(const rpoint & lb_point, const rpoint & lt_point,
+                                          const rpoint & rb_point, const rpoint & rt_point,
+                                          unordered_set<rpoint, rpoint::rpoint_hash_func> & final_points_set) {
+    vector<rpoint> points_to_chk = { lb_point, lt_point, rb_point, rt_point };
+    for (auto & pt : points_to_chk) {
+      if (final_points_set.count(pt) > 0) { final_points_set.erase(pt); } else { final_points_set.insert(pt); }
+    }
+  }
+
   static bool is_rects_perfect(vector<vector<int>>& rects) {
-    bool is_rects_perfect = false;
     /* gen all points, sort by x/y pos */
     vector<rpoint> points;
-    rpoint bt_point(std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
-                    std::numeric_limits<int>::max());
-    rpoint tr_point(std::numeric_limits<int>::min(), std::numeric_limits<int>::min(),
-                    std::numeric_limits<int>::min());;
+    rpoint bt_point(std::numeric_limits<int>::max(), std::numeric_limits<int>::max()),
+           tr_point(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
+    rpoint lb_point(0, 0), lt_point(0, 0), rb_point(0, 0), rt_point(0, 0);
+    unordered_set<rpoint, rpoint::rpoint_hash_func> final_points_set;
     int min_x_pos = std::numeric_limits<int>::max(),
         min_y_pos = std::numeric_limits<int>::max(),
         max_x_pos = std::numeric_limits<int>::min(),
         max_y_pos = std::numeric_limits<int>::min(),
         area_sum = 0;
     for (int i = 0; i < rects.size(); i++) {
-      points.push_back(rpoint(rects[i][0], rects[i][1], rects[i][3]));
+      points.push_back(rpoint(rects[i][0], rects[i][1]));
       bt_point = min(bt_point, points.back());
       min_x_pos = min(min_x_pos, points.back().x_pos);
       min_y_pos = min(min_x_pos, points.back().y_pos);
 
-      points.push_back(rpoint(rects[i][2], rects[i][3], rects[i][3]));
+      points.push_back(rpoint(rects[i][2], rects[i][3]));
       tr_point = max(tr_point, points.back());
       max_x_pos = max(max_x_pos, points.back().x_pos);
-      max_y_pos = max(max_x_pos, points.back().y_pos);
+      max_y_pos = max(max_y_pos, points.back().y_pos);
 
       area_sum += ((rects[i][2] - rects[i][0]) * (rects[i][3] - rects[i][1]));
+
+      lb_point = rpoint(rects[i][0], rects[i][1]);
+      lt_point = rpoint(rects[i][0], rects[i][3]);
+      rb_point = rpoint(rects[i][2], rects[i][1]);
+      rt_point = rpoint(rects[i][2], rects[i][3]);
+
+      check_and_update_points_set(lb_point, lt_point, rb_point, rt_point, final_points_set);
     }
-    if (bt_point.x_pos != min_x_pos || bt_point.y_pos != min_y_pos) { return is_rects_perfect; }
-    if (tr_point.x_pos != max_x_pos || tr_point.y_pos != max_y_pos) { return is_rects_perfect; }
-    if (area_sum != ((max_x_pos - min_x_pos) * (max_y_pos - min_y_pos))) { return is_rects_perfect; }
-    is_rects_perfect = true;
-    return is_rects_perfect;
+    if (bt_point.x_pos != min_x_pos || bt_point.y_pos != min_y_pos) { return false; }
+    if (tr_point.x_pos != max_x_pos || tr_point.y_pos != max_y_pos) { return false; }
+    if (area_sum != ((max_x_pos - min_x_pos) * (max_y_pos - min_y_pos))) { return false; }
+    return (4 == final_points_set.size());
   }
 
   static void test_is_rects_perfect() {
     cout << "6. test_is_rects_perfect" << endl;
     bool result = false;
-    vector<bool> test_output = { true, false, false, false };
+    vector<bool> test_output = { true, false, false, false, true };
     vector<vector<vector<int>>> test_input = {
       { {1,1,3,3}, {3,1,4,2}, {3,2,4,4}, {1,3,2,4}, {2,3,3,4} },
       { {1,1,2,3}, {1,3,2,4}, {3,1,4,2}, {3,2,4,4} },
       { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {3,2,4,4} },
-      { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {2,2,4,4} }
+      { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {2,2,4,4} },
+      {{0,0,4,1},{7,0,8,2},{6,2,8,3},{5,1,6,3},{4,0,5,1},{6,0,7,2},{4,2,5,3},{2,1,4,3},{0,1,2,2},{0,2,2,3},{4,1,5,2},{5,0,6,1}}
     };
     for (int i = 0; i < test_input.size(); i++) {
       result = is_rects_perfect(test_input[i]);
