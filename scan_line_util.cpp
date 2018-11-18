@@ -663,7 +663,7 @@ namespace scan_line_util {
       points.push_back(rpoint(rects[i][0], rects[i][1]));
       bt_point = min(bt_point, points.back());
       min_x_pos = min(min_x_pos, points.back().x_pos);
-      min_y_pos = min(min_x_pos, points.back().y_pos);
+      min_y_pos = min(min_y_pos, points.back().y_pos);
 
       points.push_back(rpoint(rects[i][2], rects[i][3]));
       tr_point = max(tr_point, points.back());
@@ -682,19 +682,23 @@ namespace scan_line_util {
     if (bt_point.x_pos != min_x_pos || bt_point.y_pos != min_y_pos) { return false; }
     if (tr_point.x_pos != max_x_pos || tr_point.y_pos != max_y_pos) { return false; }
     if (area_sum != ((max_x_pos - min_x_pos) * (max_y_pos - min_y_pos))) { return false; }
-    return (4 == final_points_set.size());
+    return (4 == final_points_set.size() && final_points_set.count(bt_point) > 0 &&
+                                            final_points_set.count(tr_point) > 0 &&
+                                            final_points_set.count(rpoint(bt_point.x_pos, tr_point.y_pos)) > 0 &&
+                                            final_points_set.count(rpoint(tr_point.x_pos, bt_point.y_pos)) > 0);
   }
 
   static void test_is_rects_perfect() {
     cout << "6. test_is_rects_perfect" << endl;
     bool result = false;
-    vector<bool> test_output = { true, false, false, false, true };
+    vector<bool> test_output = { true, false, false, false, true, false };
     vector<vector<vector<int>>> test_input = {
       { {1,1,3,3}, {3,1,4,2}, {3,2,4,4}, {1,3,2,4}, {2,3,3,4} },
       { {1,1,2,3}, {1,3,2,4}, {3,1,4,2}, {3,2,4,4} },
       { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {3,2,4,4} },
       { {1,1,3,3}, {3,1,4,2}, {1,3,2,4}, {2,2,4,4} },
-      {{0,0,4,1},{7,0,8,2},{6,2,8,3},{5,1,6,3},{4,0,5,1},{6,0,7,2},{4,2,5,3},{2,1,4,3},{0,1,2,2},{0,2,2,3},{4,1,5,2},{5,0,6,1}}
+      {{0,0,4,1},{7,0,8,2},{6,2,8,3},{5,1,6,3},{4,0,5,1},{6,0,7,2},{4,2,5,3},{2,1,4,3},{0,1,2,2},{0,2,2,3},{4,1,5,2},{5,0,6,1}},
+      {{0,0,1,1},{0,0,2,1},{1,0,2,1},{0,2,2,3}}
     };
     for (int i = 0; i < test_input.size(); i++) {
       result = is_rects_perfect(test_input[i]);
