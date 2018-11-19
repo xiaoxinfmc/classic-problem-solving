@@ -1041,6 +1041,80 @@ namespace search_util{
       assert(result == test_output[i]);
     }
   }
+
+  enum BOUNDARY_SEARCH_TYPE { MIN_X_POS = 0, MIN_Y_POS, MAX_X_POS, MAX_Y_POS };
+
+  static int binary_search_for_boundary(const vector<string> & image,
+                                        int x, int y, int search_type = MIN_X_POS) {
+    int low = 0, high = 0, mid = 0, boundary_idx = 0;
+    switch(search_type) {
+      case MIN_X_POS: { low = 0; high = x; break; }
+      case MIN_Y_POS: { low = 0; high = y; break; }
+      case MAX_X_POS: { low = x; high = image.size() - 1; break; }
+      case MAX_Y_POS: { low = y; high = image.front().size() - 1; break; }
+      default: break;
+    }
+    bool is_black_pixel_exists = false;
+    while (low <= high) {
+      is_black_pixel_exists = false;
+      mid = (high + low) / 2;
+      switch(search_type) {
+        case MIN_X_POS: case MAX_X_POS: {
+          /* to get the boundary of x pos (vertically), we need to check all possible columns */
+          for (int i = 0; i < image.front().size(); i++) {
+            is_black_pixel_exists = is_pixel_black(image, mid, i);
+            if (true == is_black_pixel_exists) { break; }
+          }
+          break;
+        }
+        case MIN_Y_POS: case MAX_Y_POS: {
+          /* to get the boundary of y pos (horizontally), we need to check all possible rows */
+          for (int i = 0; i < image.size(); i++) {
+            is_black_pixel_exists = is_pixel_black(image, i, mid);
+            if (true == is_black_pixel_exists) { break; }
+          }
+          break;
+        }
+        default: break;
+      }
+      switch(search_type) {
+        /* if mid row/col has black pixel, then push either direction to check higher boundary */
+        case MIN_X_POS: case MIN_Y_POS: {
+          if (true == is_black_pixel_exists) { high = mid - 1; } else { low = mid + 1; }; break;
+        }
+        case MAX_X_POS: case MAX_Y_POS: {
+          if (true == is_black_pixel_exists) { low = mid + 1; } else { high = mid - 1; }; break;
+        }
+        default: break;
+      }
+      if (true == is_black_pixel_exists) { boundary_idx = mid; }
+    }
+    return boundary_idx;
+  }
+
+  static int fast_get_enclosed_area(const vector<string> & image, int x, int y) {
+    int min_x_pos = binary_search_for_boundary(image, x, y, MIN_X_POS);
+    int min_y_pos = binary_search_for_boundary(image, x, y, MIN_Y_POS);
+    int max_x_pos = binary_search_for_boundary(image, x, y, MAX_X_POS);
+    int max_y_pos = binary_search_for_boundary(image, x, y, MAX_Y_POS);
+    return (max_x_pos - min_x_pos + 1) * (max_y_pos - min_y_pos + 1);
+  }
+
+  static void test_fast_get_enclosed_area() {
+    cout << "18. test_fast_get_enclosed_area" << endl;
+    int result = 0;
+    vector<vector<string>> test_input = {
+      { "0010", "0110", "0100" }
+    };
+    vector<vector<int>> test_pos_input = { { 0, 2 } };
+    vector<int> test_output = { 6 };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = fast_get_enclosed_area(test_input[i], test_pos_input[i][0],
+                                                     test_pos_input[i][1]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1065,6 +1139,7 @@ int main(void) {
   using search_util::test_calc_num_of_islands_adp;
   using search_util::test_median_finder;
   using search_util::test_get_enclosed_area;
+  using search_util::test_fast_get_enclosed_area;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -1144,6 +1219,7 @@ int main(void) {
   test_calc_num_of_islands_adp();
   test_median_finder();
   test_get_enclosed_area();
+  test_fast_get_enclosed_area();
 
   return 0;
 }
