@@ -1122,6 +1122,104 @@ namespace tree_util {
   }
 
   /**
+   * 117. Populating Next Right Pointers in Each Node II
+   * - Given a binary tree
+   *   struct TreeLinkNode {
+   *     TreeLinkNode *left;
+   *     TreeLinkNode *right;
+   *     TreeLinkNode *next;
+   *   }
+   * - Populate each next pointer to point to its next right node. If there is
+   *   no next right node, the next pointer should be set to NULL.
+   * - Initially, all next pointers are set to NULL.
+   * Note:
+   * - You may only use constant extra space.
+   * - Recursive approach is fine, implicit stack space does not count as extra
+   *   space for this problem.
+   * Example:
+   * - Given the following binary tree,
+   *        1
+   *      /  \
+   *     2    3
+   *    / \    \
+   *   4   5    7
+   * - After calling your function, the tree should look like:
+   *        1 -> NULL
+   *      /  \
+   *     2 -> 3 -> NULL
+   *    / \    \
+   *   4-> 5 -> 7 -> NULL
+  class binary_tree_node {
+  public:
+    binary_tree_node(int val) {
+      value = val; column_id = 0; level_id = 0;
+      is_visited = false; is_right_child = false;
+      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+      prev_ptr = NULL; next_ptr = NULL;
+    }
+  }
+   * Intuition:
+   * - treverse tree in bfs manner, link all nodes within the same level
+   */
+  static void connect_siblings_in_tree(binary_tree_node * root) {
+    if (NULL == root) { return; }
+    deque<pair<binary_tree_node *, int>> visit_buffer = {
+      pair<binary_tree_node *, int>(root, 0)
+    };
+    pair<binary_tree_node *, int> prev_ptr_level_pair(NULL, 0),
+                                  curr_ptr_level_pair(NULL, 0);
+    while (!visit_buffer.empty()) {
+      curr_ptr_level_pair = visit_buffer.front();
+      visit_buffer.pop_front();
+      if (prev_ptr_level_pair.second == curr_ptr_level_pair.second &&
+          NULL != prev_ptr_level_pair.first) {
+        prev_ptr_level_pair.first->sibling = curr_ptr_level_pair.first;
+      }
+      if (NULL != curr_ptr_level_pair.first->left_ptr) {
+        visit_buffer.push_back(pair<binary_tree_node *, int>(
+          curr_ptr_level_pair.first->left_ptr, curr_ptr_level_pair.second + 1)
+        );
+      }
+      if (NULL != curr_ptr_level_pair.first->right_ptr) {
+        visit_buffer.push_back(pair<binary_tree_node *, int>(
+          curr_ptr_level_pair.first->right_ptr, curr_ptr_level_pair.second + 1)
+        );
+      }
+      prev_ptr_level_pair = curr_ptr_level_pair;
+    }
+  }
+
+  static void test_connect_siblings_in_tree() {
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \        /
+     *      3k      y15
+     */
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node y(15);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h; h.left_ptr = &y;
+
+    cout << "16. test_connect_siblings_in_tree" << endl;
+    connect_siblings_in_tree(& a);
+    bfs_bst_print_by_neighbor(&a);
+    bfs_bst_print_by_neighbor(&b);
+    bfs_bst_print_by_neighbor(&d);
+    bfs_bst_print_by_neighbor(&t);
+    bfs_bst_print_by_neighbor(&k);
+  }
+
+  /**
    * 558. Quad Tree Intersection
    * A quadtree is a tree data in which each internal node has exactly four
    * children: topLeft, topRight, bottomLeft and bottomRight. Quad trees are
@@ -1270,6 +1368,7 @@ int main(void) {
   using tree_util::find_largest_sub_bst;
   using tree_util::test_get_max_path_sum;
   using tree_util::test_binary_tree_codec;
+  using tree_util::test_connect_siblings_in_tree;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -1434,6 +1533,7 @@ int main(void) {
 
   test_get_max_path_sum();
   test_binary_tree_codec();
+  test_connect_siblings_in_tree();
 
   return 0;
 }
