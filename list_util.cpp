@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <cassert>
+#include <unordered_map>
 #include <vector>
 
 using namespace std;
@@ -89,10 +90,10 @@ namespace list_util {
    */
   class list_node {
   public:
-    list_node(int v) : val(v), next(NULL) {}
+    list_node(int v) : val(v), next(NULL), random(NULL) {}
     virtual ~list_node() {}
     int val;
-    list_node * next;
+    list_node * next, * random;
   };
 
   static bool list_ptr_compare_for_min_heap(list_node * l_ptr, list_node * r_ptr) {
@@ -124,6 +125,71 @@ namespace list_util {
       prev_ptr = curr_ptr;
     }
     return new_root;
+  }
+
+  /**
+   * 138. Copy List with Random Pointer
+   * - Definition for singly-linked list with a random pointer.
+   * struct RandomListNode {
+   *     int label;
+   *     RandomListNode *next, *random;
+   *     RandomListNode(int x) : label(x), next(NULL), random(NULL) {}
+   * };
+   * Intuitioin:
+   * - essentially copy a graph(dag), treverse & copy
+   * - random pointer is random, but still points to an existing elem in list.
+   * - bf way is to copy the list 1st, then 2nd pass to copy all random link
+   * - any good idea for 1 pass? each time check next & random at the same time
+   *   keep the mapping between old-ptr -> new-ptr & build link as needed.
+   *         v-----+
+   * - 1 --- 2 --- 3 --- 4 --- 5
+   *         +-----^     +-----^
+   */
+  //typedef RandomListNode list_node;
+  static list_node * copy_random_list(list_node * head) {
+    list_node * elem_ptr = NULL, * curr_ptr = NULL;
+    if (NULL == head) { return NULL; }
+
+    unordered_map<list_node *, list_node *> visit_lookup;
+
+    for (curr_ptr = head; NULL != curr_ptr; curr_ptr = curr_ptr->next) {
+      visit_lookup[curr_ptr] = new list_node(curr_ptr->val);
+    }
+
+    for (curr_ptr = head; NULL != curr_ptr; curr_ptr = curr_ptr->next) {
+      if (NULL != curr_ptr->next) { visit_lookup[curr_ptr]->next = visit_lookup[curr_ptr->next]; }
+      if (NULL != curr_ptr->random) { visit_lookup[curr_ptr]->random = visit_lookup[curr_ptr->random]; }
+    }
+
+    return visit_lookup[head];
+  }
+
+  static list_node * lean_copy_random_list(list_node * head) {
+    list_node * head_ptr = NULL, * temp_ptr = NULL, * curr_ptr = NULL;
+    if (NULL == head) { return NULL; }
+
+    /* insert new elem after each node */
+    for (curr_ptr = head; NULL != curr_ptr; curr_ptr = curr_ptr->next->next) {
+      temp_ptr = curr_ptr->next;
+      curr_ptr->next = new list_node(curr_ptr->val);
+      curr_ptr->next->next = temp_ptr;
+    }
+
+    /* stitch all random links */
+    for (curr_ptr = head; NULL != curr_ptr; curr_ptr = curr_ptr->next->next) {
+      temp_ptr = curr_ptr->random;
+      if (NULL != temp_ptr) { curr_ptr->next->random = temp_ptr->next; }
+    }
+
+    /* remove list from input */
+    head_ptr = head->next;
+    for (curr_ptr = head; NULL != curr_ptr; curr_ptr = curr_ptr->next) {
+      temp_ptr = curr_ptr->next;
+      curr_ptr->next = curr_ptr->next->next;
+      if (NULL != curr_ptr->next) { temp_ptr->next = curr_ptr->next->next; }
+    }
+
+    return head_ptr;
   }
 };
 
