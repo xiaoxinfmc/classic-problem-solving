@@ -138,12 +138,85 @@ namespace slide_window_util {
       for (int j = 0; j < result.size(); j++) { assert(test_output[i][j] == result[j]); }
     }
   }
+
+  /**
+   * 386. Longest Substring with At Most K Distinct Characters
+   * Description
+   * - Given a string s, find the length of the longest substring T that
+   *   contains at most k distinct characters.
+   * Example
+   * - For example, Given s = "eceba", k = 3,
+   *   T is "eceb" which its length is 4.
+   * Challenge
+   * - O(n), n is the size of the string s.
+   * Intuition:
+   * - assume all chars are within a-z
+   * - bf way of thinking is that to check the size of each substr from n -> k,
+   *   until we found the 1st substr with k diff chars, => O(n3) as we have
+   *   O(n2) substrs to check, and checking took O(n).
+   * - a improved version would be DP, essentially let char_lookup(i, j) store
+   *   all diff chars used for substr[i..j], then goal is to calc all and find
+   *   the cell with most chars used, char_lookup(i, j) = char_lookup(i, j-1)+1
+   *                                                      char_lookup(i, j-1)
+   *   we have O(n2) cell to fill, compute each cell took O(alpha) => alpha O(n2)
+   * - sliding window of k diff chars based on unordered_map & max-substr-len
+   *   for O(n), obviously we need a drastic diff. approach, a natural way to
+   *   think is to use sliding window tech.
+   * - maintain a window from start_pos -> end_pos, with corresponding char cnt
+   *   map, then the size of the map is the k, while the cnt of certain char
+   *   shows the cnt of char within curr. window.
+   * - at the same time, we maintain a max count for total sum of all values,
+   *   the window should always contain k diff. chars, and each time we move it
+   *   from left -> right, & update the map & max-cnt accordingly.
+   */
+  static void decr_char_cnt_lookup(unordered_map<char, int> & lookup, char val) { lookup[val] -= 1; }
+
+  static void incr_char_cnt_lookup(unordered_map<char, int> & lookup, char val) { lookup[val] += 1; }
+
+  static int fetch_char_cnt(unordered_map<char, int> & lookup, char val) { return lookup[val]; }
+
+  static int get_lsubstr_len_with_at_most_k_diff_chars(const string & str, int k) {
+    int lsubstr_len = 0, diff_char_cnt = 0;
+    unordered_map<char, int> char_cnt_lookup;
+    /* we will always maintain the diff_char_cnt to be exactly k */
+    for (int start_pos = 0, end_pos = 0; end_pos < str.size() && start_pos < str.size(); ) {
+      if (end_pos < start_pos) { end_pos = start_pos; }
+      if (diff_char_cnt <= k) {
+        /* we have less than k diff chars, then expanding window with end_pos */
+        if (0 == fetch_char_cnt(char_cnt_lookup, str[end_pos])) { diff_char_cnt += 1; }
+        incr_char_cnt_lookup(char_cnt_lookup, str[end_pos]);
+        if (diff_char_cnt <= k) { lsubstr_len = std::max(lsubstr_len, (end_pos - start_pos + 1)); }
+        end_pos += 1;
+      } else {
+        /* we have k + 1 diff chars, then log curr_len if needed, shrink window with start_pos */
+        decr_char_cnt_lookup(char_cnt_lookup, str[start_pos]);
+        if (0 == fetch_char_cnt(char_cnt_lookup, str[start_pos])) { diff_char_cnt -= 1; }
+        start_pos += 1;
+      }
+    }
+    return lsubstr_len;
+  }
+
+  static void test_get_lsubstr_len_with_at_most_k_diff_chars() {
+    cout << "2. test_get_lsubstr_len_with_at_most_k_diff_chars" << endl;
+    int result = 0;
+    vector<int> test_output = { 4, 1, 8, 1, 3, 6, 0, 2 };
+    vector<int> test_input_k = { 3, 1, 1, 1, 1, 2, 0, 10 };
+    vector<string> test_input_str = { "eceba", "eceba", "aaaaaaaa", "a", "aaak", "aaakaas", "", "kb" };
+    for (int i = 0; i < test_input_str.size(); i++) {
+      result = get_lsubstr_len_with_at_most_k_diff_chars(test_input_str[i], test_input_k[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
   using slide_window_util::test_get_max_via_sliding_window;
+  using slide_window_util::test_get_lsubstr_len_with_at_most_k_diff_chars;
 
   test_get_max_via_sliding_window();
+  test_get_lsubstr_len_with_at_most_k_diff_chars();
 
   return 0;;
 }
