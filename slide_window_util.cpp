@@ -209,6 +209,89 @@ namespace slide_window_util {
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 660. Read N Characters Given Read4 II - Call multiple times
+   * Description
+   * - The API: int read4(char *buf) reads 4 characters at a time from a file.
+   * - The return value is the actual number of characters read. For example,
+   *   it returns 3 if there is only 3 characters left in the file.
+   * - By using the read4 API, implement the function int read(char *buf, int n)
+   *   that reads n characters from the file.
+   * - The read function may be called multiple times.
+   * Intuition:
+   * - implement read base on read4 is easy, while we may want to account for
+   *   the case of api been called multiple times for same file but diff. chars.
+   * - the goal could be caching the previous read as much as possible ?
+   * - apparently we are looking for a neat solution to keep track of curr ptr.
+   */
+  static int read4(char * buf) { return 0; }
+  const static int READ_BUFFER_SIZE = 4;
+  class algor_read_obj {
+  public:
+    algor_read_obj() : start_pos(-1), end_pos(-1) { memset(read_buffer, 0, sizeof(read_buffer)); }
+    virtual ~algor_read_obj() {}
+
+    int algor_read(char * buf, int n) {
+      int total_char_read = 0, curr_char_read = 0;
+      if (NULL == buf || n <= 0) { return total_char_read; }
+
+      /* 1. check and fetch from existing buffer */
+      curr_char_read = check_and_fetch_from_existing_buffer(
+        buf, 0, min(n - total_char_read, READ_BUFFER_SIZE)
+      );
+      total_char_read += curr_char_read;
+
+      /* 2. if curr buffer does not cover all needs, move to read4 */
+      while (total_char_read < n) {
+        /* usually curr_char_read will be 4, it will be less either:
+         * - reach the end of file or reach the max chars to read */
+        curr_char_read = check_and_fetch_from_sys_buffer(
+          buf, total_char_read, min(n - total_char_read, READ_BUFFER_SIZE)
+        );
+        total_char_read += curr_char_read;
+        /* check if we reach the end of the file */
+        if (curr_char_read < READ_BUFFER_SIZE) { break; }
+      }
+
+      return total_char_read;
+    }
+
+  private:
+    /* this method will 1st call read4 to buffer 4 chars to internal buffer then
+     * passing back the value as needed, and return chars been copied */
+    int check_and_fetch_from_sys_buffer(char * dest_buf, int dest_buf_idx = 0,
+                                        int fetch_cnt = READ_BUFFER_SIZE){
+      memset(read_buffer, 0, sizeof(read_buffer));
+      start_pos = 0; end_pos = read4(read_buffer); end_pos -= 1;
+      int char_to_ret = min(end_pos - start_pos + 1, fetch_cnt);
+      for (int i = 0; i < char_to_ret; i++) {
+        dest_buf[dest_buf_idx + i] = read_buffer[start_pos];
+        start_pos += 1;
+      }
+      return curr_char_read;
+    }
+    /* this method is supposed to be called everytime before calling read4
+     * such that we can avoid over reaching the pointer in read4, if fetch_cnt
+     * is 2, while we have 3 in curr_buf, then there is no need to call read4
+     * at all, then curr_buf of [ a b c 0 ] will be [ a b c 0 ], and return 2.
+     *                            ^   ^                   ^^ */
+    int check_and_fetch_from_existing_buffer(char * dest_buf, int dest_buf_idx = 0,
+                                             int fetch_cnt = READ_BUFFER_SIZE){
+      if (false == is_curr_buffer_has_data()) { return 0; }
+      int char_to_ret = min(end_pos - start_pos + 1, fetch_cnt);
+      for (int i = 0; i < char_to_ret; i++) {
+        dest_buf[dest_buf_idx + i] = read_buffer[start_pos];
+        start_pos += 1;
+      }
+      return char_to_ret;
+    }
+    bool is_curr_buffer_has_data() {
+      return (end_pos >= start_pos && start_pos >= 0 && end_pos < READ_BUFFER_SIZE);
+    }
+    char read_buffer[READ_BUFFER_SIZE];
+    int start_pos, end_pos;
+  };
 };
 
 int main(void) {
