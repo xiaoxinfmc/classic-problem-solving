@@ -259,7 +259,8 @@ namespace slide_window_util {
 
   private:
     /* this method will 1st call read4 to buffer 4 chars to internal buffer then
-     * passing back the value as needed, and return chars been copied */
+     * passing back the value as needed, and return chars been copied, also call
+     * of this api preassume that we fetch up all existing buffer already. */
     int check_and_fetch_from_sys_buffer(char * dest_buf, int dest_buf_idx = 0,
                                         int fetch_cnt = READ_BUFFER_SIZE){
       memset(read_buffer, 0, sizeof(read_buffer));
@@ -269,7 +270,7 @@ namespace slide_window_util {
         dest_buf[dest_buf_idx + i] = read_buffer[start_pos];
         start_pos += 1;
       }
-      return curr_char_read;
+      return char_to_ret;
     }
     /* this method is supposed to be called everytime before calling read4
      * such that we can avoid over reaching the pointer in read4, if fetch_cnt
