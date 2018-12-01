@@ -1167,6 +1167,8 @@ namespace search_util{
   };
 
   static int calc_min_hp(const vector<vector<int>>& dungeon) {
+    if (dungeon.empty() || dungeon.front().empty()) { return 1; }
+
     vector<min_hp_cell> min_cost_lookup(dungeon.front().size(),
                                         min_hp_cell(dungeon[0][0], dungeon[0][0]));
 
@@ -1194,7 +1196,7 @@ namespace search_util{
       }
     }
 
-    return min_cost_lookup.back().min_prefix_sum > 0 ? 0 : (0 - min_cost_lookup.back().min_prefix_sum + 1);
+    return min_cost_lookup.back().min_prefix_sum > 0 ? 1 : (0 - min_cost_lookup.back().min_prefix_sum + 1);
   }
 
   static void test_calc_min_hp() {
