@@ -1115,6 +1115,99 @@ namespace search_util{
       assert(result == test_output[i]);
     }
   }
+
+  /**
+   * 174. Dungeon Game
+   * - The demons had captured the princess (P) and imprisoned her in the
+   *   bottom-right corner of a dungeon. The dungeon consists of M x N rooms
+   *   laid out in a 2D grid. Our valiant knight (K) was initially positioned
+   *   in the top-left room and must fight his way through the dungeon to
+   *   rescue the princess.
+   * - The knight has an initial health point represented by positive integer.
+   *   If any point his health point drops to 0 or below, he dies immediately.
+   * - Some of the rooms are guarded by demons, so the knight loses health
+   *   (negative integers) upon entering these rooms; other rooms are either
+   *   empty (0's) or contain magic orbs that increase the knight's health
+   *   (positive integers).
+   * - In order to reach the princess as quickly as possible, the knight
+   *   decides to move only rightward or downward in each step.
+   * - Write a function to determine the knight's minimum initial health so
+   *   that he is able to rescue the princess.
+   * - For example, given the dungeon below, the initial health of the knight
+   *   must be at least 7 if he follows the optimal path
+   *   RIGHT-> RIGHT -> DOWN -> DOWN.
+   *   -2(K)   -3   3
+   *   -5     -10   1
+   *   10      30  -5 (P)
+   * Intuition:
+   * - obviously, it is a search problem, goal is to find path from top-left
+   *   to bottom-right with min cost(only move down or right).
+   * - the cost function here needs some attention, as it is not simply a sum
+   *   but the min-sum-value at any step in the middle, we want at any step the
+   *   knight does not lose too much life (say -7 is better than -30, even next
+   *   step it can added up 10 and 60), because kinght needs to keep alive at
+   *   every step, and if the value drop below 10, he dies.
+   * - cost function should really be prefix-sum-of-path(i), a min-path means:
+   *   for a path from (cell 0 ... cell j), it will have the largest value of
+   *   min{ 0 < k < j | prefix-sum-of-path(k) }
+   * - if all cells are pos, then knight only need 0, any path is good anyway.
+   * - Whether it is a DP depends on if we can breakdown it into subproblem and
+   *   find the optimal structure. Also we only want a value instead of full
+   *   path, then DP is a natural solution here.
+   * - Let min-sum-cost(i, j) denote the min-prefix-sum for path ends at (i,j)
+   *   min-sum-cost(i, j) = max(min-sum-cost(i - 1, j), min-sum-cost(i, j - 1))
+   *   goal is to calc bottom right value.
+   */
+  class min_hp_cell {
+  public:
+    min_hp_cell(int pfx_sum = 0, int min_cost = INT_MAX) : prefix_sum(pfx_sum),
+                                                           min_prefix_sum(min_cost) {}
+    virtual ~min_hp_cell() {}
+    int prefix_sum, min_prefix_sum;
+  };
+
+  static int calc_min_hp(const vector<vector<int>>& dungeon) {
+    vector<min_hp_cell> min_cost_lookup(dungeon.front().size(),
+                                        min_hp_cell(dungeon[0][0], dungeon[0][0]));
+
+    for (int i = 1; i < min_cost_lookup.size(); i++) {
+      min_cost_lookup[i].prefix_sum = min_cost_lookup[i - 1].prefix_sum + dungeon[0][i];
+      min_cost_lookup[i].min_prefix_sum = min(
+        min_cost_lookup[i - 1].min_prefix_sum, min_cost_lookup[i].prefix_sum
+      );
+    }
+
+    min_hp_cell prev_cell;
+    for (int i = 1; i < dungeon.size(); i++) {
+      for (int j = 0; j < dungeon[i].size(); j++) {
+        min_cost_lookup[j].prefix_sum += dungeon[i][j];
+        min_cost_lookup[j].min_prefix_sum = min(
+          min_cost_lookup[j].prefix_sum, min_cost_lookup[j].min_prefix_sum
+        );
+        if (0 == j) { continue; }
+        prev_cell = min_cost_lookup[j - 1];
+        prev_cell.prefix_sum += dungeon[i][j];
+        prev_cell.min_prefix_sum = min(prev_cell.prefix_sum, prev_cell.min_prefix_sum);
+        if (prev_cell.min_prefix_sum > min_cost_lookup[j].min_prefix_sum) {
+          min_cost_lookup[j] = prev_cell;
+        }
+      }
+    }
+
+    return min_cost_lookup.back().min_prefix_sum > 0 ? 0 : (0 - min_cost_lookup.back().min_prefix_sum + 1);
+  }
+
+  static void test_calc_min_hp() {
+    cout << "19. test_calc_min_hp" << endl;
+    int result = 0;
+    vector<int> test_output = { 7 };
+    vector<vector<vector<int>>> test_input = { { { -2, -3, 3 }, { -5, -10, 1 }, { 10, 30, -5 } } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_min_hp(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1140,6 +1233,7 @@ int main(void) {
   using search_util::test_median_finder;
   using search_util::test_get_enclosed_area;
   using search_util::test_fast_get_enclosed_area;
+  using search_util::test_calc_min_hp;
 
   cout << "1. find_shortest_ladder" << endl;
   vector<string> d0({ "hot","dot","dog","lot","log" });
@@ -1220,6 +1314,7 @@ int main(void) {
   test_median_finder();
   test_get_enclosed_area();
   test_fast_get_enclosed_area();
+  test_calc_min_hp();
 
   return 0;
 }
