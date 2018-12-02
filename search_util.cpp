@@ -1188,7 +1188,8 @@ namespace search_util{
   static int calc_min_hp(const vector<vector<int>>& dungeon) {
     if (dungeon.empty() || dungeon.front().empty()) { return 1; }
     vector<int> min_cost_lookup = dungeon.back();
-    min_cost_lookup[min_cost_lookup.size() - 1]  = 1 - min_cost_lookup.back();
+    min_cost_lookup.back()  = 1 - min_cost_lookup.back();
+    if (min_cost_lookup.back() < 0) { min_cost_lookup.back() = 1; }
 
     for (int i = dungeon.size() - 1; i >= 0; i--) {
       for (int j = dungeon[i].size() - 1; j >= 0; j--) {
@@ -1200,6 +1201,7 @@ namespace search_util{
         if (INT_MAX != tentative_value) { min_cost_lookup[j] += tentative_value; }
         if (min_cost_lookup[j] < 0) { min_cost_lookup[j] = 1; }
       }
+print_all_elem<int>(min_cost_lookup);
     }
     return min_cost_lookup.front() > 0 ? min_cost_lookup.front() : 1;
   }
@@ -1207,10 +1209,11 @@ namespace search_util{
   static void test_calc_min_hp() {
     cout << "19. test_calc_min_hp" << endl;
     int result = 0;
-    vector<int> test_output = { 7, 3 };
+    vector<int> test_output = { 7, 3, 4 };
     vector<vector<vector<int>>> test_input = {
       { { -2, -3, 3 }, { -5, -10, 1 }, { 10, 30, -5 } },
-      {{1,-3,3},{0,-2,0},{-3,-3,-3}}
+      {{1,-3,3},{0,-2,0},{-3,-3,-3}},
+      { { -3, 5 } }
     };
     for (int i = 0; i < test_input.size(); i++) {
       result = calc_min_hp(test_input[i]);
