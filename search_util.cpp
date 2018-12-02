@@ -1201,7 +1201,6 @@ namespace search_util{
         if (INT_MAX != tentative_value) { min_cost_lookup[j] += tentative_value; }
         if (min_cost_lookup[j] < 0) { min_cost_lookup[j] = 1; }
       }
-print_all_elem<int>(min_cost_lookup);
     }
     return min_cost_lookup.front() > 0 ? min_cost_lookup.front() : 1;
   }
