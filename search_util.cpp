@@ -1157,53 +1157,61 @@ namespace search_util{
    * - Let min-sum-cost(i, j) denote the min-prefix-sum for path ends at (i,j)
    *   min-sum-cost(i, j) = max(min-sum-cost(i - 1, j), min-sum-cost(i, j - 1))
    *   goal is to calc bottom right value.
+   * - for each cell, prefix-sum & min-prefix-sum can from diff. path.
+   * - however, hard part being that it is very difficult to nail down optimal
+   *   structure, as on each point of path, we have current hp(prefix-sum) and
+   *   min-prefix-sum along the path, without futrue context, we cannot make
+   *   a move.
+   *
+   * - A DIFF strategy would be searching the path in reverse order, and change
+   *   the meaning of each cell in lookup.
+   * - !!!! Let min-hp-lookup(i, j) represents min-hp knight needs to have
+   *   BEFORE reaching the target cell. min-hp-lookup(0, 0) will be the goal.
+   * - For initial status in bottom right cell, the knight needs min hp of
+   *   0 - dungeon[i][j] + 1. Plus, to enter this cell(i, j), knight may move
+   *   from cell(i - 1, j) or cell(i, j - 1), and each cell has its own cost
+   *   then we can alos calc. the min-hp for cell(i - 1, j) & cell(i, j - 1)
+   * - to calc min-hp-lookup(i, j), we know it may move in 2 directions,
+   *   either cell(i + 1, j) or cell(i, j + 1). assume we already know the min
+   *   hp needed in these 2 cells, then min-hp-lookup(i, j) should be able to
+   *   satisfy the min requirement so as to move forward (to bottom-right cell)
+   * - Or rather straight-forwardly to say, when we have 2 cell, both could lead
+   *   to the target cell, obviously we want to be in the cell with smallest
+   *   min-hp limit to finish the path.
+   * - VERY important thing here is that we don't choose the actual path here,
+   *   ONLY to calc min. hp requirement on each room to finish rest of journey.
+   *
+   *   min-hp-lookup(i, j) + cell(i, j) = min(min-hp-lookup(i + 1, j), min-hp-lookup(i, j + 1))
+   *                                    v
+   *   min-hp-lookup(i, j) = min(min-hp-lookup(i + 1, j), min-hp-lookup(i, j + 1)) - cell(i, j)
    */
-  class min_hp_cell {
-  public:
-    min_hp_cell(int pfx_sum = 0, int min_cost = INT_MAX) : prefix_sum(pfx_sum),
-                                                           min_prefix_sum(min_cost) {}
-    virtual ~min_hp_cell() {}
-    int prefix_sum, min_prefix_sum;
-  };
-
   static int calc_min_hp(const vector<vector<int>>& dungeon) {
     if (dungeon.empty() || dungeon.front().empty()) { return 1; }
+    vector<int> min_cost_lookup = dungeon.back();
+    min_cost_lookup[min_cost_lookup.size() - 1]  = 1 - min_cost_lookup.back();
 
-    vector<min_hp_cell> min_cost_lookup(dungeon.front().size(),
-                                        min_hp_cell(dungeon[0][0], dungeon[0][0]));
-
-    for (int i = 1; i < min_cost_lookup.size(); i++) {
-      min_cost_lookup[i].prefix_sum = min_cost_lookup[i - 1].prefix_sum + dungeon[0][i];
-      min_cost_lookup[i].min_prefix_sum = min(
-        min_cost_lookup[i - 1].min_prefix_sum, min_cost_lookup[i].prefix_sum
-      );
-    }
-
-    min_hp_cell prev_cell;
-    for (int i = 1; i < dungeon.size(); i++) {
-      for (int j = 0; j < dungeon[i].size(); j++) {
-        min_cost_lookup[j].prefix_sum += dungeon[i][j];
-        min_cost_lookup[j].min_prefix_sum = min(
-          min_cost_lookup[j].prefix_sum, min_cost_lookup[j].min_prefix_sum
-        );
-        if (0 == j) { continue; }
-        prev_cell = min_cost_lookup[j - 1];
-        prev_cell.prefix_sum += dungeon[i][j];
-        prev_cell.min_prefix_sum = min(prev_cell.prefix_sum, prev_cell.min_prefix_sum);
-        if (prev_cell.min_prefix_sum > min_cost_lookup[j].min_prefix_sum) {
-          min_cost_lookup[j] = prev_cell;
-        }
+    for (int i = dungeon.size() - 1; i >= 0; i--) {
+      for (int j = dungeon[i].size() - 1; j >= 0; j--) {
+        if (j + 1 == dungeon[i].size() && i + 1 == dungeon.size()) { continue; }
+        int tentative_value = INT_MAX;
+        if (j + 1 < dungeon[i].size()) { tentative_value = min(tentative_value, min_cost_lookup[j + 1]); }
+        if (i + 1 < dungeon.size()) { tentative_value = min(tentative_value, min_cost_lookup[j]); }
+        min_cost_lookup[j] = (0 - dungeon[i][j]);
+        if (INT_MAX != tentative_value) { min_cost_lookup[j] += tentative_value; }
+        if (min_cost_lookup[j] < 0) { min_cost_lookup[j] = 1; }
       }
     }
-
-    return min_cost_lookup.back().min_prefix_sum > 0 ? 1 : (0 - min_cost_lookup.back().min_prefix_sum + 1);
+    return min_cost_lookup.front() > 0 ? min_cost_lookup.front() : 1;
   }
 
   static void test_calc_min_hp() {
     cout << "19. test_calc_min_hp" << endl;
     int result = 0;
-    vector<int> test_output = { 7 };
-    vector<vector<vector<int>>> test_input = { { { -2, -3, 3 }, { -5, -10, 1 }, { 10, 30, -5 } } };
+    vector<int> test_output = { 7, 3 };
+    vector<vector<vector<int>>> test_input = {
+      { { -2, -3, 3 }, { -5, -10, 1 }, { 10, 30, -5 } },
+      {{1,-3,3},{0,-2,0},{-3,-3,-3}}
+    };
     for (int i = 0; i < test_input.size(); i++) {
       result = calc_min_hp(test_input[i]);
       cout << result << " <=> " << test_output[i] << endl;
