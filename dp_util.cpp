@@ -1567,6 +1567,84 @@ namespace dp_util{
       assert(max_sum == test_output[i]);
     }
   }
+
+  /**
+   * 516. Paint House II
+   * Description
+   * - There are a row of n houses, each house can be painted with one of the k
+   *   colors. The cost of painting each house with certain color is different.
+   *   You have to paint all the houses such that no two adjacent houses have
+   *   the same color.
+   * - The cost of painting each house with a certain color is represented by a
+   *   n x k cost matrix. For example, costs[0][0] is the cost of painting house
+   *   0 with color 0; costs[1][2] is the cost of painting house 1 with color 2,
+   *   and so on... Find the minimum cost to paint all houses.
+   * - All costs are positive integers.
+   * Example
+   * - Given n = 3, k = 3, costs = [[14,2,11],[11,14,5],[14,3,10]] return 10
+   *   house 0 is color 2, house 1 is color 3, house 2 is color 2, 2 + 5 + 3 = 10
+   * Intuition:
+   * - obviously calc min value without actual plan with constraints leads to DP
+   *   the devil is to hammer out a equation.
+   * - let cost_lookup(i, j) be the min cost of finishing painting house 0 ~ i,
+   *   with ith house using color j.
+   *   with colors available from 0 ~ j
+   *   then the goal is to calc all matrix cell & return the last(bottom right).
+   * - assume we know all cells before cost_lookup(i, j), then
+   *   cost_lookup(i, j) = min{ 0 <= c <= k && c != j | cost_lookup(i - 1, k) } + costs[i][j]
+   * - base case being if we just paint 1 house, then we just use the min color for all colors given.
+   *   if we are only given 1 color, then all houses except 1st one will have INF cost.
+   * - in the meantime, we can also maintain a buffer to log the min value we
+   *   want to fetch for prev row, initially will all be zero.
+   */
+  static int calc_min_painting_cost(vector<vector<int>> & costs) {
+    int min_painting_cost = 0;
+    if (true == costs.empty()) { return min_painting_cost; }
+
+    int house_cnt = costs.size(), color_cnt = costs.front().size();
+    /* initialize when only 1 house needs to paint */
+    vector<int> cost_lookup = costs.front();
+
+    for (int i = 1; i < house_cnt; i++) {
+      /* calc the min cost buffer */
+      int curr_min_j = 0, curr_min_val = INT_MAX, alt_min_val = INT_MAX;
+      for (int c = 0; c < color_cnt; c++) {
+        if (cost_lookup[c] < curr_min_val) { curr_min_j = c; curr_min_val = cost_lookup[c]; }
+      }
+      for (int c = 0; c < color_cnt; c++) {
+        if (cost_lookup[c] < alt_min_val && curr_min_j != c) { alt_min_val = cost_lookup[c]; }
+      }
+      /* fill up cells */
+      for (int j = 0; j < color_cnt; j++) {
+        if (j == curr_min_j) {
+          cost_lookup[j] = alt_min_val + costs[i][j];
+        } else {
+          cost_lookup[j] = curr_min_val + costs[i][j];
+        }
+      }
+    }
+
+    min_painting_cost = INT_MAX;
+    for (int c = 0; c < color_cnt; c++) {
+      min_painting_cost = min(min_painting_cost, cost_lookup[c]);
+    }
+    return min_painting_cost;
+  }
+
+  static void test_calc_min_painting_cost() {
+    cout << "26. test_calc_min_painting_cost" << endl;
+    int result = 0;
+    vector<int> test_output = { 10, 3, 0 };
+    vector<vector<vector<int>>> test_input = {
+      {{14,2,11},{11,14,5},{14,3,10}},
+      {{1,2,3},{1,4,6}}, {},
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_min_painting_cost(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
@@ -1599,6 +1677,7 @@ int main(void) {
   using dp_util::maximum_coins_via_burst_balloons;
   using dp_util::fast_maximum_coins_via_burst_balloons;
   using dp_util::test_calc_max_path_sum;
+  using dp_util::test_calc_min_painting_cost;
 
   cout << "1. get_min_palindrome_cnt" << endl;
   string test_input[] = { "", "a", "aab", "aaa", "aaacdfe", "aaacaaafe",
@@ -1825,7 +1904,7 @@ int main(void) {
   cout << "20 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3, 5 })) << endl;
   cout << "152 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 3, 5, 8 })) << endl;
   cout << "1088290 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 9, 76, 64, 21, 97, 60, 5 })) << endl;
-  cout << "3414 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
+  //cout << "3414 <=> " << maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
 
   cout << "24. fast_maximum_coins_via_burst_balloons" << endl;
   cout << "167 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 3, 1, 5, 8 })) << endl;
@@ -1837,6 +1916,7 @@ int main(void) {
   cout << "3414 <=> " << fast_maximum_coins_via_burst_balloons(vector<int>({ 8,2,6,8,9,8,1,4,1,5,3,0,7,7,0,4,2 })) << endl;
 
   test_calc_max_path_sum();
+  test_calc_min_painting_cost();
 
   return 0;
 }
