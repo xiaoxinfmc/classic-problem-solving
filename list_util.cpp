@@ -72,6 +72,18 @@ namespace list_util {
     return curr_node_ptr;
   }
 
+  static void test_insert_circular_sorted_list() {
+    cout << "1. insert_circular_sorted_list:" << endl;
+    cout << "-1 -1 0 1 1 2 3 5 5" << endl;
+    vector<int> elem_value_arr({ -1, -1, 1, 1, 2, 3, 5, 5 });
+    circular_sorted_list_node * list_head_ptr = new circular_sorted_list_node(0);
+    for (auto & elem_value : elem_value_arr) {
+      list_head_ptr = insert_circular_sorted_list(list_head_ptr, elem_value);
+      print_circular_sorted_list(list_head_ptr);
+    }
+    print_circular_sorted_list(list_head_ptr);
+  }
+
   /**
    * 23. Merge k Sorted Lists
    * Merge k sorted linked lists and return it as one sorted list. Analyze
@@ -125,6 +137,10 @@ namespace list_util {
       prev_ptr = curr_ptr;
     }
     return new_root;
+  }
+
+  static void test_merge_k_lists() {
+    cout << "2. test_merge_k_lists" << endl;
   }
 
   /**
@@ -191,21 +207,96 @@ namespace list_util {
 
     return head_ptr;
   }
+
+  static void test_lean_copy_random_list() {
+    cout << "3. test_lean_copy_random_list" << endl;
+  }
+
+  /**
+   * 25. Reverse Nodes in k-Group
+   * - Given a linked list, reverse the nodes of a linked list k at a time and
+   *   return its modified list.
+   * - k is a positive integer and is less than or equal to the length of the
+   *   linked list. If the number of nodes is not a multiple of k then left-out
+   *   nodes in the end should remain as it is.
+   * Example:
+   * - Given this linked list: 1->2->3->4->5
+2 -> 1
+3 -> 2
+1 -> 4
+   *   For k = 2, you should return: 2->1->4->3->5
+   *                                    ^        ^
+   *   For k = 3, you should return: 3->2  1->4->5
+   *   +-----------v                 ^<-_  ^
+   * - 1  2  3  4  5
+   *   ^<-^<-^  ^<-^
+   *   f     c  n
+5 -> 4
+4 -> NULL
+1 -> 5
+   * Note:
+   * - Only constant extra memory is allowed.
+   * - You may not alter the values in the list's nodes, only nodes itself may
+   *   be changed.
+   * Intuition:
+   * - rather straightforward, simply implement a reverse method take in stream
+   */
+  // typedef ListNode list_node;
+  static bool is_segment_in_full_size(list_node * curr_ptr, int k) {
+    int group_size = 0;
+    for (list_node * node_ptr = curr_ptr; node_ptr != NULL && group_size < k;
+         node_ptr = node_ptr->next, group_size++) { }
+    return (group_size == k);
+  }
+
+  static list_node * reverse_list_in_k_group(list_node * head, int k) {
+    if (k <= 1 || NULL == head) { return head; }
+    list_node * curr_ptr = head,  * next_ptr = NULL, * first_ptr = NULL,
+              * temp_ptr = NULL, * segs_ptr = NULL, * new_head = NULL;
+    while (NULL != curr_ptr) {
+      if (!is_segment_in_full_size(curr_ptr, k)) {
+        if (NULL == new_head) { new_head = curr_ptr; }; break;
+      }
+      next_ptr = curr_ptr->next; first_ptr = curr_ptr;
+      for (int curr_group_cnt = 1; curr_group_cnt < k &&
+                                   NULL != next_ptr; curr_group_cnt++) {
+        temp_ptr = next_ptr->next;
+        next_ptr->next = curr_ptr;
+        curr_ptr = next_ptr;
+        next_ptr = temp_ptr;
+      }
+      /* after the for, curr_ptr points to the last elem of curr segment,
+       * next_ptr points to the beginning of next segment */
+      if (NULL == new_head) { new_head = curr_ptr; }
+      first_ptr->next = next_ptr;
+      if (NULL != segs_ptr) { segs_ptr->next = curr_ptr; }
+      segs_ptr = first_ptr;
+      curr_ptr = next_ptr;
+    }
+    return new_head;
+  }
+
+  static void test_reverse_list_in_k_group() {
+    cout << "4. test_reverse_list_in_k_group" << endl;
+    vector<list_node> test_input;
+    for (int i = 1; i <= 7; i++) { test_input.push_back(list_node(i)); }
+    for (int i = 0; i < 6; i++) { test_input[i].next = & test_input[i + 1]; }
+    list_node * head = & test_input[0]; int k = 4;
+    head = reverse_list_in_k_group(head, k);
+    for (; NULL != head; head = head->next) { cout << head->val << " "; } cout << endl;
+  }
 };
 
 int main(void) {
-  using list_util::circular_sorted_list_node;
-  using list_util::insert_circular_sorted_list;
-  using list_util::print_circular_sorted_list;
+  using list_util::test_insert_circular_sorted_list;
+  using list_util::test_reverse_list_in_k_group;
+  using list_util::test_lean_copy_random_list;
+  using list_util::test_merge_k_lists;
 
-  cout << "1. insert_circular_sorted_list:" << endl;
-  cout << "-1 -1 0 1 1 2 3 5 5" << endl;
-  vector<int> elem_value_arr({ -1, -1, 1, 1, 2, 3, 5, 5 });
-  circular_sorted_list_node * list_head_ptr = new circular_sorted_list_node(0);
-  for (auto & elem_value : elem_value_arr) {
-    list_head_ptr = insert_circular_sorted_list(list_head_ptr, elem_value);
-    print_circular_sorted_list(list_head_ptr);
-  }
-  print_circular_sorted_list(list_head_ptr);
+  test_insert_circular_sorted_list();
+  test_lean_copy_random_list();
+  test_merge_k_lists();
+  test_reverse_list_in_k_group();
+
   return 0;
 }
