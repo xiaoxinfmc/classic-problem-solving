@@ -887,6 +887,51 @@ namespace tool_util {
       assert(1 == rf.pick_random_item());
     }
   }
+
+  /**
+   * 282. Expression Add Operators
+   * - Given a string that contains only digits 0-9 and a target value, return
+   *   all possibilities to add binary operators (not unary) +, -, or * between
+   *   the digits so they evaluate to the target value.
+   * Example 1:
+   * - Input: num = "123", target = 6
+   * - Output: ["1+2+3", "1*2*3"] 
+   * Example 2:
+   * - Input: num = "232", target = 8
+   * - Output: ["2*3+2", "2+3*2"]
+   * Example 3:
+   * - Input: num = "105", target = 5
+   * - Output: ["1*0+5","10-5"]
+   * Example 4:
+   * - Input: num = "00", target = 0
+   * - Output: ["0+0", "0-0", "0*0"]
+   * Example 5:
+   * - Input: num = "3456237490", target = 9191
+   * - Output: []
+   */
+   static vector<string> find_expr(const string & digits, int target) {
+     vector<string> expr_arr;
+     return expr_arr;
+   }
+
+   static void test_find_expr() {
+     cout << "7. test_find_expr" << endl;
+     vector<string> result;
+     vector<int> test_target_input = { 6, 8, 5, 0, 9191 };
+     vector<string> test_digit_input = {
+       "123","232","105", "00","3456237490",
+     };
+     vector<vector<string>> test_output = {
+       {"1+2+3", "1*2*3"}, {"2*3+2", "2+3*2"}, {"1*0+5","10-5"}, {"0+0", "0-0", "0*0"}, {}
+     };
+     for (int i = 0; i < test_digit_input.size(); i++) {
+       result = find_expr(test_digit_input[i], test_target_input[i]);
+       print_all_elem<string>(test_output[i]); cout << " <=>" << endl;
+       print_all_elem<string>(result);
+       assert(result.size() == test_output[i].size());
+       for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
+     }
+   }
 };
 
 int main(void) {
@@ -896,6 +941,7 @@ int main(void) {
   using tool_util::test_filtered_random_picker;
   using tool_util::test_random_set;
   using tool_util::test_dup_random_set;
+  using tool_util::test_find_expr;
 
   test_calc_expr();
   test_min_max_map();
@@ -903,6 +949,7 @@ int main(void) {
   test_filtered_random_picker();
   test_random_set();
   test_dup_random_set();
+  test_find_expr();
 
   return 0;;
 }
