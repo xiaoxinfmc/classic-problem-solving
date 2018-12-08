@@ -1220,6 +1220,120 @@ namespace tree_util {
   }
 
   /**
+   * 901. Closest Binary Search Tree Value II
+   * Description
+   * - Given a non-empty binary search tree and a target value, find k values
+   *   in the BST that are closest to the target.
+   * - Given target value is a floating point.
+   * - You may assume k is always valid, that is: k ≤ total nodes.
+   * - You are guaranteed to have only one unique set of k values in the BST
+   *   that are closest to the target.
+   * Example
+   * - Given root = {1}, target = 0.000000, k = 1, return [1].
+   *   struct TreeNode {
+   *     int val;
+   *     TreeNode *left;
+   *     TreeNode *right;
+   *     TreeNode(int x) : val(x), left(NULL), right(NULL) {}
+   *   }
+   * Intuition:
+   * - a bst can be treversed in sorting order using lvr, then the problem can
+   *   be converted to given a sorted list, return k values closest to a given
+   *   target, sliding window with size of k?
+   * - maintain a sorted k elems (should be easy as input are sorted), each time
+   *   even buffer is not full, then simply append to the end.
+   * - if buffer is full already, check if current value has a smaller dist, if
+   *   yes, then check with the front & back of the buffer to see which one to
+   *   replace, as we know that will be the only place possible to be replaced.
+   *   [ x.. target ... ... ] n -> replace with front
+   *   [ ... ... target ... ] n -> replace with front or back
+   *   [ ... x.. target ... ] n -> if x is replaced, then rule is violated.
+   *   target [ ... x.. ... ] n -> if x is replaced, then rule is violated.
+   *   [ ... x.. ... ] target n -> if x is replaced, then rule is violated.
+   */
+  double calc_dist_to_target(double target, int value) {
+    return fabs(value * 1.0 - target);
+  }
+
+  bool check_and_update_buffer(int curr_val, double target,
+                               int k, deque<int> & k_buffer) {
+    if (k_buffer.empty() || k_buffer.size() < k) {
+      k_buffer.push_back(curr_val); return true;
+    }
+    double front_dist = calc_dist_to_target(target, k_buffer.front());
+    double back_dist = calc_dist_to_target(target, k_buffer.back());
+    double curr_dist = calc_dist_to_target(target, curr_val);
+    if (front_dist >= back_dist && front_dist > curr_dist) {
+      k_buffer.pop_front(); k_buffer.push_back(curr_val);
+    }
+    return (front_dist > curr_dist);
+  }
+
+  vector<int> find_closest_k_values(binary_tree_node * root, double target, int k) {
+    deque<int> k_buffer;
+    if (NULL == root) { return vector<int>(); }
+    vector<binary_tree_node *> visit_buffer = { root };
+    binary_tree_node * curr_ptr = NULL;
+    bool is_left_subtree_done = false;
+    while (!visit_buffer.empty()) {
+      curr_ptr = visit_buffer.back();
+      while (!is_left_subtree_done && NULL != curr_ptr->left_ptr) {
+        visit_buffer.push_back(curr_ptr->left_ptr);
+        curr_ptr = curr_ptr->left_ptr;
+      }
+      visit_buffer.pop_back();
+      if (NULL != curr_ptr->right_ptr) {
+        visit_buffer.push_back(curr_ptr->right_ptr);
+        is_left_subtree_done = false;
+      } else {
+        is_left_subtree_done = true;
+      }
+      if (!check_and_update_buffer(curr_ptr->value, target, k, k_buffer)) { break; }
+    }
+    return vector<int>(k_buffer.begin(), k_buffer.end());
+  }
+
+  static void test_find_closest_k_values() {
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \          \
+     *      3k         y15
+     */
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node y(15);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h; h.right_ptr = &y;
+
+    cout << "17. test_find_closest_k_values" << endl;
+    print_all_elem<int>({ 9, 10, 11 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 10.5, 3));
+    print_all_elem<int>({ 9, 10, 11 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 11, 3));
+    print_all_elem<int>({ 10, 11, 15 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 100, 3));
+    print_all_elem<int>({ 1, 2, 3 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, -1, 3));
+    print_all_elem<int>({ 6, 7, 8 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 7, 3));
+    print_all_elem<int>({ 4, 5, 6 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 5, 3));
+    print_all_elem<int>({ 15 }); cout << " <=>" << endl;
+    print_all_elem<int>(find_closest_k_values(&a, 2147.0, 1));
+  }
+
+//cout << curr_ptr->value << endl;
+//cout << "curr_dist: " << curr_dist << " fdist: " << front_dist << " bdist: " << back_dist << " replace: " << k_buffer.front() << " : " << curr_val << endl;
+  /**
    * 558. Quad Tree Intersection
    * A quadtree is a tree data in which each internal node has exactly four
    * children: topLeft, topRight, bottomLeft and bottomRight. Quad trees are
@@ -1369,6 +1483,7 @@ int main(void) {
   using tree_util::test_get_max_path_sum;
   using tree_util::test_binary_tree_codec;
   using tree_util::test_connect_siblings_in_tree;
+  using tree_util::test_find_closest_k_values;
 
   binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
   binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
@@ -1534,6 +1649,7 @@ int main(void) {
   test_get_max_path_sum();
   test_binary_tree_codec();
   test_connect_siblings_in_tree();
+  test_find_closest_k_values();
 
   return 0;
 }
