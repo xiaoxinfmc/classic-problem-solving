@@ -898,7 +898,7 @@ namespace tool_util {
    * - Output: ["1+2+3", "1*2*3"] 
    * Example 2:
    * - Input: num = "232", target = 8
-   * - Output: ["2*3+2", "2+3*2"]
+   * - Output: ["2*3+2", "2+3*2"] (2, 3) (+) -> (2, 3) (+
    * Example 3:
    * - Input: num = "105", target = 5
    * - Output: ["1*0+5","10-5"]
@@ -908,30 +908,114 @@ namespace tool_util {
    * Example 5:
    * - Input: num = "3456237490", target = 9191
    * - Output: []
+   * Intuition:
+   * - use +/- or * to gen diff expr meets the requirement, we are looking for
+   *   actual plan, then recursion could be very natural & easier to understand
+   * - the core part would be careful & early pruning such that we can either
+   *   short circuit early or limit/reduce branching factor.
    */
-   static vector<string> find_expr(const string & digits, int target) {
-     vector<string> expr_arr;
-     return expr_arr;
-   }
+  static int get_char_value(char chr) { return ((int)chr - (int)'0'); }
 
-   static void test_find_expr() {
-     cout << "7. test_find_expr" << endl;
-     vector<string> result;
-     vector<int> test_target_input = { 6, 8, 5, 0, 9191 };
-     vector<string> test_digit_input = {
-       "123","232","105", "00","3456237490",
-     };
-     vector<vector<string>> test_output = {
-       {"1+2+3", "1*2*3"}, {"2*3+2", "2+3*2"}, {"1*0+5","10-5"}, {"0+0", "0-0", "0*0"}, {}
-     };
-     for (int i = 0; i < test_digit_input.size(); i++) {
-       result = find_expr(test_digit_input[i], test_target_input[i]);
-       print_all_elem<string>(test_output[i]); cout << " <=>" << endl;
-       print_all_elem<string>(result);
-       assert(result.size() == test_output[i].size());
-       for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
-     }
-   }
+  static bool is_char_a_digit(char chr) { return (((int)chr >= (int)'0') && ((int)chr <= (int)'9')); }
+
+  static long calc_curr_expr(const string & expr) {
+    vector<long long> digits_stack;
+    vector<char> ops_stack;
+    long long lvalue = 0, rvalue = 0, result = 0;
+    for (int i = 0; i < expr.size(); i++) {
+      if (is_char_a_digit(expr[i])) {
+        string curr_number = "";
+        while (i < expr.size() && is_char_a_digit(expr[i])) {
+          curr_number.push_back(expr[i]); i++;
+        }; i--;
+        digits_stack.push_back(atoll(curr_number.c_str()));
+
+        if (curr_number.size() > 1 && curr_number[0] == '0') {
+          return std::numeric_limits<long>::max();
+        }
+
+        if (!ops_stack.empty()) {
+          switch(ops_stack.back()) {
+          case '*': {
+            ops_stack.pop_back();
+            rvalue = digits_stack.back(); digits_stack.pop_back();
+            lvalue = digits_stack.back(); digits_stack.pop_back();
+            digits_stack.push_back(lvalue * rvalue);
+            break;
+          }
+          case '-': {
+            ops_stack.pop_back();
+            rvalue = digits_stack.back(); digits_stack.pop_back();
+            digits_stack.push_back(-1 * rvalue);
+            ops_stack.push_back('+');
+            break;
+          }
+          case '+': { break; }
+          }
+        }
+      } else {
+        ops_stack.push_back(expr[i]);
+      }
+    }
+    for (auto & val : digits_stack) { result += val; }
+    return result;
+  }
+
+  static void find_expr_recur(const string & digits, int target, int curr_digit_id,
+                              vector<string> & expr_arr, string & curr_expr) {
+    /* gen curr expr & return if we reach the end & meet the target */
+    if (curr_digit_id >= digits.size()) {
+      long expr_val = calc_curr_expr(curr_expr);
+      if (std::numeric_limits<long>::max() != expr_val && target == expr_val) { expr_arr.push_back(curr_expr); }
+      return;
+    }
+    if (0 == curr_digit_id) {
+      curr_expr.push_back(digits[curr_digit_id]);
+      find_expr_recur(digits, target, curr_digit_id + 1, expr_arr, curr_expr);
+    } else {
+      /* try diff ops */
+      curr_expr.push_back(digits[curr_digit_id]);
+      find_expr_recur(digits, target, curr_digit_id + 1, expr_arr, curr_expr);
+      curr_expr.pop_back();
+
+      curr_expr.push_back('+'); curr_expr.push_back(digits[curr_digit_id]);
+      find_expr_recur(digits, target, curr_digit_id + 1, expr_arr, curr_expr);
+      curr_expr.pop_back(); curr_expr.pop_back();
+
+      curr_expr.push_back('-'); curr_expr.push_back(digits[curr_digit_id]);
+      find_expr_recur(digits, target, curr_digit_id + 1, expr_arr, curr_expr);
+      curr_expr.pop_back(); curr_expr.pop_back();
+
+      curr_expr.push_back('*'); curr_expr.push_back(digits[curr_digit_id]);
+      find_expr_recur(digits, target, curr_digit_id + 1, expr_arr, curr_expr);
+      curr_expr.pop_back(); curr_expr.pop_back();
+    }
+  }
+
+  static vector<string> find_expr(const string & digits, int target) {
+    vector<string> expr_arr; string curr_expr;
+    find_expr_recur(digits, target, 0, expr_arr, curr_expr);
+    return expr_arr;
+  }
+
+  static void test_find_expr() {
+    cout << "7. test_find_expr" << endl;
+    vector<string> result;
+    vector<int> test_target_input = { -2147483648, 1, 6, 8, 5, 0, 9191, };
+    vector<string> test_digit_input = {
+      "2147483648", "1", "123","232","105", "00","3456237490",
+    };
+    vector<vector<string>> test_output = {
+      {}, {"1"}, {"1+2+3", "1*2*3"}, {"2+3*2", "2*3+2"}, {"10-5", "1*0+5"}, {"0+0", "0-0", "0*0"}, {},
+    };
+    for (int i = 0; i < test_digit_input.size(); i++) {
+      result = find_expr(test_digit_input[i], test_target_input[i]);
+      print_all_elem<string>(test_output[i]); cout << " <=>" << endl;
+      print_all_elem<string>(result);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
+    }
+  }
 };
 
 int main(void) {
