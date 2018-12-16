@@ -2,6 +2,8 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <deque>
+#include <unordered_set>
 
 using namespace std;
 
@@ -76,6 +78,7 @@ namespace parenthesis_util {
    * - Note: The input string contain letters other than parentheses ( and ).
    * Example 1:
    * - Input: "()())()"
+   * - Input: "()()())()" "()()()()" "()(())()" "(()())()"
    * - Output: ["()()()", "(())()"]
    * Example 2:
    * - Input: "(a)())()"
@@ -83,10 +86,62 @@ namespace parenthesis_util {
    * Example 3:
    * - Input: ")("
    * - Output: [""]
+   * Intuition:
+   * - as we need to get the actual valid parenthesis comb, recursion is a
+   *   natrual fit for this. the key would be how to form the right way to
+   *   remove min amount of char to make it valid.
+   * - scan from l to r, one obvservation is that we could see different
+   *   kinds of situation, either:
+   *   ((()()( -> incomplete, needs to remove char from both head & tail
+   *   ((()))( -> incomplete, but could be valid
+   *   ()()()) -> completely invalid, cannot be reversed, has to be removed
+   *   ()()()  -> valid
+   * - In all, invalid chars does not needs to be in the start pos or the end
+   *   can be in any position.
+   * - Actually it could be a DP like problem, if we switch our way of thiking
+   *   for every par token, we can check to see if it is valid, if not, remove
+   *   for that invalid char, either remove it or some other char in its mirror
+   * - DP not seems to be helpful, then bfs/dfs
    */
+  static bool is_parenthesis_valid(const string & str) {
+    int left_cnt = 0, right_cnt = 0;
+    for (auto & chr : str) {
+      switch(chr) {
+        case '(' : { left_cnt += 1; break; }
+        case ')' : { if (right_cnt >= left_cnt) { return false; }
+                     else { right_cnt += 1; break; } }
+        default: { break; }
+      }
+    }
+    return (left_cnt == right_cnt);
+  }
+
   static vector<string> validate_parenthesis(const string & str) {
-    vector<string> valid_paris;
-    return valid_paris;
+    deque<string> substr_arr = { str };
+    unordered_set<string> valid_set;
+    while (false == substr_arr.empty()) {
+      string & curr_substr = substr_arr.front();
+      substr_arr.pop_front();
+      if (!valid_set.empty() && curr_substr.size() <
+           valid_set.begin()->size()) { break; }
+      if (true == is_parenthesis_valid(curr_substr)) {
+        valid_set.insert(curr_substr);
+      } else {
+        for (int i = 0; i < curr_substr.size(); i++) {
+          switch(curr_substr[i]) {
+            case '(' :
+            case ')' : {
+              substr_arr.push_back(
+                curr_substr.substr(0, i) + curr_substr.substr(i + 1)
+              );
+              break;
+            }
+            default: { break; }
+          }
+        }
+      }
+    }
+    return vector<string>(valid_set.begin(), valid_set.end());
   }
 
   static void test_validate_parenthesis() {
