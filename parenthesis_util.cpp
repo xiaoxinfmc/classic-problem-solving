@@ -101,10 +101,11 @@ namespace parenthesis_util {
    * - Actually it could be a DP like problem, if we switch our way of thiking
    *   for every par token, we can check to see if it is valid, if not, remove
    *   for that invalid char, either remove it or some other char in its mirror
-   * - DP not seems to be helpful, then bfs/dfs
+   * - DP not seems to be helpful, then bfs/dfs + careful pruning.
    */
-  static bool is_parenthesis_valid(const string & str) {
-    int left_cnt = 0, right_cnt = 0;
+  static bool is_parenthesis_valid(const string & str, int & left_cnt,
+                                                       int & right_cnt) {
+    left_cnt = 0; right_cnt = 0;
     for (auto & chr : str) {
       switch(chr) {
         case '(' : { left_cnt += 1; break; }
@@ -118,22 +119,26 @@ namespace parenthesis_util {
 
   static vector<string> validate_parenthesis(const string & str) {
     deque<string> substr_arr = { str };
-    unordered_set<string> valid_set;
+    unordered_set<string> valid_set, logic_set;
+    int left_cnt = 0, right_cnt = 0;
+    string curr_substr, new_substr;
     while (false == substr_arr.empty()) {
-      string & curr_substr = substr_arr.front();
+      curr_substr = substr_arr.front();
       substr_arr.pop_front();
       if (!valid_set.empty() && curr_substr.size() <
            valid_set.begin()->size()) { break; }
-      if (true == is_parenthesis_valid(curr_substr)) {
+      if (true == is_parenthesis_valid(curr_substr, left_cnt, right_cnt)) {
         valid_set.insert(curr_substr);
       } else {
         for (int i = 0; i < curr_substr.size(); i++) {
           switch(curr_substr[i]) {
             case '(' :
             case ')' : {
-              substr_arr.push_back(
-                curr_substr.substr(0, i) + curr_substr.substr(i + 1)
-              );
+              new_substr = curr_substr.substr(0, i) + curr_substr.substr(i + 1);
+              if (0 >= logic_set.count(new_substr)) {
+                logic_set.insert(new_substr);
+                substr_arr.push_back(new_substr);
+              }
               break;
             }
             default: { break; }
@@ -147,8 +152,9 @@ namespace parenthesis_util {
   static void test_validate_parenthesis() {
     cout << "2. test_validate_parenthesis" << endl;
     vector<string> result;
-    vector<string> test_input = { "()())()", "(a)())()", ")(" };
+    vector<string> test_input = { "()(((((((()", "(((k()((", "", "()())()", "(a)())()", ")(" };
     vector<vector<string>> test_output = {
+      { "()()", }, { "(k)", "k()", }, { "" },
       {"()()()", "(())()"}, {"(a)()()", "(a())()"}, {""},
     };
     for (int i = 0; i < test_input.size(); i++) {
