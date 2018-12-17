@@ -1016,6 +1016,99 @@ namespace tool_util {
       for (int j = 0; j < result.size(); j++) { assert(result[j] == test_output[i][j]); }
     }
   }
+
+  /**
+   * 315. Count of Smaller Numbers After Self
+   * - You are given an integer array nums and you have to return a new counts
+   *   array. The counts array has the property where counts[i] is the number
+   *   of smaller elements to the right of nums[i].
+   * Example:
+   * - Input: [5,2,6,1]
+   * - Output: [2,1,1,0]
+   * Explanation:
+   * - To the right of 5 there are 2 smaller elements (2 and 1).
+   * - To the right of 2 there is only 1 smaller element (1).
+   * - To the right of 6 there is 1 smaller element (1).
+   * - To the right of 1 there is 0 smaller element.
+   * Intuition:
+   * - bf way is n^2 obviously, fancy way use kd-tree & treverse?
+   * - a better way could be carefully cache the result?
+   * - DP? last elem always share 0 as no # after that.
+   * - { 1, 2, 5, 6 } -> # of elem to the end has larger index? (off by 1)
+   * - { 0, 1, 2, 3 }
+   * - { 3, 1, 0, 2 } -> scan & cnt { 3|0, 
+   */
+  class merge_cnt_pair {
+  public:
+    merge_cnt_pair(int oid, int val, int smr_cnt = 0) :
+      old_id(oid), value(val), smaller_cnt(smr_cnt) {}
+    virtual ~merge_cnt_pair(){}
+    int old_id, value, smaller_cnt;
+    friend bool operator<(const merge_cnt_pair & l, const merge_cnt_pair & r) {
+      return l.old_id < r.old_id;
+    }
+    friend ostream & operator<<(ostream & os, const merge_cnt_pair & p) {
+      os << "(" << p.old_id << "," << p.value << "," << p.smaller_cnt << ")"; return os;
+    }
+  };
+
+  /* sort the input arr in asc with cnt of smaller values on left cnt */
+  static void stable_merge_and_count(vector<merge_cnt_pair> & elem_arr,
+                                     int start_pos, int end_pos) {
+    if (end_pos <= start_pos) { return; }
+    int pivot = (start_pos + end_pos) / 2;
+    stable_merge_and_count(elem_arr, start_pos, pivot);
+    stable_merge_and_count(elem_arr, pivot + 1, end_pos);
+    vector<merge_cnt_pair> merge_buf;
+    /* here, [ start_pos, pivot ] & [ pivot + 1, end_pos ] both sorted */
+    for (int left_id = start_pos, right_id = pivot + 1;
+             left_id <= pivot || right_id <= end_pos; ) {
+      if ((right_id > end_pos) || (left_id <= pivot && elem_arr[left_id].value <= elem_arr[right_id].value)) {
+        /* left_id is smaller, append left_id this time */
+        elem_arr[left_id].smaller_cnt += (right_id - pivot - 1);
+        merge_buf.push_back(elem_arr[left_id]);
+        left_id++;
+      } else { //if (left_id > pivot || elem_arr[left_id].value >= elem_arr[right_id].value) {
+        /* right_id is smaller, append right_id this time, big <> small  */
+        merge_buf.push_back(elem_arr[right_id]);
+        right_id++;
+      }
+    }
+    for (int i = 0; i < merge_buf.size(); i++) {
+      elem_arr[start_pos + i] = merge_buf[i];
+    }
+  }
+
+  static vector<int> find_following_smaller_cnt(vector<int> & input_arr) {
+    vector<merge_cnt_pair> elem_arr;
+    for (int i = 0; i < input_arr.size(); i++) {
+      elem_arr.push_back(merge_cnt_pair(i, input_arr[i]));
+    }
+    stable_merge_and_count(elem_arr, 0, elem_arr.size() - 1);
+
+    sort(elem_arr.begin(), elem_arr.end());
+    vector<int> follow_cnt(input_arr.size(), 0);
+    for (int i = 0; i < elem_arr.size(); i++) {
+      follow_cnt[elem_arr[i].old_id] = elem_arr[i].smaller_cnt;
+    }
+    return follow_cnt;
+  }
+
+  static void test_find_following_smaller_cnt() {
+    vector<int> result;
+    vector<vector<int>> test_input = { { -1, -1 }, { 5,2,6 }, { 5,2,6,1 }, {}, {1}, };
+    vector<vector<int>> test_output = { { 0, 0 }, { 1,0,0 }, { 2,1,1,0 }, {}, {0}, };
+    cout << "8. test_find_following_smaller_cnt" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = find_following_smaller_cnt(test_input[i]);
+      print_all_elem<int>(result); cout << " <=>" << endl;
+      print_all_elem<int>(test_output[i]);
+      assert(result.size() == test_output[i].size());
+      for (int j = 0; j < result.size(); j++) {
+        assert(test_output[i][j] == result[j]);
+      }
+    }
+  }
 };
 
 int main(void) {
@@ -1026,6 +1119,7 @@ int main(void) {
   using tool_util::test_random_set;
   using tool_util::test_dup_random_set;
   using tool_util::test_find_expr;
+  using tool_util::test_find_following_smaller_cnt;
 
   test_calc_expr();
   test_min_max_map();
@@ -1034,6 +1128,7 @@ int main(void) {
   test_random_set();
   test_dup_random_set();
   test_find_expr();
+  test_find_following_smaller_cnt();
 
   return 0;;
 }
