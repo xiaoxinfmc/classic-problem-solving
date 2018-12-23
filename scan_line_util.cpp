@@ -743,40 +743,16 @@ v           v-------+
 0 - 1 x 2 x 3 - 4
    * - sorting => nlogn, build out graph => n, toplogical-sort => n
    *   ==>> nlogn
+   * - seems to be easier than thought as no need to use graph at all,
+   *   sort the eps based on w & h, smaller w with larger h come 1st.
+   *   overall, a classical problem of finding the size of LIS (of height)
+   *   and just the size, as the final buffer only holds the size, not the
+   *   actual LIS.
    */
-  class envelop {
-  public:
-    envelop(int i, int w, int h) : id(i), width(w), height(h) {}
-    virtual ~envelop() {}
-    int id, width, height;
-    friend ostream & operator<<(ostream & os, const envelop & ep) {
-      os << ep.id << ":" << ep.width << ":" << ep.height; return os;
-    }
-    static bool sort_pairs_by_width(const envelop & lenv, const envelop & renv) { return lenv.width < renv.width; }
-    static bool sort_pairs_by_height(const envelop & lenv, const envelop & renv) { return lenv.height < renv.height; }
-  };
-
-  class ep_vertex {
-  public:
-    ep_vertex(int i) : vid(i), is_visited(false) {}
-    virtual ~ep_vertex() {}
-    unordered_set<int> outgoing_vids;
-    int vid; bool is_visited;
-    friend ostream & operator<<(ostream & os, const ep_vertex & ep) {
-      os << ep.vid << "|";
-      for (auto x : ep.outgoing_vids) { os << x << ":"; }
-      return os;
-    }
-  };
-
-  static void add_links_for_envelop_graph(vector<ep_vertex> & envelop_graph,
-                                          vector<envelop> & envelop_arr) {
-    /* only add links if they fits, avoid equal case */
-    for (int i = 0; i < envelop_arr.size(); i++) {
-      if (i < envelop_arr.size() - 1) {
-        envelop_graph[envelop_arr[i].id].outgoing_vids.insert(envelop_arr[i + 1].id);
-      }
-    }
+  static bool sort_pairs_by_width_and_height(const pair<int, int> & lenv,
+                                             const pair<int, int> & renv) {
+    return ((lenv.first < renv.first) || (lenv.first == renv.first &&
+                                          lenv.second > renv.second));
   }
 
   static bool is_link_valid(const vector<pair<int, int>> & eps,
@@ -784,69 +760,36 @@ v           v-------+
     return (eps[l_vid].first < eps[r_vid].first && eps[l_vid].second < eps[r_vid].second);
   }
 
-  static int find_max_valid_path_len(vector<ep_vertex> & eps_graph, int svid,
-                                     const vector<pair<int, int>> & eps) {
-    int max_len = 1;
-    vector<int> ep_stack = { svid }, ep_path = { svid };
-    while (!ep_stack.empty()) {
-      ep_vertex & curr_v = eps_graph[ep_stack.back()];
-      ep_stack.pop_back();
-      if (false == curr_v.is_visited) {
-        curr_v.is_visited = true;
-        if (!ep_path.empty() && ep_path.back() != curr_v.vid) {
-print_all_elem<int>(ep_path);
-cout << ep_path.back() << " " << curr_v.vid << endl;
-          if (!ep_path.empty()) {
-            if (true == is_link_valid(eps, ep_path.back(), curr_v.vid)) {
-              break;
-            } else {
-              eps_graph[ep_stack.back()].outgoing_vids.erase(curr_v.vid);
-              if (eps_graph[ep_stack.back()].outgoing_vids.empty()) { ep_path.pop_back(); }
-            }
-          }
-          ep_path.push_back(curr_v.vid);
-          max_len = max(ep_path.size(), (size_t)max_len);
-        }
-        for (auto & vid : curr_v.outgoing_vids) { ep_stack.push_back(vid); }
+  static int binary_search_elem_equal_or_larger(vector<int> & eps_buffer, int target) {
+    int low = 0, high = eps_buffer.size() - 1, mid = high;
+    while (low < high) {
+      mid = (low + high) / 2;
+      if (target == eps_buffer[mid]) { break; }
+      else if (target < eps_buffer[mid]) { high = mid - 1; }
+      else { low = mid + 1; }
+    }
+    if (target > eps_buffer[mid]) { mid += 1; }
+    return mid;
+  }
+
+  static int calc_max_envelopes(vector<pair<int, int>>& eps) {
+    int curr_height = 0, curr_idx = 0;
+    if (eps.size() <= 0) { return 0; }
+    vector<int> eps_buffer;
+    sort(eps.begin(), eps.end(), sort_pairs_by_width_and_height);
+    for (int i = 0; i < eps.size(); i++) {
+      if (i > 0 && eps[i].first == eps[i - 1].first) { continue; }
+      curr_height = eps[i].second; curr_idx = 0;
+      if (eps_buffer.empty()) { eps_buffer.push_back(curr_height); }
+      else if (curr_height < eps_buffer.front()) { eps_buffer[0] = curr_height; }
+      else if (curr_height > eps_buffer.back()) { eps_buffer.push_back(curr_height); }
+      else {
+        eps_buffer[binary_search_elem_equal_or_larger(eps_buffer, curr_height)] = curr_height;
       }
     }
-    return max_len;
+    return eps_buffer.size();
   }
 
-  static int calc_max_envelopes(vector<pair<int, int>>& envelopes) {
-    if (envelopes.size() <= 0) { return 0; }
-
-    /* initialize all data & graph */
-    vector<ep_vertex> envelop_graph(envelopes.size(), ep_vertex(0));
-    vector<envelop> envelop_arr;
-    for (int i = 0; i < envelopes.size(); i++) {
-      envelop_arr.push_back(envelop(i, envelopes[i].first, envelopes[i].second));
-      envelop_graph[i].vid = i;
-    }
-
-    /* build links based on width */
-    sort(envelop_arr.begin(), envelop_arr.end(), envelop::sort_pairs_by_width);
-    add_links_for_envelop_graph(envelop_graph, envelop_arr);
-print_all_elem<envelop>(envelop_arr);
-//cout << "[ 0 2 1 3 5 4 ]" << endl;
-
-    /* build links based on height */
-    sort(envelop_arr.begin(), envelop_arr.end(), envelop::sort_pairs_by_height);
-    add_links_for_envelop_graph(envelop_graph, envelop_arr);
-print_all_elem<envelop>(envelop_arr);
-//cout << "[ 2 1 5 4 3 0 ]" << endl;
-
-//cout << "[ 2 1 5 4 ]" << endl;
-    /* start calc longest toplogical order */
-    return find_max_valid_path_len(envelop_graph, envelop_arr[0].id, envelopes);
-  }
-
-/*
-+-----------+
-v           v-------+
-0 - 2 - 1 - 3 - 5 - 4
-        +-------^
-*/
   static void test_calc_max_envelopes() {
     int result = -1;
     vector<int> test_output = { 3, 4, 6 };
@@ -864,9 +807,6 @@ v           v-------+
   }
 };
 
-/*
-print_all_elem<ep_vertex>(envelop_graph);
-*/
 int main(void) {
   using scan_line_util::test_count_num_of_planes;
   using scan_line_util::test_calc_closest_pair_dist;
