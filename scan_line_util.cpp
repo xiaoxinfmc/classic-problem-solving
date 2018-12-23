@@ -761,14 +761,15 @@ v           v-------+
   }
 
   static int binary_search_elem_equal_or_larger(vector<int> & eps_buffer, int target) {
-    int low = 0, high = eps_buffer.size() - 1, mid = high;
+    int low = 0, high = eps_buffer.size() - 1;
+    int mid = (low + high) / 2;
     while (low < high) {
-      mid = (low + high) / 2;
       if (target == eps_buffer[mid]) { break; }
       else if (target < eps_buffer[mid]) { high = mid - 1; }
       else { low = mid + 1; }
+      mid = (low + high) / 2;
     }
-    if (target > eps_buffer[mid]) { mid += 1; }
+    if (eps_buffer[mid] < target && mid < eps_buffer.size() - 1) { mid += 1; }
     return mid;
   }
 
@@ -778,7 +779,6 @@ v           v-------+
     vector<int> eps_buffer;
     sort(eps.begin(), eps.end(), sort_pairs_by_width_and_height);
     for (int i = 0; i < eps.size(); i++) {
-      if (i > 0 && eps[i].first == eps[i - 1].first) { continue; }
       curr_height = eps[i].second; curr_idx = 0;
       if (eps_buffer.empty()) { eps_buffer.push_back(curr_height); }
       else if (curr_height < eps_buffer.front()) { eps_buffer[0] = curr_height; }
@@ -792,11 +792,13 @@ v           v-------+
 
   static void test_calc_max_envelopes() {
     int result = -1;
-    vector<int> test_output = { 3, 4, 6 };
+    vector<int> test_output = { 3, 4, 6, 7, 11 };
     vector<vector<pair<int, int>>> test_input = {
       {{5,4},{6,4},{6,7},{2,3}},
       {{0,5},{2,1},{1,0},{3,4},{5,3},{4,2}},
       {{2,2},{6,4},{5,3},{7,8},{9,10},{8,9}},
+      {{1,2},{2,3},{3,4},{3,5},{4,5},{5,5},{5,6},{6,7},{7,8}},
+      {{28,13},{23,29},{44,23},{31,39},{15,15},{6,40},{36,24},{37,32},{15,16},{27,47},{16,7},{31,16},{12,4},{12,25},{36,6},{31,11},{43,27},{37,33},{43,7},{45,39},{38,5},{14,6},{22,1},{19,28},{49,1},{15,16},{39,23},{47,40},{1,45},{33,26},{3,10},{18,21},{38,14},{23,8},{37,26},{12,26},{40,15},{10,33}},
     };
     cout << "7. test_calc_max_envelopes" << endl;
     for (int i = 0; i < test_input.size(); i++) {
