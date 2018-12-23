@@ -706,8 +706,167 @@ namespace scan_line_util {
       assert(test_output[i] == result);
     }
   }
+
+  /**
+   * 354. Russian Doll Envelopes
+   * - You have a number of envelopes with widths and heights given as a pair
+   *   of integers (w, h). One envelope can fit into another if and only if
+   *   both the width and height of one envelope is greater than the width
+   *   and height of the other envelope.
+   * - What is the maximum number of envelopes can you Russian doll?
+   * Note:
+   * - Rotation is not allowed.
+   * Example:
+   * - Input: [[5,4],[6,4],[6,7],[2,3]]
+   * - Output: 3
+   * Explanation:
+   * - The maximum number of envelopes you can Russian doll is 3
+   *   [2,3] => [5,4] => [6,7]
+   * Intuition:
+   * - bf way is to run for loop against all item, gives you O(n2)
+   * - and the lower bound won't be less than find the max, obviously > O(n)
+   * - realistically looking for solution of O(nlogn)?
+   * - strategy wise, not clear about the pattern yet, more like sort/hash
+   *   related thing.
+   * - sort all envs by w 1st, then by h 2nd, we have 2 order of things:
+   *   [ 0 2 1 3 5 4 ]
+   *   [ 2 1 5 4 3 0 ] -> 2 1 5 4
+   *   the goal is to figure out the longest seq that satisfy both constraints
+   *   same as build out graph based on 2 sorted sequences, then try to figure
+   *   out the longest seq without conflicts(topological order).
+   * - topological sorting & find the path with max length based on 2?
+   *   or as simple as build out graph then do bfs?
++-----------+
+v           v-------+
+0 - 2 - 1 - 3 - 5 - 4
+        +-------^
+0 - 1 x 2 x 3 - 4
+   * - sorting => nlogn, build out graph => n, toplogical-sort => n
+   *   ==>> nlogn
+   */
+  class envelop {
+  public:
+    envelop(int i, int w, int h) : id(i), width(w), height(h) {}
+    virtual ~envelop() {}
+    int id, width, height;
+    friend ostream & operator<<(ostream & os, const envelop & ep) {
+      os << ep.id << ":" << ep.width << ":" << ep.height; return os;
+    }
+    static bool sort_pairs_by_width(const envelop & lenv, const envelop & renv) { return lenv.width < renv.width; }
+    static bool sort_pairs_by_height(const envelop & lenv, const envelop & renv) { return lenv.height < renv.height; }
+  };
+
+  class ep_vertex {
+  public:
+    ep_vertex(int i) : vid(i), is_visited(false) {}
+    virtual ~ep_vertex() {}
+    unordered_set<int> outgoing_vids;
+    int vid; bool is_visited;
+    friend ostream & operator<<(ostream & os, const ep_vertex & ep) {
+      os << ep.vid << "|";
+      for (auto x : ep.outgoing_vids) { os << x << ":"; }
+      return os;
+    }
+  };
+
+  static void add_links_for_envelop_graph(vector<ep_vertex> & envelop_graph,
+                                          vector<envelop> & envelop_arr) {
+    /* only add links if they fits, avoid equal case */
+    for (int i = 0; i < envelop_arr.size(); i++) {
+      if (i < envelop_arr.size() - 1) {
+        envelop_graph[envelop_arr[i].id].outgoing_vids.insert(envelop_arr[i + 1].id);
+      }
+    }
+  }
+
+  static bool is_link_valid(const vector<pair<int, int>> & eps,
+                            int l_vid, int r_vid) {
+    return (eps[l_vid].first < eps[r_vid].first && eps[l_vid].second < eps[r_vid].second);
+  }
+
+  static int find_max_valid_path_len(vector<ep_vertex> & eps_graph, int svid,
+                                     const vector<pair<int, int>> & eps) {
+    int max_len = 1;
+    vector<int> ep_stack = { svid }, ep_path = { svid };
+    while (!ep_stack.empty()) {
+      ep_vertex & curr_v = eps_graph[ep_stack.back()];
+      ep_stack.pop_back();
+      if (false == curr_v.is_visited) {
+        curr_v.is_visited = true;
+        if (!ep_path.empty() && ep_path.back() != curr_v.vid) {
+print_all_elem<int>(ep_path);
+cout << ep_path.back() << " " << curr_v.vid << endl;
+          if (!ep_path.empty()) {
+            if (true == is_link_valid(eps, ep_path.back(), curr_v.vid)) {
+              break;
+            } else {
+              eps_graph[ep_stack.back()].outgoing_vids.erase(curr_v.vid);
+              if (eps_graph[ep_stack.back()].outgoing_vids.empty()) { ep_path.pop_back(); }
+            }
+          }
+          ep_path.push_back(curr_v.vid);
+          max_len = max(ep_path.size(), (size_t)max_len);
+        }
+        for (auto & vid : curr_v.outgoing_vids) { ep_stack.push_back(vid); }
+      }
+    }
+    return max_len;
+  }
+
+  static int calc_max_envelopes(vector<pair<int, int>>& envelopes) {
+    if (envelopes.size() <= 0) { return 0; }
+
+    /* initialize all data & graph */
+    vector<ep_vertex> envelop_graph(envelopes.size(), ep_vertex(0));
+    vector<envelop> envelop_arr;
+    for (int i = 0; i < envelopes.size(); i++) {
+      envelop_arr.push_back(envelop(i, envelopes[i].first, envelopes[i].second));
+      envelop_graph[i].vid = i;
+    }
+
+    /* build links based on width */
+    sort(envelop_arr.begin(), envelop_arr.end(), envelop::sort_pairs_by_width);
+    add_links_for_envelop_graph(envelop_graph, envelop_arr);
+print_all_elem<envelop>(envelop_arr);
+//cout << "[ 0 2 1 3 5 4 ]" << endl;
+
+    /* build links based on height */
+    sort(envelop_arr.begin(), envelop_arr.end(), envelop::sort_pairs_by_height);
+    add_links_for_envelop_graph(envelop_graph, envelop_arr);
+print_all_elem<envelop>(envelop_arr);
+//cout << "[ 2 1 5 4 3 0 ]" << endl;
+
+//cout << "[ 2 1 5 4 ]" << endl;
+    /* start calc longest toplogical order */
+    return find_max_valid_path_len(envelop_graph, envelop_arr[0].id, envelopes);
+  }
+
+/*
++-----------+
+v           v-------+
+0 - 2 - 1 - 3 - 5 - 4
+        +-------^
+*/
+  static void test_calc_max_envelopes() {
+    int result = -1;
+    vector<int> test_output = { 3, 4, 6 };
+    vector<vector<pair<int, int>>> test_input = {
+      {{5,4},{6,4},{6,7},{2,3}},
+      {{0,5},{2,1},{1,0},{3,4},{5,3},{4,2}},
+      {{2,2},{6,4},{5,3},{7,8},{9,10},{8,9}},
+    };
+    cout << "7. test_calc_max_envelopes" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_max_envelopes(test_input[i]);
+      cout << result << " <=> " << test_output[i] << endl;
+      assert(test_output[i] == result);
+    }
+  }
 };
 
+/*
+print_all_elem<ep_vertex>(envelop_graph);
+*/
 int main(void) {
   using scan_line_util::test_count_num_of_planes;
   using scan_line_util::test_calc_closest_pair_dist;
@@ -715,6 +874,7 @@ int main(void) {
   using scan_line_util::test_get_boundary_points;
   using scan_line_util::test_calc_shortest_dist_to_all;
   using scan_line_util::test_is_rects_perfect;
+  using scan_line_util::test_calc_max_envelopes;
 
   test_count_num_of_planes();
   test_calc_closest_pair_dist();
@@ -722,4 +882,5 @@ int main(void) {
   test_get_boundary_points();
   test_calc_shortest_dist_to_all();
   test_is_rects_perfect();
+  test_calc_max_envelopes();
 }
