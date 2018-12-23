@@ -761,13 +761,12 @@ v           v-------+
   }
 
   static int binary_search_elem_equal_or_larger(vector<int> & eps_buffer, int target) {
-    int low = 0, high = eps_buffer.size() - 1;
-    int mid = (low + high) / 2;
-    while (low < high) {
+    int low = 0, high = eps_buffer.size() - 1, mid = 0;
+    while (low <= high) {
+      mid = (low + high) / 2;
       if (target == eps_buffer[mid]) { break; }
       else if (target < eps_buffer[mid]) { high = mid - 1; }
       else { low = mid + 1; }
-      mid = (low + high) / 2;
     }
     if (eps_buffer[mid] < target && mid < eps_buffer.size() - 1) { mid += 1; }
     return mid;
