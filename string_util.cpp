@@ -9,6 +9,7 @@
 #include <list>
 #include <cmath>
 #include <set>
+#include <deque>
 
 namespace string_util {
   using std::cout;
@@ -22,6 +23,7 @@ namespace string_util {
   using std::max;
   using std::unordered_map;
   using std::pair;
+  using std::deque;
 
   template <class type>
   static void print_all_elem(const vector<type>& input) {
@@ -2089,12 +2091,132 @@ lady -> sq[0][3] & sq[1][3] & sq[2][3]
     string result = "";
     vector<string> test_input = { "aaa", "aaaaa", "aaaaaaaaaa", "aabcaabcd", "abbbabbbcabbbabbbc" };
     vector<string> test_output = { "aaa", "5[a]", "10[a]", "2[aabc]d", "2[2[abbb]c]" };
+    cout << "21. test_encode_str" << endl;
     for (int i = 0; i < test_input.size(); i++) {
       result = encode_str(test_input[i]);
       cout << result << " <=> " << test_output[i] << endl;
       assert(test_output[i] == result);
     }
   }
+
+  /**
+   * 316. Remove Duplicate Letters
+   * - Given a string which contains only lowercase letters, remove duplicate
+   *   letters so that every letter appear once and only once. You must make
+   *   sure your result is the smallest in lexicographical order among all
+   *   possible results.
+   * Example 1:
+   * - Input: "bcabc"
+   * - Output: "abc"
+   * Example 2:
+   * - Input: "cbacdcbc"
+   * - Output: "acdb" [ a -> 2, b -> 1, 6, c -> 0, 3, 5, 7, d -> 4 ]
+   * Intuition:
+   * - dedup all chars via removing letters from input str, also want to get
+   *   the smallest possible result.
+   * - as every char only appear once, so output size is <= 26
+   * - assume input str with size(n), pick 26 out of n => C(26, n)
+   * - ofcourse, we should be able to optimize this(with DP?)
+   * - it is natrual to think scan input with a char buffer to mark existence,
+   *   and get all uniq chars in its appearance order, the hard part came from
+   *   the fact that we actually want the samllest one derived from the input.
+   * - maintain a buffer for a-z, log all their appearance index, 
+   *   "cbacdcbc" => [ a -> 2, b -> 1, 6, c -> 0, 3, 5, 7, d -> 4 ]
+   * - each time, pick the smallest char with valid index (non-conflict).
+   *          [ a -> 2, b -> 1, 6, c -> 0, 3, 5, 7, d -> 4 ]
+   *   a -> 2 [ b -> (1), 6, c -> (0), 3, 5, 7, d -> 4 ] <= 26 entries
+   *   c -> 3 [ b -> 6, d -> 4 ]
+   *   d -> 4 [ b -> 6 ]
+   *   b -> 6
+   * - { c -> deque(0, 3, 5, 7) b -> (1, 6), a -> (2), d -> (4) }
+   *                                               ^ smallest max
+   *   { b -> (6), c -> (3, 5, 7), d -> (4) }
+   *                                     ^ smallest max
+   * - build all mapping took O(n) & S(n), pick <= 26 times, each time during
+   *   the pick, remove an entry from the mapping, update all rest of indices
+   *   took 26xO(k), in the mean time, maintain the smallest max of all deque
+   *   overall, took sizeof(Alphabet) x O(n)
+   */
+  static void update_min_max(int total_char_cnt,
+                             deque<int> * char_index_map,
+                             int & min_max) {
+    min_max = std::numeric_limits<int>::max();
+    for (int i = 0; i < total_char_cnt; i++) {
+      if (char_index_map[i].empty()) { continue; }
+      min_max = min(char_index_map[i].back(), min_max);
+    }
+  }
+  static void update_front_of_queues(int total_char_cnt,
+                                     deque<int> * char_index_map,
+                                     int curr_min) {
+    for (int i = 0; i < total_char_cnt; i++) {
+      if (char_index_map[i].empty()) { continue; }
+      while (!char_index_map[i].empty() &&
+             char_index_map[i].front() < curr_min) {
+        char_index_map[i].pop_front();
+      }
+    }
+  }
+  static int get_map_index(char chr) { return ((int)(chr) - (int)('a')); }
+  static char get_char_from_index(int idx) { return (char)(idx + (int)('a')); }
+
+  static string dedup_chars_from_str(string & str) {
+    string deduped_str;
+    int total_char_cnt = (int)'z' - (int)'a' + 1;
+    int min_max = std::numeric_limits<int>::max();
+    int remaining_chars = 0;
+    deque<int> char_index_map[(int)'z' - (int)'a' + 1];
+
+    for (int i = 0; i < str.size(); i++) {
+      if (char_index_map[get_map_index(str[i])].empty()) { remaining_chars += 1; }
+      char_index_map[get_map_index(str[i])].push_back(i);
+    }
+    update_min_max(total_char_cnt, char_index_map, min_max);
+    while(remaining_chars > 0) {
+      for (int i = 0; i < total_char_cnt; i++) {
+        if (!char_index_map[i].empty()) {
+          if (char_index_map[i].front() <= min_max) {
+            deduped_str.append(1, get_char_from_index(i));
+
+            update_front_of_queues(total_char_cnt, char_index_map, char_index_map[i].front());
+
+            if (char_index_map[i].back() == min_max) {
+              char_index_map[i] = deque<int>();
+              update_min_max(total_char_cnt, char_index_map, min_max);
+            } else {
+              char_index_map[i] = deque<int>();
+            }
+            remaining_chars -= 1;
+            break;
+          }
+        }
+      }
+    }
+    return deduped_str;
+  }
+
+  static void test_dedup_chars_from_str() {
+    string result;
+    vector<string> test_input = { "bbcaac", "bcabc", "cbacdcbc" };
+    vector<string> test_output = { "bac", "abc", "acdb" };
+    cout << "22. test_dedup_chars_from_str" << endl;
+    for (int i = 0; i < test_input.size(); i++) {
+      result = dedup_chars_from_str(test_input[i]);
+      cout << test_input[i] << " <=> " << result << " <=> " << test_output[i] << endl;
+      assert(test_output[i] == result);
+    }
+  }
+
+/*
+for (int i = 0; i < total_char_cnt; i++) {
+  if (char_index_map[i].empty()) { continue; }
+  cout << "min_max: " << min_max << " " << (char)((int)'a' + i) << " [ "; for (auto & x : char_index_map[i]) { cout << x << " "; } cout << "]" << endl;
+}
+cout << "###################################" << endl;
+
+cout << "remaining_chars: " << remaining_chars << endl;
+cout << deduped_str << " remaining_chars: " << remaining_chars << endl;
+*/
 };
 
 int main(void) {
@@ -2121,6 +2243,7 @@ int main(void) {
   using string_util::test_is_word_follows_pattern;
   using string_util::test_get_all_word_squares;
   using string_util::test_encode_str;
+  using string_util::test_dedup_chars_from_str;
 
   test_find_word_in_batch();
   test_get_shortest_palindrome();
@@ -2145,6 +2268,7 @@ int main(void) {
   test_is_word_follows_pattern();
   test_get_all_word_squares();
   test_encode_str();
+  test_dedup_chars_from_str();
 
   return 0;
 }
