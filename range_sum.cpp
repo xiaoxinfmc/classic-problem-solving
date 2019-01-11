@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 namespace range_sum {
 using std::cout;
@@ -301,6 +302,84 @@ private:
   vector<int> segment_sum_arr;
 };
 
+  /**
+   * 327. Count of Range Sum
+   * - Given an integer array nums, return the number of range sums that lie in
+   *   [lower, upper] inclusive. Range sum S(i, j) is defined as the sum of the
+   *   elements in nums between indices i and j (i ≤ j), inclusive.
+   * Note:
+   * - A naive algorithm of O(n2) is trivial. You MUST do better than that.
+   * Example:
+   * - Input: nums = [-2,5,-1], lower = -2, upper = 2,
+   * - Output: 3 
+   * - Explanation: The three ranges are : [0,0], [2,2], [0,2] and their
+   *   respective sums are: -2, -1, 2.
+   * Intuition:
+   * - via BIT/SEG-TREE, we can easily buildup(n) for range-sum query of any
+   *   range in log(n) time, but here we are not dealing with query, but to
+   *   count the # of ranges that meets the sum requirements. (a tree-walk?)
+   * - however, we may find sth simpler which may use idea of divide-conqure
+   *   a range is a subset of data that been looked at, they are consequtive.
+   * - for [0...i] & [i+1...n], assume we already know left-cnt & right-cnt,
+   *   then obviously any new valid ranges(same sum) must contains items from
+   *   both side, and it is a simple O(n) check (because they are a range!)
+   * - O(nlogn), S(n)
+   * - acutally combining phase is hard, needs additional process, as # of
+   *   ranges still being n2 instead of n
+   * - Another big hint is that we only care about the count instead of acutal
+   *   plan, which leads us to think we could benefit via sorting intermediate
+   *   results.
+   * - assume we have a prefix sum arr, which looks like:
+   *   [ 0, 0.1, 0.2, 0.3 ... 0.n ]
+   *   then each elem is a valid sum for range starts from beginning, the key
+   *   depends how to utilize it efficiently, for any 2 prefix sum, we know
+   *   range(i,j) = pfs(0.j) - pfs(0.i-1)
+   * - if we divide the prefix sum by 2, then we have:
+   *   [ 0, 0.1, 0.2, 0.3 ... 0.i ] [ 0.i+1, 0.i+2, 0.i+3, ... 0.n ]
+   *         ^---------^       p
+   *   ALL pfs on right side includes all elems from elems in left side, any
+   *   combination of r-pfs - l-pfs represents a valid range!
+   * - EVEN better, if 2 parts are sorted in asc order already, then all we
+   *   need to is to figure out a portion of pfs on the right side 
+   */
+  static int calc_ranges_qualified_recur(vector<int> & pfs,
+                                         int lower, int upper,
+                                         int start_pos, int end_pos) {
+    if (lower > upper) { return 0; }
+    int curr_cnt = 0, pivot = (lower + upper) / 2;
+    int left_cnt = calc_ranges_qualified_recur(pfs, lower, upper, start_pos, pivot);
+    int right_cnt = calc_ranges_qualified_recur(pfs, lower, upper, pivot + 1, end_pos);
+
+    int left_idx = pivot, right_idx = pivot, total_cnt = 0;
+    for (int i = lower; i < pivot; i++) {
+      while(left_idx < end_pos && pfs[left_idx] - pfs[i] < lower) { left_idx++; }
+      while(right_idx < end_pos && pfs[right_idx] - pfs[i] <= upper) { right_idx++; }
+      total_cnt += (right_idx - left_idx);
+    }
+    std::inplace_merge(pfs.begin() + start_pos, pfs.begin() + pivot + 1, pfs.end());
+    return total_cnt + left_cnt + right_cnt;
+  }
+
+  static int calc_ranges_qualified(vector<int> & nums, int lower, int upper) {
+    vector<long> prefix_sum_arr(nums.begin(), nums.end());
+    for (int i = 1; i < prefix_sum_arr.size(); i++) {
+      prefix_sum_arr[i] -= prefix_sum_arr[i - 1];
+    }
+    return calc_ranges_qualified_recur(
+      prefix_sum_arr, lower, upper, 0, prefix_sum_arr.size() - 1
+    );
+  }
+
+  static void test_calc_ranges_qualified() {
+    cout << "5. test_calc_ranges_qualified" << endl;
+    int result = 0;
+    vector<int> test_output = { 3 };
+    vector<vector<int>> test_input = { { -2, 5, -1 } };
+    for (int i = 0; i < test_input.size(); i++) {
+      result = calc_ranges_qualified(test_input[i]);
+      assert(result == test_output[i]);
+    }
+  }
 };
 
 int main(void) {
