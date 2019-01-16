@@ -342,7 +342,7 @@ private:
    * - EVEN better, if 2 parts are sorted in asc order already, then all we
    *   need to is to figure out a portion of pfs on the right side 
    */
-  static int calc_ranges_qualified_recur(vector<int> & pfs,
+  static int calc_ranges_qualified_recur(vector<long> & pfs,
                                          int lower, int upper,
                                          int start_pos, int end_pos) {
     if (lower > upper) { return 0; }
@@ -373,10 +373,12 @@ private:
   static void test_calc_ranges_qualified() {
     cout << "5. test_calc_ranges_qualified" << endl;
     int result = 0;
-    vector<int> test_output = { 3 };
+    vector<long> test_output = { 3 };
     vector<vector<int>> test_input = { { -2, 5, -1 } };
+    vector<int> test_input_l = { -2 };
+    vector<int> test_input_u = { 2 };
     for (int i = 0; i < test_input.size(); i++) {
-      result = calc_ranges_qualified(test_input[i]);
+      result = calc_ranges_qualified(test_input[i], test_input_l[i], test_input_u[i]);
       assert(result == test_output[i]);
     }
   }
