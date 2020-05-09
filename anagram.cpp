@@ -7,7 +7,7 @@ Return:
   ["nat","tan"],
   ["bat"]
 ]
-assume: only lower case chars.
+assume: only lower case chars
 */
 
 #include <iostream>
