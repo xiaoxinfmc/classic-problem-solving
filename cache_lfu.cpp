@@ -43,7 +43,7 @@ public:
     if (0 >= max_size_cap) { return is_set_op_succes; }
     kv_lookup_pair_itr curr_pair_itr = kv_pair_lookup.find(key);
     if (kv_pair_lookup.end() != curr_pair_itr) {
-      /* 1. check to see if curr. entry already exists, if yes, then just update & upd freq. */
+      /* 1. check to see if curr. entry already exists, if yes, then just update & upd freq */
       /* pair<freq_list_entry_itr, lfu_entry_list_itr> freq_list_entry_itr_pair; */
       curr_pair_itr->second.second->value = value;
       is_set_op_succes = increment_entry_freq(curr_pair_itr);
