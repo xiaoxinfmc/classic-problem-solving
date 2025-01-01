@@ -4,14 +4,22 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <map>
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 using namespace std;
 
 namespace dp_util{
+  template <class TypeL, class TypeR>
+  static void print_all_pair(const vector<pair<TypeL, TypeR>> input) {
+    cout << "[ ";
+    for (auto arr : input) { cout << arr.first << ":" << arr.second << " "; }
+    cout << "]" << endl;
+  }
   template <class Type>
   static void print_all_elem(const vector<Type> input) {
     cout << "[ ";
@@ -23,6 +31,127 @@ namespace dp_util{
     cout << "[" << endl;
     for (auto arr : input){ cout << "  "; print_all_elem<Type>(arr); }
     cout << "]" << endl;
+  }
+
+  /**
+   * 13.3 Palindrome Partitioning II
+   * - Given a string s, partition s such that every substring of the partition
+   *   is a palindrome. Return the minimum cuts needed for a palindrome
+   *   partitioning of s.
+   * - For example, given s = "aab",
+   *   Return 1 since the palindrome partitioning ["aa","b"] could be produced
+   *   using 1 cut.
+   * observation:
+   * - min string partition s -> { s0, s1, s2, ... sn }, where n is the min
+   * - within the output set, each token (partition) is a palindrome -> aba
+   * - s0s1 cannot be a palindrome, otherwise min -> n - 1
+   * - goal is to find minimize # of partitions, local optimal not work, so DP
+   * - aaba -> x { aa, b, a } y { a, aba }
+   * - problem scope -> max n (all char diff), min 1 (whole str is a palindrome)
+   * state function, assuming m is the current choice of pos. to partition:
+   * - min(s[0..n]) = { if s[0..n] is a palindrome:
+   *                        return 1
+   *                    else:
+   *                        min([
+   *                            for (int m = 0; m < n; m++) {
+   *                               min(s[0..m]) + min(s[m + 1..n])
+   *                            }
+   *                        ])
+   *
+   * - it is hard to check if s[0..n-1] when knowing s[0..n], but easy to check
+   *   s[0..n] when know state of s[1..n-1]:
+   * - s[0..n] is a palindrome if: s[0] == s[n] && s[1..n-1] is a palindrome
+   * ideation:
+   * - 1 round of pre-processing to calculate if any substr is palindrome (n^2)
+   * - calculate state transition stable & find the min (n^2)
+   * - O(n) -> n^2, S(n) -> n^2
+   */
+  static void initialize_palindrome_state_lookup(
+    const string & input, vector<vector<bool>> & palindrome_state_lookup) {
+    // all single char is a palindrome by default
+    for (int i = 0; i < input.size(); i++) {
+      palindrome_state_lookup[i][i] = true;
+    }
+    for (int i = input.size() - 1; i >= 0; i--) {
+      for (int j = i + 1; j < input.size(); j++) {
+        if (j == i + 1) {
+          palindrome_state_lookup[i][j] = (input[i] == input[j]);
+        } else {
+          palindrome_state_lookup[i][j] = (
+            (input[i] == input[j]) && palindrome_state_lookup[i + 1][j - 1]
+          );
+        }
+      }
+    }
+  }
+
+  static int calc_min_palindrome_partition_cnt(
+    const string & input, vector<vector<bool>> & palindrome_state_lookup) {
+    vector<int> min_palindrome_partition(input.size(), INT_MAX);
+
+    min_palindrome_partition[0] = 1;
+
+    for (int i = 1; i < input.size(); i++) {
+      for (int j = 0; j <=i; j++) {
+        if (palindrome_state_lookup[j][i] == true) {
+          min_palindrome_partition[i] = ((j == 0) ? 1 : min(min_palindrome_partition[i], min_palindrome_partition[j - 1] + 1));
+        } else {
+          min_palindrome_partition[i] = min(min_palindrome_partition[i], min_palindrome_partition[i - 1] + 1);
+        }
+      }
+    }
+    print_all_elem_vec<bool>(palindrome_state_lookup);
+    print_all_elem<int>(min_palindrome_partition);
+    return min_palindrome_partition.back() - 1;
+  }
+
+  static int get_min_palindrome_partition_cnt(const string & input) {
+    if (input.empty()) { return 0; }
+
+    // - pre-processing to calculate if any substr is palindrome (n^2)
+    vector<vector<bool>> palindrome_state_lookup(
+      input.size(), vector<bool>(input.size(), false)
+    );
+    initialize_palindrome_state_lookup(input, palindrome_state_lookup);
+    // - calculate state transition stable & find the min (n^2)
+    return calc_min_palindrome_partition_cnt(input, palindrome_state_lookup);
+  }
+
+  static void test_initialize_palindrome_state_lookup() {
+    cout << "==>> test_initialize_palindrome_state_lookup" << endl;
+    string input("aaba");
+    vector<vector<bool>> palindrome_state_lookup(
+      input.size(), vector<bool>(input.size(), false)
+    );
+    vector<vector<bool>> exp_result = {
+      vector<bool>{true, true, false, false},
+      vector<bool>{false, true, false, true},
+      vector<bool>{false, false, true, false},
+      vector<bool>{false, false, false, true},
+    };
+    initialize_palindrome_state_lookup(input, palindrome_state_lookup);
+    print_all_elem_vec(palindrome_state_lookup);
+    print_all_elem_vec(exp_result);
+    for (int i = 0; i < palindrome_state_lookup.size(); i++) {
+      for (int j = 0; j < palindrome_state_lookup.size(); j++) {
+        assert(exp_result[i][j] == palindrome_state_lookup[i][j]);
+      }
+    }
+    cout << "<<== test_initialize_palindrome_state_lookup" << endl;
+  }
+
+  static void test_get_min_palindrome_partition_cnt() {
+    cout << "==>> test_get_min_palindrome_partition_cnt" << endl;
+    string test_input[] = { "", "a", "aab", "aaa", "aaacdfe", "aaacaaafe",
+                            "abcde", "abacabaca", "abacakacaba", "aaba" };
+    int test_output[] = { 0, 0, 1, 0, 4, 2, 4, 2, 0, 1 };
+    for (int i = 0; i < sizeof(test_input) / sizeof(string); i++) {
+      int min_palin_cnt = get_min_palindrome_partition_cnt(test_input[i]);
+      cout << "1-" << i << ": " << test_input[i] << " | min-palin-cuts: "
+           << test_output[i] << " vs " << min_palin_cnt << endl;
+      assert(min_palin_cnt == test_output[i]);
+    }
+    cout << "<<== test_get_min_palindrome_partition_cnt" << endl;
   }
 
   /**
@@ -76,6 +205,198 @@ namespace dp_util{
 
     /* 5 palindrome tokens means 4 cuts */
     return min_palin_token_cnt.back() - 1;
+  }
+
+  /**
+   * 13.7 Scramble String
+   * Given a string s1, we may represent it as a binary tree by partitioning
+   * it to two non-empty substrings recursively.
+   * Below is one possible representation of s1 = "great":
+   *   gr eat
+   *    /  \
+   *  gr   eat
+   *  /\    /\
+   * g  r  e  at
+   *          /\
+   *         a  t
+   * To scramble the string, we may choose any non-leaf node and swap its two
+   * children. For example, if we choose the node "gr" and swap its two
+   * children, it produces a scrambled string "rgeat".
+   *       rg eat
+   *        /  \
+   *      rg   eat
+   *      /\    /\
+   *     r  g  e  at
+   *              /\
+   *             a  t
+   * We say that "rgeat" is a scrambled string of "great".
+   * Similarly, if we continue to swap the children of nodes "eat" and "at",
+   * it produces a scrambled string "rgtae".
+   *       rg tae
+   *        /  \
+   *      rg    tae
+   *      /\    / \
+   *     r  g  ta  e
+   *           /\
+   *          t  a
+   * We say that "rgtae" is a scrambled string of "great".
+   * Given two strings s1 and s2 of the same length, determine if s2 is a
+   * scrambled string of s1.
+   *
+   *   gr eat
+   *    /  \
+   *  gr   eat
+   *  /\    /\
+   * g  r  e  at
+   *          /\
+   *         a  t
+   *
+   *     ||
+   *     vv
+   *
+   *       rg tae
+   *        /  \
+   *      rg    tae
+   *      /\    / \
+   *     r  g  ta  e
+   *           /\
+   *          t  a
+   *
+   *       rg tea
+   *        /  \
+   *      rg    tea
+   *      /\    / \
+   *     r  g  t  ea
+   *              /\
+   *             e  a
+   *   gr eat
+   *    /  \
+   *  gr   eat
+   *  /\    /\
+   * g  r  e  at
+   *          /\
+   *         a  t
+   *
+   * great -> egrta
+   * great -> egtra
+   *
+   * observation:
+   * - goal is to check if s1 is a scrambled version of s1 (size been equal)
+   * - str can be partitioned recursively each time
+   * - note each time we partition a substr means further devides it to 2 (bst)
+   * - swap of any partition means a scamble op, which can be performed # times
+   * - input is a string, return would just be a boolean
+   * - we are not looking for pattern matching, but rather if there is a path to
+   * - transform s1 -> s2 by performing series of scramble op
+   * - for s1 & s2, assuming they fits the condition, then:
+   *   0) based of using same sets of character with same size
+   *   1) exists a partition for s1 & s2 each with same size:
+   *      s1-partition { t0, t1 ... tn }
+   *      s2-partition { w0, w2 ... wn }
+   *      where token from 2 sets with same index also a scramble of each (t0 <> w0)
+   * - subproblem overlap found, consider DP
+   * - if S1 == S2, we also consider they fits, similar to single char case
+   * state-transition:
+   * - is_scramble(S1[0..n], S2[0..n]) = {
+   *     exists_at_least_one_being_true (
+   *       for (i = 0; i < S1.size(); i++) {
+   *         return true if (
+   *           (is_scramble(S1[0..i], S2[0..i]) &&
+   *            is_scramble(S1[i + 1..n], S2[i + 1..n])) ||
+   *           (is_scramble(S1[0..i], S2[n - i..n]) &&
+   *            is_scramble(S1[i + 1..n], S2[0..n - i - 1]))
+   *       }
+   *     )
+   *   }
+   * - given any scramble op only involve 2 child at a time, we can form base case:
+   *   1) if size being 1 -> 2 char has to be same
+   *   2) if size being 2 -> either same or after swap
+   *   2) for size n > 2 and to see if S1/S2 fits, then we check
+   *      S1[0..n] <> S2[0..n] == (
+   *        (S1[0..n-1] <> S2[0..n-1] && S1[n] == S2[n]) ||
+   *        (S1[0..n-1] <> S2[1..n]   && S1[0] == S2[n])
+   *      )
+   * - O(n) -> n^2, S(n) -> n^2
+   */
+  static string gen_signature(int l_start_pos, int l_end_pos,
+                              int r_start_pos, int r_end_pos) {
+    return to_string(l_start_pos) + "$" + to_string(l_end_pos) + "$" +
+           to_string(r_start_pos) + "$" + to_string(r_end_pos);
+  }
+
+  static bool check_if_two_str_scramble_recur(const string & left, const string & right,
+                                              int l_start_pos, int l_end_pos,
+                                              int r_start_pos, int r_end_pos,
+                                              unordered_map<string, bool> & scramble_state_lookup) {
+
+    assert((r_end_pos - r_start_pos) == (l_end_pos - l_start_pos));
+    assert((r_end_pos >= r_start_pos) && (l_end_pos >= l_start_pos));
+
+    bool is_scramble = false;
+    int partition_size = r_end_pos - r_start_pos + 1;
+    string state_cache_key = gen_signature(l_start_pos, l_end_pos, r_start_pos, r_end_pos);
+    switch (partition_size) {
+      case 1:
+        is_scramble = (left[l_start_pos] == right[r_start_pos]);
+        break;
+      case 2:
+        is_scramble = ((left[l_start_pos] == right[r_start_pos] && left[l_end_pos] == right[r_end_pos]) ||
+                       (left[l_start_pos] == right[r_end_pos] && left[l_end_pos] == right[r_start_pos]));
+        break;
+      default:
+        if (scramble_state_lookup.find(state_cache_key) != scramble_state_lookup.end()) {
+          is_scramble = scramble_state_lookup[state_cache_key];
+          break;
+        }
+        for (int i = r_start_pos, j = 0; i < r_end_pos; i++, j++) {
+          is_scramble = (
+            // [xxxxx | xxx]
+            //    |      |
+            //    v      v
+            // [xxxxx | xxx]
+            (
+              check_if_two_str_scramble_recur(left, right, l_start_pos, l_start_pos + j, r_start_pos, i, scramble_state_lookup) &&
+              check_if_two_str_scramble_recur(left, right, l_start_pos + j + 1, l_end_pos, i + 1, r_end_pos, scramble_state_lookup)
+            ) ||
+            // [xxxxx | xxx]
+            //    +-----+
+            //          v
+            // [xxx | xxxxx]
+            (
+              check_if_two_str_scramble_recur(left, right, l_end_pos - j, l_end_pos, r_start_pos, i, scramble_state_lookup) &&
+              check_if_two_str_scramble_recur(left, right, l_start_pos, l_start_pos + j + 1, i + 1, r_end_pos, scramble_state_lookup)
+            )
+          );
+          if (is_scramble == true) {  break; }
+        }
+     }
+     scramble_state_lookup[state_cache_key] = is_scramble;
+     return is_scramble;
+  }
+
+  static bool check_if_two_str_scramble(const string & left, const string & right) {
+    assert(left.size() == right.size());
+    if (left == right) { return true; }
+    unordered_map<string, bool> scramble_state_lookup;
+    return check_if_two_str_scramble_recur(left, right, 0, left.size() - 1, 0, right.size() - 1, scramble_state_lookup);
+  }
+
+  static void test_check_if_two_str_scramble() {
+    cout << "==>> test_check_if_two_str_scramble" << endl;
+    vector<string> test_l_strs = {
+      "", "a", "ab", "aa", "aaa", "great", "great", "rgeat", "rgtae", "great", "great", "egtra"
+    };
+    vector<string> test_r_strs = {
+      "", "a", "ac", "aa", "aaa", "great", "rgeat", "great", "great", "rgtea", "egrta", "great"
+    };
+    vector<bool> exp_results = {
+      true, true, false, true, true, true, true, true, true, true, true, false
+    };
+    for (int i = 0; i < exp_results.size(); i++) {
+      cout << test_l_strs[i] << " : " << test_r_strs[i] << " : " <<  check_if_two_str_scramble(test_l_strs[i], test_r_strs[i]) << " : " << exp_results[i] << endl;
+      assert(exp_results[i] == check_if_two_str_scramble(test_l_strs[i], test_r_strs[i]));
+    }
+    cout << "<<== test_check_if_two_str_scramble" << endl;
   }
 
   /**
@@ -214,6 +535,86 @@ namespace dp_util{
     return is_scramble;
   }
 
+
+  /**
+   * Given s1, s2, s3, find whether s3 is formed by the interleaving of
+   * s1 and s2. For example, Given: s1 = "aabcc", s2 = "dbbca",
+   * When s3 = "aadbbcbcac", return true.
+   * When s3 = "aadbbbaccc", return false. aabcc dbbac
+   *
+   * observation:
+   * - s1 & s2 can be interleaved only, no order change within s1 or s2
+   * - s3 consists of subsequences from s1 & s2, and nothing more
+   * - len(s3) == len(s1) + len(s2) with same char set ofcourse.
+   * subproblem:
+   * - assuming s3 fits condition, then:
+   *   comes_from_interleave(s1[0..m], s2[0..n], s3[0..z]) = (
+   *     // exists_true_for_at_least_one_check_whether:
+   *     ((s3[z] == s1[m]) && comes_from_interleave(s1[0..m-1], s2[0..n], s3[0..z-1])) ||
+   *     ((s3[z] == s2[n]) && comes_from_interleave(s1[0..m], s2[0..n-1], s3[0..z-1]))
+   *   )
+   * - cache lookup can be added to avoid overlapping compute
+   * - O(n) -> n2, S(n) -> n2 (un-optimized), n (optimized, as it only depends on parent)
+   */
+
+  static string get_pos_signature(int l_pos, int r_pos) {
+    return to_string(l_pos) + "$" + to_string(r_pos);
+  }
+
+  static bool is_interleave_from_recur(const string & input, const string & left, const string & right,
+                                       int input_pos, int l_pos, int r_pos, unordered_map<string, bool> & lookup) {
+    // base case when only 1st char to compare
+    if (input_pos == 0) {
+      return ((l_pos >= 0 && input[input_pos] == left[l_pos]) || (r_pos >= 0 && input[input_pos] == right[r_pos]));
+    }
+    // should exists at least one match from either side, otherwise return false
+    if (!((l_pos >= 0 && input[input_pos] == left[l_pos]) || (r_pos >= 0 && input[input_pos] == right[r_pos]))) {
+      return false;
+    }
+    string lookup_key = get_pos_signature(l_pos, r_pos);
+    if (lookup.find(lookup_key) != lookup.end()) {
+      return lookup[lookup_key];
+    }
+    // check with recursion
+    bool is_interleave = (
+      ((l_pos >= 0 && input[input_pos] == left[l_pos]) &&
+       (is_interleave_from_recur(input, left, right, input_pos - 1, l_pos - 1, r_pos, lookup))) ||
+      ((r_pos >= 0 && input[input_pos] == right[r_pos]) &&
+       (is_interleave_from_recur(input, left, right, input_pos - 1, l_pos, r_pos - 1, lookup)))
+    );
+    lookup[lookup_key] = is_interleave;
+    return is_interleave;
+  }
+
+  static bool is_interleave_from(const string & input, const string & left, const string & right) {
+    if (input.size() != (left.size() + right.size())) {
+      return false;
+    }
+    if (input.empty()) { return true; }
+    unordered_map<string, bool> lookup;
+    return is_interleave_from_recur(input, left, right, input.size() - 1, left.size() - 1, right.size() - 1, lookup);
+  }
+
+  static void test_is_interleave_from() {
+    cout << "==>> test_is_interleave_from" << endl;
+    vector<string> test_input = {
+      "aadbbcbcac", "aadbbbaccc", "", "a", "a",
+    };
+    vector<string> test_left = {
+      "aabcc", "aabcc", "", "a", "",
+    };
+    vector<string> test_right= {
+      "dbbca", "dbbca", "", "", "a",
+    };
+    vector<bool> test_exp_result = {
+      true, false, true, true, true, true,
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      assert(is_interleave_from(test_input[i], test_left[i], test_right[i]) == test_exp_result[i]);
+    }
+    cout << "<<== test_is_interleave_from" << endl;
+  }
+
   /**
    * Given s1, s2, s3, find whether s3 is formed by the interleaving of
    * s1 and s2. For example, Given: s1 = "aabcc", s2 = "dbbca",
@@ -317,6 +718,50 @@ namespace dp_util{
    * - i => current row id of input of vectors.
    * - k => current index @ end of the path on row i.
    */
+
+  static int calc_max_path_sum_tri(const vector<vector<int>> & input) {
+    if (input.empty()) { return 0; }
+    vector<int> prev_path_sum_buf(input.back().size(), INT_MIN);
+    vector<int> curr_path_sum_buf(input.back().size(), INT_MIN);
+
+    prev_path_sum_buf[0] = input[0][0];
+    for (int i = 1; i < input.size(); i++) {
+      for (int j = 0; j < input[i].size(); j++) {
+        if (j == 0) {
+          curr_path_sum_buf[j] = input[i][j] + prev_path_sum_buf[j];
+        } else if (j == input[i].size() - 1) {
+          curr_path_sum_buf[j] = input[i][j] + prev_path_sum_buf[j - 1];
+        } else {
+          curr_path_sum_buf[j] = max(input[i][j] + prev_path_sum_buf[j],
+                                     input[i][j] + prev_path_sum_buf[j - 1]);
+        }
+      }
+      prev_path_sum_buf = curr_path_sum_buf;
+    }
+    int max_path_sum = INT_MIN;
+    for (int path_sum : prev_path_sum_buf) {
+      max_path_sum = max(max_path_sum, path_sum);
+    }
+    return max_path_sum;
+  }
+
+  static void test_calc_max_path_sum_tri() {
+    cout << "==>> test_calc_max_path_sum_tri" << endl;
+    vector<vector<vector<int>>> test_input = {
+      { vector<int>({ 2 }), vector<int>({ 3, 4 }), vector<int>({ 6, 5, 7 }), vector<int>({ 4, 1, 8, 3 }) },
+      { vector<int>({ 3 }), vector<int>({ 7, 4 }), vector<int>({ 2, 4, 6 }), vector<int>({ 8, 5, 9, 3 }) },
+      { vector<int>({ 8 }), vector<int>({ -4, 4 }), vector<int>({ 2, 2, 6 }), vector<int>({ 1, 1, 1, 1 }) },
+    };
+    vector<int> exp_result = { 21, 23, 19 };
+    for (int i = 0; i < exp_result.size(); i++) {
+      cout << exp_result[i] << " vs " << calc_max_path_sum_tri(test_input[i]) << endl;
+      assert(exp_result[i] == calc_max_path_sum_tri(test_input[i]));
+    }
+
+    cout << "<<== test_calc_max_path_sum_v2" << endl;
+  }
+
+
   static int find_max_elem(const vector<int> & int_vec) {
     int max_val = int_vec.front();
     for (auto & val : int_vec) { if (val > max_val ) { max_val = val; } }
@@ -377,6 +822,44 @@ namespace dp_util{
    * w[0..n] is breakable if w[0..j] is breakable && dict has token w[j + 1..n]
    * enum { STRATEGY_UNDEF = -1, STRATEGY_FAIL, STRATEGY_SUCCESS };
    */
+
+  static bool is_str_breakable(const string & input, const unordered_set<string> & dict) {
+    vector<int> lookup(input.size(), STRATEGY_UNDEF);
+    if (true == input.empty()) { return true; }
+    for (int i = 0; i < input.size(); i++) {
+      if (dict.end() != dict.find(input.substr(0, i + 1))) {
+        lookup[i] = STRATEGY_SUCCESS;
+      } else {
+        lookup[i] = STRATEGY_FAIL;
+      }
+      for (int j = i; j > 0; j--) {
+        if (lookup[i] == STRATEGY_SUCCESS) { break; }
+        if ((STRATEGY_SUCCESS == lookup[j - 1]) && (dict.end() != dict.find(input.substr(j, i - j + 1)))) {
+          lookup[i] = STRATEGY_SUCCESS;
+        }
+      }
+    }
+    return lookup.back() == STRATEGY_SUCCESS;
+  }
+
+  static void test_is_str_breakable() {
+    cout << "==>> test_is_str_breakable" << endl;
+    unordered_set<string> dict = { "mobile","samsung","sam","sung","man","mango",
+                                   "icecream","and","go","i","like","ice","cream" };
+    vector<string> test_input = {
+      "", "iiiiiiii", "ilikesamsung", "ilikelikeimangoiii", "samsungandmango", "samsungandmangok",
+    };
+    vector<bool> exp_output = {
+      true, true, true, true, true, false,
+    };
+    for (int i = 0; i < exp_output.size(); i++) {
+      cout << i << " : " << exp_output[i] << " : " << is_str_breakable(test_input[i], dict) << endl;
+      assert(exp_output[i] == is_str_breakable(test_input[i], dict));
+    }
+
+    cout << "<<== test_is_str_breakable" << endl;
+  }
+
   static bool is_word_breakable(const unordered_set<string> dict,
                                 const string word) {
     if (true == word.empty()) { return true; }
@@ -401,6 +884,77 @@ namespace dp_util{
    * without disturbing the relative positions of the remaining characters.
    * (ie, "ACE" is a subsequence of "ABCDE" while "AEC" is not).
    * Here is an example: S = "rabbbit", T = "rabbit" Return 3.
+   *
+   * observation:
+   * - Given S[0..n] T[0..m], count all sub-seq of T[0..m] from S[0..n]
+   * - we need to count all possibilities, so O(n) might be ~n^2, while S(n)
+   *   could have some chance to be optimized, as only count is needed
+   * - problem scoping, assuming S[0..n - 1] contains x presence of T[0..m - 1],
+   *   cnt(S[0..n], T[0..m]) = {
+   *     if S[n] == T[m]:
+   *       cnt(S[0..n], T[0..m]) -> cnt(S[0..n - 1], T[0..m - 1])
+   *     else
+   *       cnt(S[0..n], T[0..m]) -> 0
+   *     if S[n] == T[m-1]
+   *       cnt(S[0..n], T[0..m - 1]) -> cnt(S[0..n - 1], T[0..m - 1]) + 1
+   *     else
+   *       cnt(S[0..n], T[0..m - 1]) -> cnt(S[0..n - 1], T[0..m - 1])
+   *   }
+   *   return max(S, T[0..m])
+   * - base case, when n < m, all cnt -> 0, as token does not fit
+   */
+  static int count_all_subseq_for_token(const string & input, const string & token) {
+    // short circuit for boundray condition when there is nothing to match
+    if (input.size() < token.size() || true == input.empty() || true == token.empty()) {
+      return 0;
+    }
+    vector<vector<int>> cnt_of_subseq(input.size(), vector<int>(token.size(), 0));
+    int max_subseq_cnt = 0;
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 0; j < token.size(); j++) {
+        // S[0..i].size() < T[0..j].size(), no match, keep 0 as default
+        if (i < j) { break; }
+        // reaching here means i == j -> 0
+        if (i == 0 || j == 0) {
+          if (i == 0) {
+            cnt_of_subseq[i][j] = (input[i] == token[j]) ? 1 : 0;
+          } else {
+            cnt_of_subseq[i][j] = (input[i] == token[j]) ? cnt_of_subseq[i - 1][j] + 1 : cnt_of_subseq[i - 1][j];
+          }
+        } else {
+          if (input[i] == token[j]) {
+            cnt_of_subseq[i][j] = cnt_of_subseq[i - 1][j - 1] + cnt_of_subseq[i - 1][j];
+          } else {
+            cnt_of_subseq[i][j] = cnt_of_subseq[i - 1][j];
+          }
+        }
+        if (j == token.size() - 1) { max_subseq_cnt = max(max_subseq_cnt, cnt_of_subseq[i][j]); }
+      }
+    }
+    cout << endl << input << " : " << token << endl;
+    print_all_elem_vec<int>(cnt_of_subseq);
+    return max_subseq_cnt;
+  }
+
+  static void test_count_all_subseq_for_token() {
+    cout << "==>> test_count_all_subseq_for_token" << endl;
+    vector<string> test_input = {
+      "gee", "geeksforgeeks", "geeksforgeeks", "geeksforgeeks", "rabbbit",
+    };
+    vector<string> test_token = {
+      "ge", "ge", "xe", "", "rabbit",
+    };
+    vector<int> exp_result = {
+      2, 6, 0, 0, 3,
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      assert(exp_result[i] == count_all_subseq_for_token(test_input[i], test_token[i]));
+    }
+    cout << "<<== test_count_all_subseq_for_token" << endl;
+  }
+
+  /*
+   *
    * - S[0..i..m] & T[0..j..n], F(i, j) => # of dist subseq by S[0..i] & T[0..j]
    *   for F[i, j], i >= j (i < j, all value will be 0 as token is longer)
    *     if S[i] == T[j] => F[n - 1, m - 1] + F[n - 1, m]
@@ -443,6 +997,66 @@ namespace dp_util{
    * Given an encoded message containing digits, determine the total number
    * of ways to decode it. For example, Given encoded message "12", it could
    * be decoded as AB(1 2) or L(12). The number of ways decoding "12" is 2.
+   *
+   * observation:
+   * - for a given s[0..n] of digits, get cnt_valid_decoding
+   * - a decoding is a partition of s[0..n] -> t { t0, .. tm} each of ti
+   *   is a valid code btw 1 (A) <> 26 (Z)
+   * - assuming s[0..n - 1] has x num of ways of decoding, then s[0..n]:
+   *   if s[n - 1, n] is valid code (ie btw 1 & 26, assuming 01 -> 1):
+   *     cnt(s[0..n]) = cnt(s[0..n-2]) + cnt(s[0..n - 1])
+   *   else
+   *     cnt(s[0..n]) = cnt(s[0..n - 1])
+   * - base condition for single & double chars.
+   * - for invalid input either cannot be decoded or bad char, -> 0
+   */
+  static bool check_single_digit(char ch) {
+    // '1' <> 'A' ... '9' <> I
+    return (int(ch) - int('0') > 0) && (int(ch) - int('0') <= 9);
+  }
+
+  static bool check_double_digit(char ch1, char ch2) {
+    int val = (int(ch1) - int('0')) * 10 + (int(ch2) - int('0'));
+    return (('1' == ch1 || '2' == ch1) && (val >= 10) && (val <= 26));
+  }
+
+  static int calc_total_decode_ways(const string & digits) {
+    vector<int> total_cnt(digits.size(), 0);
+    switch (digits.size()) {
+    case 0:
+      break;
+    case 1:
+      total_cnt[0] = check_single_digit(digits[0]) ? 1 : 0;
+      break;
+    default:
+      total_cnt[0] = check_single_digit(digits[0]) ? 1 : 0;
+      if (check_single_digit(digits[1]) == true) {
+        total_cnt[1] = check_double_digit(digits[0], digits[1]) ? 2 : 1;
+      } else {
+        total_cnt[1] = check_double_digit(digits[0], digits[1]) ? 1 : 0;
+      }
+      for (int i = 2; i < digits.size(); i++) {
+        if (check_single_digit(digits[i]) == true) {
+          total_cnt[i] = check_double_digit(digits[i - 1], digits[i]) ? total_cnt[i - 2] + total_cnt[i - 1] : total_cnt[i - 1];
+        } else {
+          total_cnt[i] = check_double_digit(digits[i - 1], digits[i]) ? total_cnt[i - 2] : 0;
+        }
+      }
+    }
+    return total_cnt.back();
+  }
+
+  static void test_calc_total_decode_ways() {
+    cout << "==>> test_calc_total_decode_ways" << endl;
+    vector<string> test_input = {"1923", "1", "12", "1072512", "10", "100", "0", "010", "110", "111", "1234"};
+    vector<int> exp_output = {4, 1, 2, 4, 1, 0, 0, 0, 1, 3, 3};
+    for (int i = 0; i < test_input.size(); i++) {
+      assert(exp_output[i] == calc_total_decode_ways(test_input[i]));
+    }
+    cout << "<<== test_calc_total_decode_ways" << endl;
+  }
+
+  /*
    * - T[n] => # of ways to decode input str[0..n]
    *   Assume we already know T[n - 1] & T[n - 2], then
    *   if token[n-1..n] is valid, T[n] = T[n - 2];
@@ -602,6 +1216,12 @@ namespace dp_util{
    * Output : 6
    * The longest common substring is "abcdez" and is of length 6
    *
+   * lcstr(s(n), t(m)) -> len of longest-common-suffix s(n) t(m)
+   *   if s[n] == t[m]
+   *     lcstr(s(n - 1), t(m - 1)) + 1,
+   *   else
+   *     0
+   *
    * Analysis:
    * - Let lcs(i, j) denote the length of lcs for x[0..i] & y[0..j]
    *   with x[i] and y[j] matched
@@ -610,6 +1230,43 @@ namespace dp_util{
    *     else 0
    *   }
    */
+
+  static int calc_lcstr_size(const string & l_str, const string & r_str) {
+    int lcx_max = 0;
+    vector<vector<int>> lookup(l_str.size(), vector<int>(r_str.size(), 0));
+    for (int i = 0; i < l_str.size(); i++) {
+      for (int j = 0; j < r_str.size(); j++) {
+        if (0 == i || 0 == j) {
+          lookup[i][j] = (l_str[i] == r_str[j]) ? 1 : 0;
+          continue;
+        }
+        if (l_str[i] == r_str[j]) {
+          lookup[i][j] = lookup[i - 1][j - 1] + 1;
+        } else {
+          lookup[i][j] = 0;
+        }
+        lcx_max = max(lcx_max, lookup[i][j]);
+      }
+    }
+    return lcx_max;
+  }
+
+  static void test_calc_lcstr_size() {
+    cout << "==>> test_calc_lcstr_size" << endl;
+    vector<vector<string>> test_input = {
+      {"GeeksforGeeks", "GeeksQuiz"},
+      {"abcdxyz", "xyzabcd"},
+      {"zxabcdezy", "yzabcdezx"},
+      {"", "yzabcdezx"},
+      {"yzabcdezx", ""},
+    };
+    vector<int> exp_output = {5, 4, 6, 0, 0};
+    for (int i = 0; i < exp_output.size(); i++) {
+      assert(exp_output[i] == calc_lcstr_size(test_input[i].front(), test_input[i].back()));
+    }
+    cout << "<<== test_calc_lcstr_size" << endl;
+  }
+
   static int calc_lcstr_len(string l_str, string r_str) {
     int lcs_max = 0;
     vector<int> lcs_lookup(r_str.size(), 0);
@@ -637,6 +1294,44 @@ namespace dp_util{
    *                        lcs_buf[0..i][j - 1] }
    * end
    */
+  static int calc_lcs_size(const string l_str, const string r_str) {
+    if (l_str.empty() || r_str.empty()) { return 0; }
+    vector<vector<int>> lookup(l_str.size(), vector<int>(r_str.size(), 0));
+    for (int i = 0; i < l_str.size(); i++) {
+      for (int j = 0; j < r_str.size(); j++) {
+        if (i == 0 || j == 0) {
+          if (i == 0 && j == 0) {
+            lookup[i][j] = (l_str[i] == r_str[j]) ? 1 : 0;
+          } else if (i > 0) {
+            lookup[i][j] = (l_str[i] == r_str[j]) ? 1 : max(lookup[i - 1][j], 0);
+          } else {
+            lookup[i][j] = (l_str[i] == r_str[j]) ? 1 : max(lookup[i][j - 1], 0);
+          }
+          continue;
+        }
+        lookup[i][j] = (
+          (l_str[i] == r_str[j]) ?
+            lookup[i - 1][j - 1] + 1 :
+            max(lookup[i][j - 1], lookup[i - 1][j])
+        );
+      }
+    }
+    return lookup.back().back();
+  }
+
+  static void test_calc_lcs_size() {
+    cout << "==>> test_calc_lcs_size" << endl;
+    vector<vector<string>> test_input = {
+      {"AGGTAB", "GXTXAYB"}, {"ABCDGH", "AEDFHR"}, {"A", "AEDFHR"},
+      {"ABCDGH", "G"}, {"ABCDGH", ""}, {"", "AEDFHR"}, {"", ""}
+    };
+    vector<int> exp_output = {4, 3, 1, 1, 0, 0, 0};
+    for (int i = 0; i < exp_output.size(); i++) {
+      assert(exp_output[i] == calc_lcs_size(test_input[i].front(), test_input[i].back()));
+    }
+    cout << "<<== test_calc_lcs_size" << endl;
+  }
+
   static int calc_lcs_len(const string l_str, const string r_str) {
     if (l_str.empty() || r_str.empty()) { return 0; }
     vector<vector<int>> lcs_buffer(l_str.size(), vector<int>(r_str.size(), 0));
@@ -711,6 +1406,76 @@ namespace dp_util{
    * Explanation:
    * Subset1 = {1, 5, 6}, sum of Subset1 = 12 
    * Subset2 = {11}, sum of Subset2 = 11
+   *
+   * observation:
+   * - 2^n brutal force as each elem can be on either side
+   * - while can be optimized as inverse of s1 <> s2 yeild same results
+   * - also sum(s1[0..n]) can be calculated from sum(s1[0..n - 1]) + s[n]
+   * - consider dynamic programming, needs to figure out state transition
+   * state transition:
+   * - goal is to calc min(abs(sum(Subset1) – sum(Subset2)))
+   * - assume for s{s0..sn-1}, we know sum(s1) -> a, sum(s2) -> b, with
+   *   abs(sum(s1) - sum(s2)) be the minimal, then:
+   * - let sum(i) denote sum of a subset with size i, so 0 <= i <= n
+   *   min-abs(s[0..n]) = {
+   *     find_min(
+   *       for (i = 0; i <= n - 1; i++) {
+   *         min(
+   *           abs(sum(s1 + s[n]) - sum(s2)),
+   *           abs(sum(s1) - sum(s2 + s[n]))
+   *         )
+   *       }
+   *     )
+   *   }
+   * - 0/1 knapsack with full bag capacity and special optimization condition
+   *   let min-abs-sum(i, j) denote sum for s1 with arr[i] partitioned while
+   *   subset1 has a sum no more than j, s2 has a sum of total - sum(s1),
+   *   goal is to find min-abs-sum of the table
+   */
+   static int calc_min_partition_diff_abs(const vector<int> & input) {
+     if (input.empty()) { return 0; }
+
+     int max_cap = 0, min_diff_abs = INT_MAX;
+     for (int val : input) { max_cap += val; }
+     vector<vector<int>> subset_sum_lookup(input.size(), vector<int>(max_cap + 1, 0));
+
+     for (int i = 0; i < subset_sum_lookup.size(); i++) {
+       for (int j = 1; j <= subset_sum_lookup[i].size(); j++) {
+         if (i == 0) {
+           if (j >= input[i]) { subset_sum_lookup[i][j] += input[i]; }
+           continue;
+         }
+         int not_sele_sum = subset_sum_lookup[i - 1][j];
+         int not_sele_abs = abs(not_sele_sum - (max_cap - not_sele_sum));
+         if (j >= input[i]) {
+           int selected_sum = subset_sum_lookup[i - 1][j - input[i]] + input[i];
+           int selected_abs = abs(selected_sum - (max_cap - selected_sum));
+           subset_sum_lookup[i][j] = selected_abs < not_sele_abs ? selected_sum : not_sele_sum;
+         } else {
+           subset_sum_lookup[i][j] = not_sele_sum;
+         }
+       }
+     }
+     print_all_elem_vec<int>(subset_sum_lookup);
+     for (int subset_sum : subset_sum_lookup.back()) {
+       min_diff_abs = min(min_diff_abs, abs(subset_sum * 2 - max_cap));
+     }
+     return min_diff_abs;
+   }
+
+   static void test_calc_min_partition_diff_abs() {
+     cout << "==>> test_calc_min_partition_diff_abs" << endl;
+     vector<vector<int>> test_input = {
+       vector<int>({ 3, 1, 4, 2, 2, 1 }), vector<int>({ 4, 5, 6, 8, 10, 11 }),
+     };
+     vector<int> exp_output = { 1, 0 };
+     for (int i = 0; i < exp_output.size(); i++) {
+       assert(exp_output[i] == calc_min_partition_diff_abs(test_input[i]));
+     }
+     cout << "<<== test_calc_min_partition_diff_abs" << endl;
+   }
+
+  /*
    * Analysis:
    * - 0/1 knapsack with a special goal to optimize
    * - Let subset_diff_lookup(i, j) be the diff of subset-1 given input(0..i) and
@@ -781,6 +1546,61 @@ namespace dp_util{
    *     return 1
    *   }
    */
+  static void find_lps_with_incr_one_recur(const vector<vector<int>> & matrix,
+                                           int & max_path_len, int row, int col,
+                                           int curr_path_len, int prior_val,
+                                           unordered_set<int> visited) {
+    if (row < 0 || row >= matrix.size() || col < 0 || col >= matrix[row].size()) {
+      max_path_len = max(max_path_len, curr_path_len);
+      return;
+    }
+    if (curr_path_len > 0 && matrix[row][col] != prior_val + 1) {
+      max_path_len = max(max_path_len, curr_path_len);
+      return;
+    }
+
+    if (visited.end() != visited.find(matrix[row][col])) { return; }
+
+    visited.insert(matrix[row][col]);
+
+    find_lps_with_incr_one_recur(matrix, max_path_len, row - 1, col, curr_path_len + 1, matrix[row][col], visited);
+    find_lps_with_incr_one_recur(matrix, max_path_len, row, col - 1, curr_path_len + 1, matrix[row][col], visited);
+    find_lps_with_incr_one_recur(matrix, max_path_len, row + 1, col, curr_path_len + 1, matrix[row][col], visited);
+    find_lps_with_incr_one_recur(matrix, max_path_len, row, col + 1, curr_path_len + 1, matrix[row][col], visited);
+  }
+
+  static int find_lps_with_incr_one(const vector<vector<int>> & matrix) {
+    int max_path_len = 0;
+    unordered_set<int> visited;
+    for (int i = 0; i < matrix.size(); i++) {
+      for (int j = 0; j < matrix[i].size(); j++) {
+        find_lps_with_incr_one_recur(matrix, max_path_len, i, j, 0, 0, visited);
+      }
+    }
+    return max_path_len;
+  }
+
+  static void test_find_lps_with_incr_one() {
+    cout << "==>> test_find_lps_with_incr_one" << endl;
+    vector<vector<vector<int>>> test_input = {
+      vector<vector<int>>(),
+      vector<vector<int>>{{1, -2, -9}, {5, 30, -18}, {40, -6, 7}},
+      vector<vector<int>>{{1, 2, 9}, {5, 3, 8}, {4, 6, 7}},
+      vector<vector<int>>{{1, 2, 3}, {8, 9, 4}, {7, 6, 5}},
+      vector<vector<int>>{{1,  2,  3,  4, 5},
+                          {9, -2, -3, -4, 6},
+                          {8, 14, 15, 26, 7},
+                          {7, 13, 99, 88, 8},
+                          {9, 12, 11, 10, 9}},
+    };
+    vector<int> exp_output = {0, 1, 4, 9, 15};
+    for (int i = 0; i < test_input.size(); i++) {
+      cout << "find_lps_with_incr_one_recur: " << exp_output[i] << " : " << find_lps_with_incr_one(test_input[i]) << endl;
+      assert(exp_output[i] == find_lps_with_incr_one(test_input[i]));
+    }
+    cout << "<<== test_find_lps_with_incr_one" << endl;
+  }
+
   static int calc_path_start_from_recur(int i, int j,
                                         const vector<vector<int>> & input,
                                               vector<vector<int>> & lookup) {
@@ -832,7 +1652,44 @@ namespace dp_util{
    *   } else {
    *     lookup(i, j) = lookup(i - 1, j)
    *   }
+   * observation:
+   * - a variant of 0/1 knapsack, where sum is the bag capacity and we are trying to
+   *   find if we can get any perfect grab that fully utilize capacity
    */
+  static bool check_subsum(const vector<int> input, int sum) {
+    bool match = false;
+    if (true == input.empty()) { return match; }
+    vector<vector<int>> sum_lookup(input.size(), vector<int>(sum + 1, 0));
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 1; j <= sum; j++) {
+        if (i == 0) {
+          sum_lookup[i][j] = (j >= input[i]) ? input[i] : 0;
+        } else if (j >= input[i]) {
+          sum_lookup[i][j] = max(sum_lookup[i - 1][j - input[i]] + input[i], sum_lookup[i - 1][j]);
+        } else {
+          sum_lookup[i][j] = sum_lookup[i - 1][j];
+        }
+        if (sum_lookup[i][j] == sum) { match = true; }
+      }
+    }
+    return match;
+  }
+
+  static void test_check_subsum() {
+    cout << "==>> test_check_subsum" << endl;
+    vector<pair<vector<int>, int>> test_input = {
+      pair<vector<int>, int>({}, 9),
+      pair<vector<int>, int>({3, 34, 4, 12, 5, 2}, 9),
+      pair<vector<int>, int>({3, 34, 4, 12, 5, 2}, 99),
+    };
+    vector<bool> exp_output = { false, true, false };
+    for (int i = 0; i < exp_output.size(); i++) {
+      print_all_elem<int>(test_input[i].first);
+      assert(exp_output[i] == check_subsum(test_input[i].first, test_input[i].second));
+    }
+    cout << "<<== test_check_subsum" << endl;
+  }
+
   static bool check_subset_sum(vector<int> input, int sum) {
     bool is_sum_existed = false;
     vector<vector<int>> lookup(input.size(), vector<int>(sum + 1, 0));
@@ -884,6 +1741,71 @@ namespace dp_util{
    * Output: 6000
    * - There are only two matrices of dimensions 10x20 and 20x30. So there
    *   is only one way to multiply the matrices, cost of which is 10*20*30
+   *
+   * observation:
+   * - let min_cost(i, j) denote min cost to multiply metrices set {mi..mj}
+   *   then goal is to calculate min_cost(0, n)
+   * - sample: ABCD -> (A)(BCD), (AB)(CD), (ABC)(D)
+   *   { AB, ABC, ABCD, BC, BCD, CD }
+   * - for m{m0..mn}, Mn is going to multiply with one of its prior subset
+   *   which yeilds the minimal cost to do so, assume its:
+   *   min-cost(0, n) = min{
+   *     for (int i = 0; i < n; i++) {
+   *       min-cost(0, i) + min-cost(i + n) + m[0] * m[i] * m[n]
+   *     }
+   *   }
+   */
+  static int calc_min_cost_to_multiply(const vector<int> & input) {
+    int min_cost = 0;
+
+    if (input.size() <= 2) { return min_cost; }
+
+    vector<pair<int, int>> matrics;
+    for (int i = 1; i < input.size(); i++) {
+      matrics.push_back(pair<int, int>(input[i - 1], input[i]));
+    }
+    print_all_pair<int, int>(matrics);
+
+    vector<vector<int>> cost_lookup(matrics.size(), vector<int>(matrics.size(), INT_MAX));
+
+    for (int i = 0; i < matrics.size(); i++) { cost_lookup[i][i] = 0; }
+
+    for (int i = matrics.size() - 2; i >= 0; i--) {
+      for (int j = i + 1; j < matrics.size(); j++) {
+        if (j == i + 1) {
+          cost_lookup[i][j] = matrics[i].first * matrics[j].first * matrics[j].second;
+          continue;
+        };
+        for (int k = i; k < j; k++) {
+          int curr_cost = (
+            cost_lookup[i][k] + cost_lookup[k + 1][j] + matrics[i].first * matrics[k].second * matrics[j].second
+          );
+          cost_lookup[i][j] = min(cost_lookup[i][j], curr_cost);
+        }
+      }
+    }
+
+    print_all_elem_vec<int>(cost_lookup);
+
+    min_cost = cost_lookup.front().back();
+
+    return min_cost;
+  }
+
+  static void test_calc_min_cost_to_multiply() {
+    cout << "==>> test_calc_min_cost_to_multiply" << endl;
+    vector<vector<int>> test_input = {
+      {10, 20, 30, 40, 30}, {40, 20, 30, 10, 30}, {10, 20, 30}, {1, 2, 3, 4}
+    };
+    vector<int> exp_output = { 30000, 26000, 6000, 18 };
+    for (int i = 0; i < exp_output.size(); i++) {
+      print_all_elem<int>(test_input[i]);
+      assert(exp_output[i] == calc_min_cost_to_multiply(test_input[i]));
+    }
+    cout << "<<== test_calc_min_cost_to_multiply" << endl;
+  }
+
+  /*
    *
    * Let min_mult_ops(i, j) be the min mult ops need for matrix from i..j
    * to calc min_mult_ops(i, j), we know min_mult_ops(i, k), i < k < j
@@ -1918,5 +2840,19 @@ int main(void) {
   test_calc_max_path_sum();
   test_calc_min_painting_cost();
 
+  dp_util::test_initialize_palindrome_state_lookup();
+  dp_util::test_get_min_palindrome_partition_cnt();
+  dp_util::test_check_if_two_str_scramble();
+  dp_util::test_is_interleave_from();
+  dp_util::test_calc_max_path_sum_tri();
+  dp_util::test_is_str_breakable();
+  dp_util::test_count_all_subseq_for_token();
+  dp_util::test_calc_total_decode_ways();
+  dp_util::test_calc_lcstr_size();
+  dp_util::test_calc_lcs_size();
+  dp_util::test_calc_min_partition_diff_abs();
+  dp_util::test_find_lps_with_incr_one();
+  dp_util::test_check_subsum();
+  dp_util::test_calc_min_cost_to_multiply();
   return 0;
 }
