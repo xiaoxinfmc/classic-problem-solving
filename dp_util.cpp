@@ -1941,6 +1941,7 @@ namespace dp_util{
     }
     return is_set_evenly_partitioned;
   }
+
   /**
    * Dynamic Programming | Set 13 (Cutting a Rod)
    *
@@ -1962,7 +1963,60 @@ namespace dp_util{
    * length   | 1   2   3   4   5   6   7   8
    * --------------------------------------------
    * price    | 3   5   8   9  10  17  17  20
-   *
+   * observation:
+   * - weighted knapsack, length -> max capacity, goal is to maximize the val
+   * - max-value(i, j) = single piece of length i with j total length of all
+   */
+  static int calc_best_cut(const vector<int> input) {
+    int total_sum = 0;
+
+    if (true == input.empty()) { return total_sum; }
+
+    vector<pair<int, int>> all_cuts;
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 0; j < (input.size() / (i + 1)); j++) {
+        all_cuts.push_back(pair<int, int>(i + 1, input[i]));
+      }
+    }
+
+    vector<vector<int>> lookup(all_cuts.size(), vector<int>(input.size() + 1, 0));
+
+    for (int i = 0; i < lookup.size(); i++) {
+      for (int j = 1; j <= lookup[i].size(); j++) {
+        if (i == 0) {
+          lookup[i][j] = (all_cuts[i].first <= j) ? all_cuts[i].second : 0;
+          continue;
+        }
+        if (all_cuts[i].first <= j) {
+          lookup[i][j] = max(lookup[i - 1][j], lookup[i - 1][j - all_cuts[i].first] + all_cuts[i].second);
+        } else {
+          lookup[i][j] = lookup[i - 1][j];
+        }
+      }
+    }
+
+    total_sum = lookup.back().back();
+
+    return total_sum;
+  }
+
+  static void test_calc_best_cut() {
+    cout << "==>> test_calc_best_cut" << endl;
+    vector<pair<vector<int>, int>> test_suites = {
+      {{1, 5, 8, 9, 10, 17, 17, 20}, 22},
+      {{1, 5, 8, 9, 10, 19, 17, 20}, 24},
+      {{3, 5, 8, 9, 10, 17, 17, 20}, 24},
+      {{3, 7, 8, 9, 15, 17, 17, 20}, 28},
+      {{1}, 1},
+      {{}, 0},
+    };
+    for (const pair<vector<int>, int> & test_case : test_suites) {
+      assert(calc_best_cut(test_case.first) == test_case.second);
+    }
+    cout << "<<== test_calc_best_cut" << endl;
+  }
+
+  /*
    * Reduced to weighted knapsnack problem, having number of diff. items, with
    * max capacity of rod length, try to pack as much value as possible.
    * max_cut_lookup(i, j) => max value by picking subset from 0 ... i with j cap.
@@ -2906,5 +2960,6 @@ int main(void) {
   dp_util::test_check_subsum();
   dp_util::test_calc_min_cost_to_multiply();
   dp_util::test_is_even_split_possible();
+  dp_util::test_calc_best_cut();
   return 0;
 }
