@@ -1861,6 +1861,57 @@ namespace dp_util{
    * - arr[] = {1, 5, 3}
    *   Output: false 
    *   The array cannot be partitioned into equal sum sets.
+   */
+  static bool is_even_split_possible(const vector<int> & input) {
+
+    bool even_split = false;
+
+    int target_sum = 0;
+    for (int val : input) { target_sum += val; }
+
+    // short circuit if empty or size-1 or sum is odd, return false;
+    if (input.size() <= 1 || target_sum != (target_sum / 2) * 2) { return even_split; }
+
+    target_sum = target_sum / 2;
+
+    vector<vector<int>> sum_lookup(input.size(), vector<int>(target_sum + 1, 0));
+
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = 1; j <= target_sum; j++) {
+        if (i == 0) {
+          sum_lookup[i][j] = (j >= input[i]) ? input[i] : 0;
+          continue;
+        }
+        if (j >= input[i]) {
+          sum_lookup[i][j] = max(sum_lookup[i - 1][j], sum_lookup[i - 1][j - input[i]] + input[i]);
+        } else {
+          sum_lookup[i][j] = sum_lookup[i - 1][j];
+        }
+      }
+    }
+
+    even_split = (sum_lookup.back().back() == target_sum);
+
+    print_all_elem_vec<int>(sum_lookup);
+
+    return even_split;
+  }
+
+  static void test_is_even_split_possible() {
+    cout << "==>> test_is_even_split_possible" << endl;
+    vector<vector<int>> test_input = {
+      vector<int>({1, 5, 11, 5}), vector<int>({1, 5, 3}), vector<int>({1, 5, 4}),
+      vector<int>({1, 2, 3, 5}), vector<int>({1, 2, 5}), vector<int>({1, 1}),
+    };
+    vector<bool> exp_output = { true, false, true, false, false, true, };
+    for (int i = 0; i < test_input.size(); i++) {
+      print_all_elem<int>(test_input[i]);
+      assert(is_even_split_possible(test_input[i]) == exp_output[i]);
+    }
+    cout << "<<== test_is_even_split_possible" << endl;
+  }
+
+  /*
    * - Let diff_lookup(i) be the diff. between 2 sets, which consists
    *   a subset from arr[0..i - 1] with arr[i] selected, then its value should
    *   be min{ 0 <= k <= i - 1 | abs(arr[k] + 2 * arr[i]) }
@@ -2854,5 +2905,6 @@ int main(void) {
   dp_util::test_find_lps_with_incr_one();
   dp_util::test_check_subsum();
   dp_util::test_calc_min_cost_to_multiply();
+  dp_util::test_is_even_split_possible();
   return 0;
 }
