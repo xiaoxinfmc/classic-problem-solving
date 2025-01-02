@@ -1995,9 +1995,25 @@ namespace dp_util{
       }
     }
 
+    print_all_elem_vec<int>(lookup);
     total_sum = lookup.back().back();
 
     return total_sum;
+  }
+
+  static int max_cut_value(vector<int> value_arr, int max_len) {
+    vector<int> max_cut_lookup(value_arr.size() + 1, 0);
+    for (int i = 0; i < value_arr.size(); i++) {
+      for (int j = 1; j <= max_len; j++) {
+        if (j >= i + 1) {
+          max_cut_lookup[j] = max(
+            max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
+          );
+        }
+      }
+    }
+    print_all_elem<int>(max_cut_lookup);
+    return max_cut_lookup.back();
   }
 
   static void test_calc_best_cut() {
@@ -2012,6 +2028,7 @@ namespace dp_util{
     };
     for (const pair<vector<int>, int> & test_case : test_suites) {
       assert(calc_best_cut(test_case.first) == test_case.second);
+      assert(max_cut_value(test_case.first, test_case.first.size()) == test_case.second);
     }
     cout << "<<== test_calc_best_cut" << endl;
   }
@@ -2068,20 +2085,6 @@ namespace dp_util{
       }
     }
     return max_cut_lookup.back().back();
-  }
-
-  static int max_cut_value(vector<int> value_arr, int max_len) {
-    vector<int> max_cut_lookup(value_arr.size() + 1, 0);
-    for (int i = 0; i < value_arr.size(); i++) {
-      for (int j = 1; j <= max_len; j++) {
-        if (j >= i + 1) {
-          max_cut_lookup[j] = max(
-            max_cut_lookup[j], max_cut_lookup[j - i - 1] + value_arr[i]
-          );
-        }
-      }
-    }
-    return max_cut_lookup.back();
   }
 
   /**
