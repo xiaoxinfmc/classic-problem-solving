@@ -2229,6 +2229,44 @@ namespace dp_util{
    * Input: n = 10
    * Output: 36 (Maximum obtainable product is 3*3*4)
    *
+   * observation:
+   * - can be reduced to variant of knapsack problem with limited supply
+   *   of goods and defined capacity (rope length) plus optimized for
+   *   maximum multiply of all parts length
+   * state transition:
+   * - let max-product-val(i, j) denote max product for i kinds of cuts
+   *   for the j meters long rope, each kind of cut has a len btw 1 ~ j
+   * - max-product-val(i, j) = max {
+   *     prod_l = max-product-val(i - 1, j) (no new cuts)
+   *     prod_r = max-product-val(i, j - i) * i (new cut with len of i)
+   *   }
+   * - boundary condition is key
+   */
+  static int calc_max_product_cut(int len) {
+    vector<vector<int>> lookup(len, vector<int>(len + 1, 1));
+    for (int i = 1; i < len; i++) {
+      for (int j = 2; j <= len; j++) {
+        lookup[i][j] = lookup[i - 1][j];
+        if (j >= i) {
+          lookup[i][j] = max(lookup[i][j], (j - i > i) ? lookup[i][j - i] * i : (j - i) * i);
+        }
+      }
+    }
+    return lookup.back().back();
+  }
+
+  static void test_calc_max_product_cut() {
+    cout << "==>> test_calc_max_product_cut" << endl;
+    vector<pair<int, int>> test_cases = {
+      {2, 1}, {3, 2}, {4, 4}, {5, 6}, {10, 36}, 
+    };
+    for (const pair<int, int> & test_case : test_cases) {
+      assert(test_case.second == calc_max_product_cut(test_case.first));
+    }
+    cout << "<<== test_calc_max_product_cut" << endl;
+  }
+
+  /*
    * Reduced to knapsack, pack unlimited items(bounded categories) into a bag
    * with cap. N. the goal is to maximize the value of product.
    * let product_lookup(i, j) denote max product based on subset 0..i line
@@ -3014,5 +3052,6 @@ int main(void) {
   dp_util::test_is_even_split_possible();
   dp_util::test_calc_best_cut();
   dp_util::test_count_ways_of_change();
+  dp_util::test_calc_max_product_cut();
   return 0;
 }
