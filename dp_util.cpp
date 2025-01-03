@@ -2101,6 +2101,55 @@ namespace dp_util{
    * {2,2,2,2,2}, {2,2,3,3}, {2,2,6}, {2,3,5} and {5,5}.
    * So the output should be 5.
    *
+   * observation:
+   * - similar to knapsack problem but with different optimization goal, instead
+   *   of maximize value with limited capacity but to count # of combination to
+   *   make the change for n given m kinds of coin (each with diff value)
+   * state transition:
+   * - let ways_to_change(m, n) denote # ways to make change n over m kinds of
+   *   coins (any combination of subsets).
+   * - overlapping subproblem: assume we know:
+   *   { ways_to_change(m - 1, n), # cnt of change for set without coin(m)
+   *     ways_to_change(m, n - val(m)), # cnt for set with coin(m) repeatedly
+   *     +1 if n == val(m) } # cnt with coin(m) only
+   */
+  static int count_ways_of_change(const vector<int> & coins, int change) {
+    if (true == coins.empty() || change <= 0) { return 0; }
+    vector<vector<int>> lookup(coins.size(), vector<int>(change + 1, 0));
+    for (int i = 0; i < lookup.size(); i++) {
+      for (int j = 1; j < lookup[i].size(); j++) {
+        if (0 == i) {
+          lookup[i][j] = (0 == j % coins[i]) ? 1 : 0;
+          continue;
+        }
+        lookup[i][j] = lookup[i - 1][j];
+        lookup[i][j] += (j >= coins[i]) ? lookup[i][j - coins[i]] : 0;
+        lookup[i][j] += (j == coins[i]) ? 1 : 0;
+      }
+    }
+    print_all_elem<int>(coins);
+    print_all_elem_vec<int>(lookup);
+    return lookup.back().back();
+  }
+
+  static void test_count_ways_of_change() {
+    cout << "==>> test_count_ways_of_change" << endl;
+    vector<pair<vector<int>, int>> test_cases = {
+      {{1, 2, 3}, 3}, {{1, 2, 3}, 4}, {{2, 5, 3, 6}, 10}, {{}, 1}, {{2}, 0}
+    };
+    vector<int> exp_output = {
+      3, 4, 5, 0, 0
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      print_all_elem<int>(test_cases[i].first);
+      cout << test_cases[i].second << " : " << exp_output[i] << endl;
+      assert(count_ways_of_change(test_cases[i].first, test_cases[i].second) == exp_output[i]);
+    }
+    cout << "<<== test_count_ways_of_change" << endl;
+  }
+
+  /*
+   *
    * Reduced to Knapsack to pick unlimited items(weighted, from well known
    * categories) with constraint of maximum capacity, instead of check if
    * we can fully pack it or the maximum packed value, the goal here is to
@@ -2964,5 +3013,6 @@ int main(void) {
   dp_util::test_calc_min_cost_to_multiply();
   dp_util::test_is_even_split_possible();
   dp_util::test_calc_best_cut();
+  dp_util::test_count_ways_of_change();
   return 0;
 }
