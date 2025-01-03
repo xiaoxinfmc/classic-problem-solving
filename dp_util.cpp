@@ -2315,6 +2315,73 @@ namespace dp_util{
    * The string can be segmented as "i like samsung"
    * or "i like sam sung"
    *
+   * observation:
+   * - let is_breakable(n) denote s[n] is breakable which means, exists
+   *   at least one i(0 < i < n), that both s[0..i - 1] is breakable &
+   *   s[i..n] exists in dictionary.
+   */
+  static bool is_breakable(const string & input, const unordered_set<string> & dict) {
+    if (true == input.empty() || dict.empty()) {
+      return false;
+    }
+
+    vector<bool> lookup(input.size(), false);
+    for (int i = 0; i < input.size(); i++) {
+      for (int j = i; j >= 0; j--) {
+        if (0 == i) {
+          lookup[i] = (dict.end() != dict.find(input.substr(i, 1)));
+          continue;
+        }
+        if (j >= 1) { 
+          lookup[i] = lookup[j - 1] && (dict.end() != dict.find(input.substr(j, i - j + 1)));
+        } else {
+          lookup[i] = (dict.end() != dict.find(input.substr(j, i - j + 1)));
+        }
+        cout << "substr: " << input.substr(j, i - j + 1) << " lookup[" << i << "]: " << lookup[i] << endl;
+        if (true == lookup[i]) { break; }
+      }
+    }
+    print_all_elem<bool>(lookup);
+    return lookup.back();
+  }
+
+  static void test_is_breakable() {
+    cout << "==>> test_is_breakable" << endl;
+    vector<pair<string, unordered_set<string>>> test_cases = {
+      {"ilike", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                        "mobile", "ice", "cream", "icecream",
+                                        "man", "go", "mango" })},
+      {"ilikesamsung", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                               "mobile", "ice", "cream", "icecream",
+                                               "man", "go", "mango" })},
+      {"iiiiiiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                           "mobile", "ice", "cream", "icecream",
+                                           "man", "go", "mango" })},
+      {"", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                   "mobile", "ice", "cream", "icecream",
+                                   "man", "go", "mango" })},
+      {"ilikelikeimangoiii", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                     "mobile", "ice", "cream", "icecream",
+                                                     "man", "go", "mango" })},
+      {"samsungandmango", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                  "mobile", "ice", "cream", "icecream",
+                                                  "and", "man", "go", "mango" })},
+      {"samsungandmangok", unordered_set<string>({ "i", "like", "sam", "sung", "samsung",
+                                                   "mobile", "ice", "cream", "icecream",
+                                                   "and", "man", "go", "mango" })},
+    };
+    vector<bool> exp_output = {
+      true, true, true, false, true, true, false
+    };
+    for (int i = 0; i < exp_output.size(); i++) {
+      cout << test_cases[i].first << endl;
+      assert(exp_output[i] == is_breakable(test_cases[i].first, test_cases[i].second));
+    }
+    cout << "<<== test_is_breakable" << endl;
+  }
+
+
+  /*
    * - input: text of size n, & dict of size m words
    * - breakable_lookup(i) denote if text(0..i) is breakable, implies that
    *   exists a j, such that { 0 <= j <= i | text(0..j) && dict.find(text[j + 1..i])
@@ -3053,5 +3120,6 @@ int main(void) {
   dp_util::test_calc_best_cut();
   dp_util::test_count_ways_of_change();
   dp_util::test_calc_max_product_cut();
+  dp_util::test_is_breakable();
   return 0;
 }
