@@ -72,25 +72,28 @@ namespace list_util {
       return all_vals;
     }
 
-    csl_node(int val) : _val(val), _next_ptr(this) {}
+    csl_node(int val, bool circular = true) :
+      _val(val), _next_ptr(circular ? this : NULL), _circular(circular) {}
+
     virtual ~csl_node(){ cout << "==>> node : " << _val << " removed" << endl;}
 
     // upon single node list, _next_ptr points to itself.
     csl_node * _next_ptr;
+    bool _circular;
     int _val;
   };
 
-  static csl_node * csl_initialize_list(const vector<int> & vals) {
+  static csl_node * csl_initialize_list(const vector<int> & vals, bool circular = true) {
     if (true == vals.empty()) {
       return NULL;
     }
 
     vector<int>::const_iterator curr_itr = vals.begin();
-    csl_node *  head_ptr = new csl_node(*curr_itr);
+    csl_node *  head_ptr = new csl_node(*curr_itr, circular);
     csl_node *  curr_ptr = head_ptr;
 
     for (curr_itr++; curr_itr != vals.end(); curr_itr++) {
-      curr_ptr->insert_after(new csl_node(*curr_itr));
+      curr_ptr->insert_after(new csl_node(*curr_itr, circular));
       curr_ptr = curr_ptr->_next_ptr;
     }
 
@@ -108,6 +111,90 @@ namespace list_util {
       delete curr_ptr;
       curr_ptr = next_ptr;
     } while (curr_ptr != head_ptr && NULL != curr_ptr);
+  }
+
+  /**
+   * 25. Reverse Nodes in k-Group
+   * - Given a linked list, reverse the nodes of a linked list k at a time and
+   *   return its modified list.
+   * - k is a positive integer and is less than or equal to the length of the
+   *   linked list. If the number of nodes is not a multiple of k then left-out
+   *   nodes in the end should remain as it is.
+   * Example:
+   * [1, 2, 3, 4, 5], 2 -> [2, 1, 4, 3, 5]
+   * [1, 2, 3, 4, 5], 3 -> [3, 2, 1, 4, 5]
+   */
+  static bool is_remaining_fits_k(csl_node * curr_ptr, int size) {
+    for (int i = 0; i < size - 1 && curr_ptr != NULL; i++) {
+      curr_ptr = curr_ptr->_next_ptr;
+    }
+    return (curr_ptr != NULL);
+  }
+
+  csl_node * reverse_k_group_from_list(csl_node * input_ptr, int size) {
+    csl_node * head_ptr = input_ptr;
+    if (NULL == input_ptr || size < 2) { return head_ptr; }
+
+    csl_node * group_head_ptr = input_ptr,
+             * group_tail_ptr = NULL,
+             * prev_node_ptr = input_ptr,
+             * curr_node_ptr = input_ptr->_next_ptr;
+
+    while (true == is_remaining_fits_k(group_head_ptr, size)) {
+      for (int reverse_cnt = 1; reverse_cnt < size; reverse_cnt++) {
+        cout << "==>> swap " << group_head_ptr->_val << " : " << prev_node_ptr->_val << " : " << curr_node_ptr->_val << endl;
+        if (NULL != group_tail_ptr) {
+          group_tail_ptr->_next_ptr = curr_node_ptr;
+        }
+        prev_node_ptr->_next_ptr = curr_node_ptr->_next_ptr;
+        curr_node_ptr->_next_ptr = group_head_ptr;
+        group_head_ptr = curr_node_ptr;
+        curr_node_ptr = prev_node_ptr->_next_ptr;
+        cout << "==>> swap " << group_head_ptr->_val << " : " << prev_node_ptr->_val << " : " << (curr_node_ptr ? curr_node_ptr->_val : -1) << endl;
+        if (reverse_cnt == size - 1) {
+          group_tail_ptr = prev_node_ptr;
+          head_ptr = (head_ptr == input_ptr) ? group_head_ptr : head_ptr;
+          cout << "<<== tail " << group_tail_ptr->_val << endl;
+        }
+        cout << "<<== swap " << endl;
+      }
+      group_head_ptr = curr_node_ptr;
+      prev_node_ptr = curr_node_ptr;
+      if (curr_node_ptr != NULL) {
+        curr_node_ptr = curr_node_ptr->_next_ptr;
+      }
+    }
+
+    return head_ptr;
+  }
+
+  static void test_reverse_k_group_from_list() {
+    cout << "==>> test_reverse_k_group_from_list" << endl;
+    vector<pair<pair<vector<int>, int>, vector<int>>> test_cases = {
+      {{{3, 4, 1}, 2}, {4, 3, 1}},
+      {{{}, 1}, {}},
+      {{{3, 4}, 2}, {4, 3}},
+      {{{3, 4}, 5}, {3, 4}},
+      {{{1, 2, 3, 4, 5}, 2}, {2, 1, 4, 3, 5}},
+      {{{1, 2, 3, 4, 5}, 3}, {3, 2, 1, 4, 5}},
+      {{{1, 2, 3, 4, 5}, 4}, {4, 3, 2, 1, 5}},
+      {{{1, 2, 3, 4, 5}, 5}, {5, 4, 3, 2, 1}},
+      {{{1, 2, 3, 4, 5, 6}, 3}, {3, 2, 1, 6, 5, 4}},
+    };
+    for (auto & test_case : test_cases) {
+      csl_node * head_ptr = csl_initialize_list(test_case.first.first, false);
+      vector<int> raw_elems = head_ptr == NULL ? vector<int>() : head_ptr->traverse_all_vals();
+      check_all_elem_same(raw_elems, test_case.first.first);
+
+      csl_node * curr_ptr = reverse_k_group_from_list(head_ptr, test_case.first.second);
+      vector<int> exp_elems = test_case.second;
+      vector<int> out_elems = curr_ptr == NULL ? vector<int>() : curr_ptr->traverse_all_vals();
+      check_all_elem_same(exp_elems, out_elems);
+
+      csl_delete_list(head_ptr);
+    }
+    cout << "<<== test_reverse_k_group_from_list" << endl;
+
   }
 
   /**
@@ -483,14 +570,7 @@ namespace list_util {
     cout << "3. test_lean_copy_random_list" << endl;
   }
 
-  /**
-   * 25. Reverse Nodes in k-Group
-   * - Given a linked list, reverse the nodes of a linked list k at a time and
-   *   return its modified list.
-   * - k is a positive integer and is less than or equal to the length of the
-   *   linked list. If the number of nodes is not a multiple of k then left-out
-   *   nodes in the end should remain as it is.
-   * Example:
+  /*
    * - Given this linked list: 1->2->3->4->5
 2 -> 1
 3 -> 2
@@ -571,6 +651,7 @@ int main(void) {
 
   list_util::test_insert_to_circular_linked_list();
   list_util::test_merge_sorted_lists();
+  list_util::test_reverse_k_group_from_list();
 
   return 0;
 }
