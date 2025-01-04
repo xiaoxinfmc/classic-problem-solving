@@ -34,6 +34,199 @@ using namespace std;
  * - when list has only 1 elem, then it points to itself.
  */
 namespace list_util {
+
+  template <class Type>
+  static void print_all_elem(const vector<Type> input) {
+    cout << "[ ";
+    for (auto arr : input) { cout << arr << " "; }
+    cout << "]" << endl;
+  }
+
+  template <class Type>
+  static void check_all_elem_same(const vector<Type> & l, const vector<Type> & r) {
+    print_all_elem<Type>(l);
+    print_all_elem<Type>(r);
+    assert(l.size() == r.size());
+    for (int i = 0; i < l.size(); i++) {
+      assert(l[i] == r[i]);
+    }
+  }
+
+  /**
+   * Given a Circular Linked List node, which is sorted in non-descending order,
+   * write a function to insert a value insertVal into the list such that it
+   * remains a sorted circular list. The given node can be a reference to any
+   * single node in the list and may not necessarily be the smallest value in
+   * the circular list.
+   * 
+   * If there are multiple suitable places for insertion, you may choose any
+   * place to insert the new value. After the insertion, the circular list
+   * should remain sorted.
+   *
+   * If the list is empty (i.e., the given node is null), you should create a
+   * new single circular list and return the reference to that single node.
+   * Otherwise, you should return the originally given node.
+   *
+   * Input: head = [3,4,1], insertVal = 2
+   * Output: [3,4,1,2]
+   * Explanation: In the figure above, there is a sorted circular list of three
+   * elements. You are given a reference to the node with value 3, and we need
+   * to insert 2 into the list. The new node should be inserted between node 1
+   * and node 3. After the insertion, the list should look like this, and we
+   * should still return node 3.
+   *
+   * Input: head = [], insertVal = 1
+   * Output: [1]
+   * Explanation: The list is empty (given head is null). We create a new
+   * single circular list and return the reference to that single node.
+   *
+   * Input: head = [1], insertVal = 0
+   * Output: [1,0]
+   * The number of nodes in the list is in the range [0, 5 * 104].
+   * -10^6 <= Node.val, insertVal <= 10^6
+   *
+   * 5, 6, 9, 1, 2, 3, 4  <- 7
+   * ^----|^ insert-before (mono-up, 5 ~ 9)
+   *       ^-----------+
+   * +-----------------+
+   * +----|^ insert-before (down -> mono-up, 9~9)
+   * mono-up util 1st larger or down (insert before)
+   * - in-btw (7 -> 6, 9)
+   * - max (11 -> 9, 1)
+   * - min (0 -> 9, 1)
+   * - min/max are the same situation, 1st decrease -> insert before
+   * - in-btw are common, 1st mono up & within range -> insert before
+   *
+   * 5, 6, 9, 1, 2, 3, 4  <- 11
+   * 
+   * 5, 6, 9, 1, 2, 3, 4  <- -1 
+   */
+
+
+  class csl_node {
+  public:
+    void insert_after(csl_node * next_csl_node) {
+      assert(NULL != next_csl_node);
+      cout << "==>> insert " << next_csl_node->_val << " after " << _val << endl;
+      next_csl_node->_next_ptr = _next_ptr;
+      _next_ptr = next_csl_node;
+    }
+
+    vector<int> traverse_all_vals() {
+      vector<int> all_vals;
+      csl_node * curr_ptr = this, * next_ptr = _next_ptr;
+      do {
+        next_ptr = curr_ptr->_next_ptr;
+        all_vals.push_back(curr_ptr->_val);
+        curr_ptr = next_ptr;
+      } while (curr_ptr != this);
+      return all_vals;
+    }
+
+    csl_node(int val) : _val(val), _next_ptr(this) {}
+    virtual ~csl_node(){ cout << "==>> node : " << _val << " removed" << endl;}
+
+    // upon single node list, _next_ptr points to itself.
+    csl_node * _next_ptr;
+    int _val;    
+  };
+
+  static csl_node * csl_initialize_list(const vector<int> & vals) {
+    if (true == vals.empty()) {
+      return NULL;
+    }
+
+    vector<int>::const_iterator curr_itr = vals.begin();
+    csl_node *  head_ptr = new csl_node(*curr_itr);
+    csl_node *  curr_ptr = head_ptr;
+    
+    for (curr_itr++; curr_itr != vals.end(); curr_itr++) {
+      curr_ptr->insert_after(new csl_node(*curr_itr));
+      curr_ptr = curr_ptr->_next_ptr;
+    }
+
+    return head_ptr;
+  }
+
+  static void csl_delete_list(csl_node * head_ptr) {
+    if (NULL == head_ptr) { return; }
+
+    csl_node * curr_ptr = head_ptr,
+             * next_ptr = head_ptr->_next_ptr;
+    do {
+      cout << ">>>> to rm: " << curr_ptr << endl;
+      next_ptr = curr_ptr->_next_ptr;
+      delete curr_ptr;
+      curr_ptr = next_ptr;
+    } while (curr_ptr != head_ptr);
+  }
+
+  static bool is_ready_to_insert_in_btw(csl_node * curr_node_ptr,
+                                        csl_node * next_node_ptr,
+                                        csl_node * to_insert_ptr) {
+    cout << "==>> " << curr_node_ptr->_val << " " << next_node_ptr->_val << " " << to_insert_ptr->_val << endl;
+    return (
+      // in-btw (7 -> 6, 9)
+      (curr_node_ptr->_val <= to_insert_ptr->_val && to_insert_ptr->_val <= next_node_ptr->_val) ||
+      // max (11 -> 9, 1)
+      (curr_node_ptr->_val <= to_insert_ptr->_val && curr_node_ptr->_val >= next_node_ptr->_val) ||
+      // min (0 -> 9, 1)
+      (next_node_ptr->_val >= to_insert_ptr->_val && curr_node_ptr->_val >= next_node_ptr->_val)
+    );
+  }
+
+  static csl_node * insert_to_circular_linked_list(csl_node * list_ptr, int val) {
+    // empty list then return new head
+    if (NULL == list_ptr) {
+      return new csl_node(val);
+    }
+
+    csl_node * curr_node_ptr = list_ptr,
+             * next_node_ptr = list_ptr->_next_ptr,
+             * to_insert_ptr = new csl_node(val);
+
+    // single node list
+    if (curr_node_ptr == next_node_ptr) {
+       cout << ">>>> " << curr_node_ptr->_val << " " << next_node_ptr->_val << " " << to_insert_ptr->_val << endl;
+       curr_node_ptr->insert_after(to_insert_ptr);
+       return curr_node_ptr;
+    }
+
+    do {
+      if (true == is_ready_to_insert_in_btw(curr_node_ptr, next_node_ptr, to_insert_ptr)) {
+        curr_node_ptr->insert_after(to_insert_ptr);
+        break;
+      }
+      curr_node_ptr = next_node_ptr;
+      next_node_ptr = curr_node_ptr->_next_ptr;
+    } while (list_ptr != curr_node_ptr);
+
+    return list_ptr;
+  }
+
+  static void test_insert_to_circular_linked_list() {
+    vector<pair<pair<vector<int>, int>, vector<int>>> test_cases = {
+      {{{3, 4, 1}, 2}, {3, 4, 1, 2}},
+      {{{}, 1}, {1}},
+      {{{1}, 0}, {1, 0}},
+      {{{5, 6, 9, 1, 2, 3, 4}, 7}, {5, 6, 7, 9, 1, 2, 3, 4}},
+      {{{5, 6, 9, 1, 2, 3, 4}, 10}, {5, 6, 9, 10, 1, 2, 3, 4}},
+      {{{5, 6, 9, 1, 2, 3, 4}, 0}, {5, 6, 9, 0, 1, 2, 3, 4}},
+    };
+    for (auto & test_case : test_cases) {
+      csl_node * head_ptr = csl_initialize_list(test_case.first.first);
+      vector<int> raw_elems = head_ptr == NULL ? vector<int>() : head_ptr->traverse_all_vals();
+      check_all_elem_same(raw_elems, test_case.first.first);
+
+      csl_node * curr_ptr = insert_to_circular_linked_list(head_ptr, test_case.first.second);
+      vector<int> exp_elems = test_case.second;
+      vector<int> out_elems = curr_ptr->traverse_all_vals();
+      check_all_elem_same(exp_elems, out_elems);
+
+      csl_delete_list(head_ptr);
+    }
+  }
+
   class circular_sorted_list_node {
   public:
     circular_sorted_list_node(int val) : value(val), next_ptr(this) {}
@@ -297,6 +490,8 @@ int main(void) {
   test_lean_copy_random_list();
   test_merge_k_lists();
   test_reverse_list_in_k_group();
+
+  list_util::test_insert_to_circular_linked_list();
 
   return 0;
 }
