@@ -52,13 +52,156 @@ namespace list_util {
     }
   }
 
+  class csl_node {
+  public:
+    void insert_after(csl_node * next_csl_node) {
+      assert(NULL != next_csl_node);
+      cout << "==>> insert " << next_csl_node->_val << " after " << _val << endl;
+      next_csl_node->_next_ptr = _next_ptr;
+      _next_ptr = next_csl_node;
+    }
+
+    vector<int> traverse_all_vals() {
+      vector<int> all_vals;
+      csl_node * curr_ptr = this, * next_ptr = _next_ptr;
+      do {
+        next_ptr = curr_ptr->_next_ptr;
+        all_vals.push_back(curr_ptr->_val);
+        curr_ptr = next_ptr;
+      } while (curr_ptr != this && NULL != curr_ptr);
+      return all_vals;
+    }
+
+    csl_node(int val) : _val(val), _next_ptr(this) {}
+    virtual ~csl_node(){ cout << "==>> node : " << _val << " removed" << endl;}
+
+    // upon single node list, _next_ptr points to itself.
+    csl_node * _next_ptr;
+    int _val;
+  };
+
+  static csl_node * csl_initialize_list(const vector<int> & vals) {
+    if (true == vals.empty()) {
+      return NULL;
+    }
+
+    vector<int>::const_iterator curr_itr = vals.begin();
+    csl_node *  head_ptr = new csl_node(*curr_itr);
+    csl_node *  curr_ptr = head_ptr;
+
+    for (curr_itr++; curr_itr != vals.end(); curr_itr++) {
+      curr_ptr->insert_after(new csl_node(*curr_itr));
+      curr_ptr = curr_ptr->_next_ptr;
+    }
+
+    return head_ptr;
+  }
+
+  static void csl_delete_list(csl_node * head_ptr) {
+    if (NULL == head_ptr) { return; }
+
+    csl_node * curr_ptr = head_ptr,
+             * next_ptr = head_ptr->_next_ptr;
+    do {
+      cout << ">>>> to rm: " << curr_ptr << endl;
+      next_ptr = curr_ptr->_next_ptr;
+      delete curr_ptr;
+      curr_ptr = next_ptr;
+    } while (curr_ptr != head_ptr && NULL != curr_ptr);
+  }
+
+  /**
+   * 23. Merge k Sorted Lists
+   * Merge k sorted linked lists and return it as one sorted list. Analyze
+   * and describe its complexity.
+   * Example:
+   * Input:
+   * [ 1->4->5, 1->3->4, 2->6 ]
+   * Output: 1->1->2->3->4->4->5->6
+   * Example 2:
+   * Input: lists = []
+   * Output: []
+   * Example 3:
+   * Input: lists = [[]]
+   * Output: []
+   */
+  static bool greater_than(pair<csl_node *, int> l_csl_ptr, pair<csl_node *, int> r_csl_ptr) {
+    return l_csl_ptr.first->_val > r_csl_ptr.first->_val;
+  }
+
+  static csl_node * merge_sorted_lists(const vector<csl_node *> & lists) {
+    csl_node * head_ptr = NULL;
+    if (true == lists.empty() || lists.front() == NULL) { return head_ptr; }
+
+    // each heap elem is a pair of csl_node * & index -> its current list
+    vector<pair<csl_node *, int>> min_heap;
+    for (int i = 0; i < lists.size(); i++) {
+      min_heap.push_back({lists[i], i});
+    }
+    make_heap(min_heap.begin(), min_heap.end(), greater_than);
+
+    csl_node * prev_node_ptr = NULL, * curr_node_ptr = NULL;
+
+    do {
+      pair<csl_node *, int> ptr_index_pair = min_heap.front();
+      curr_node_ptr = new csl_node(ptr_index_pair.first->_val);
+      if (NULL == head_ptr) {
+        head_ptr = curr_node_ptr;
+        prev_node_ptr = curr_node_ptr;
+      } else {
+        prev_node_ptr->insert_after(curr_node_ptr);
+        prev_node_ptr = curr_node_ptr;
+      }
+      pop_heap(min_heap.begin(), min_heap.end(), greater_than);
+      min_heap.pop_back();
+
+      if (ptr_index_pair.first->_next_ptr != lists[ptr_index_pair.second]) {
+        min_heap.push_back({ptr_index_pair.first->_next_ptr, ptr_index_pair.second});
+        push_heap(min_heap.begin(), min_heap.end(), greater_than);
+      }
+    } while (!min_heap.empty());
+
+    return head_ptr;
+  }
+
+  static void test_merge_sorted_lists() {
+    cout << "==>> test_merge_sorted_lists" << endl;
+    vector<vector<vector<int>>> test_input = {
+      {{1, 4, 5}, {1, 3, 4}, {2, 6}},
+      {{1}},
+      {{1, 2}},
+    };
+    vector<vector<int>> exp_output {
+      {1, 1, 2, 3, 4, 4, 5, 6},
+      {1},
+      {1, 2},
+    };
+    for (int i = 0; i < test_input.size(); i++) {
+      vector<csl_node *> lists;
+      for (auto & sublist : test_input[i]) {
+        csl_node * head_ptr = csl_initialize_list(sublist);
+        lists.push_back(head_ptr);
+      }
+      for (int j = 0; j < test_input[i].size(); j++) {
+        check_all_elem_same(test_input[i][j], lists[j]->traverse_all_vals());
+      }
+      csl_node * merged_list = merge_sorted_lists(lists);
+      check_all_elem_same(exp_output[i], merged_list->traverse_all_vals());
+      for (auto & sublist : lists) {
+        csl_delete_list(sublist);
+      }
+      csl_delete_list(merged_list);
+    }
+    cout << "<<== test_merge_sorted_lists" << endl;
+  }
+
   /**
    * Given a Circular Linked List node, which is sorted in non-descending order,
    * write a function to insert a value insertVal into the list such that it
    * remains a sorted circular list. The given node can be a reference to any
    * single node in the list and may not necessarily be the smallest value in
    * the circular list.
-   * 
+   *
    * If there are multiple suitable places for insertion, you may choose any
    * place to insert the new value. After the insertion, the circular list
    * should remain sorted.
@@ -98,69 +241,9 @@ namespace list_util {
    * - in-btw are common, 1st mono up & within range -> insert before
    *
    * 5, 6, 9, 1, 2, 3, 4  <- 11
-   * 
-   * 5, 6, 9, 1, 2, 3, 4  <- -1 
+   *
+   * 5, 6, 9, 1, 2, 3, 4  <- -1
    */
-
-
-  class csl_node {
-  public:
-    void insert_after(csl_node * next_csl_node) {
-      assert(NULL != next_csl_node);
-      cout << "==>> insert " << next_csl_node->_val << " after " << _val << endl;
-      next_csl_node->_next_ptr = _next_ptr;
-      _next_ptr = next_csl_node;
-    }
-
-    vector<int> traverse_all_vals() {
-      vector<int> all_vals;
-      csl_node * curr_ptr = this, * next_ptr = _next_ptr;
-      do {
-        next_ptr = curr_ptr->_next_ptr;
-        all_vals.push_back(curr_ptr->_val);
-        curr_ptr = next_ptr;
-      } while (curr_ptr != this);
-      return all_vals;
-    }
-
-    csl_node(int val) : _val(val), _next_ptr(this) {}
-    virtual ~csl_node(){ cout << "==>> node : " << _val << " removed" << endl;}
-
-    // upon single node list, _next_ptr points to itself.
-    csl_node * _next_ptr;
-    int _val;    
-  };
-
-  static csl_node * csl_initialize_list(const vector<int> & vals) {
-    if (true == vals.empty()) {
-      return NULL;
-    }
-
-    vector<int>::const_iterator curr_itr = vals.begin();
-    csl_node *  head_ptr = new csl_node(*curr_itr);
-    csl_node *  curr_ptr = head_ptr;
-    
-    for (curr_itr++; curr_itr != vals.end(); curr_itr++) {
-      curr_ptr->insert_after(new csl_node(*curr_itr));
-      curr_ptr = curr_ptr->_next_ptr;
-    }
-
-    return head_ptr;
-  }
-
-  static void csl_delete_list(csl_node * head_ptr) {
-    if (NULL == head_ptr) { return; }
-
-    csl_node * curr_ptr = head_ptr,
-             * next_ptr = head_ptr->_next_ptr;
-    do {
-      cout << ">>>> to rm: " << curr_ptr << endl;
-      next_ptr = curr_ptr->_next_ptr;
-      delete curr_ptr;
-      curr_ptr = next_ptr;
-    } while (curr_ptr != head_ptr);
-  }
-
   static bool is_ready_to_insert_in_btw(csl_node * curr_node_ptr,
                                         csl_node * next_node_ptr,
                                         csl_node * to_insert_ptr) {
@@ -205,6 +288,7 @@ namespace list_util {
   }
 
   static void test_insert_to_circular_linked_list() {
+    cout << "==>> test_insert_to_circular_linked_list" << endl;
     vector<pair<pair<vector<int>, int>, vector<int>>> test_cases = {
       {{{3, 4, 1}, 2}, {3, 4, 1, 2}},
       {{{}, 1}, {1}},
@@ -225,6 +309,7 @@ namespace list_util {
 
       csl_delete_list(head_ptr);
     }
+    cout << "<<== test_insert_to_circular_linked_list" << endl;
   }
 
   class circular_sorted_list_node {
@@ -278,13 +363,6 @@ namespace list_util {
   }
 
   /**
-   * 23. Merge k Sorted Lists
-   * Merge k sorted linked lists and return it as one sorted list. Analyze
-   * and describe its complexity.
-   * Example:
-   * Input:
-   * [ 1->4->5, 1->3->4, 2->6 ]
-   * Output: 1->1->2->3->4->4->5->6
    * Intuition:
    * - for k lists avg size of n, -> lower bound would be O(kn)
    * - all lists are sorted, each time we need to pick the min ptr from k
@@ -492,6 +570,7 @@ int main(void) {
   test_reverse_list_in_k_group();
 
   list_util::test_insert_to_circular_linked_list();
+  list_util::test_merge_sorted_lists();
 
   return 0;
 }
