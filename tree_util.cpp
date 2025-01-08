@@ -25,6 +25,16 @@ namespace tree_util {
     cout << "]" << endl;
   }
 
+  template <class Type>
+  static void check_all_elem_same(const vector<Type> & l, const vector<Type> & r) {
+    print_all_elem<Type>(l);
+    print_all_elem<Type>(r);
+    assert(l.size() == r.size());
+    for (int i = 0; i < l.size(); i++) {
+      assert(l[i] == r[i]);
+    }
+  }
+
   class binary_tree_node {
   public:
     binary_tree_node(int val) {
@@ -79,6 +89,62 @@ namespace tree_util {
    *    c) Go to step 3.
    * 5) If current is NULL and stack is empty then we are done.
    */
+
+  static vector<int> lvr_bst_traversal_non_recur(binary_tree_node * root_ptr) {
+    vector<int> values;
+
+    if (NULL == root_ptr) { return values; }
+
+    vector<binary_tree_node *> visit_buffer;
+    visit_buffer.push_back(root_ptr);
+
+    while (false == visit_buffer.empty()) {
+      binary_tree_node * curr_ptr = visit_buffer.back();
+      while (NULL != curr_ptr->left_ptr && !curr_ptr->left_ptr->is_visited) {
+        visit_buffer.push_back(curr_ptr->left_ptr);
+        curr_ptr = curr_ptr->left_ptr;
+      }
+
+      curr_ptr = visit_buffer.back();
+      values.push_back(curr_ptr->value);
+      curr_ptr->is_visited = true;
+      visit_buffer.pop_back();
+      if (NULL != curr_ptr->right_ptr) {
+        visit_buffer.push_back(curr_ptr->right_ptr);
+      }
+    }
+
+    return values;
+  }
+
+  static void test_lvr_bst_traversal_non_recur() {
+    cout << "==>> lvr_bst_traversal_non_recur" << endl;
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node x(99);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    check_all_elem_same<int>(lvr_bst_traversal_non_recur(&a), {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
+    check_all_elem_same<int>(lvr_bst_traversal_non_recur(NULL), {});
+    check_all_elem_same<int>(lvr_bst_traversal_non_recur(&x), {99});
+    cout << "<<== lvr_bst_traversal_non_recur" << endl;
+  }
+
   static void lvr_bst_print_non_recur(binary_tree_node * root_ptr) {
     binary_tree_node * curr_ptr = root_ptr;
     vector<binary_tree_node *> visit_buffer;
@@ -1650,6 +1716,8 @@ int main(void) {
   test_binary_tree_codec();
   test_connect_siblings_in_tree();
   test_find_closest_k_values();
+
+  tree_util::test_lvr_bst_traversal_non_recur();
 
   return 0;
 }
