@@ -84,9 +84,9 @@ namespace tree_util {
    * 1) Create an empty stack S.
    * 2) Initialize current node as root
    * 3) Push the current node to S and set current = current->left until current is NULL
-   * 4) If current is NULL and stack is not empty then 
+   * 4) If current is NULL and stack is not empty then
    *    a) Pop the top item from stack.
-   *    b) Print the popped item, set current = popped_item->right 
+   *    b) Print the popped item, set current = popped_item->right
    *    c) Go to step 3.
    * 5) If current is NULL and stack is empty then we are done.
    */
@@ -536,6 +536,175 @@ namespace tree_util {
     return root_ptr;
   }
 
+
+  /**
+   * construct-binary-search-tree-from-preorder-traversal
+   * Given an array of int preorder, which represents the preorder traversal
+   * of a BST (i.e., binary search tree), construct the tree and return root.
+   *
+   * It is guaranteed that there is always possible to find a binary search
+   * tree with the given requirements for the given test cases.
+   *
+   * A binary search tree is a binary tree where for every node, any descendant
+   * of Node.left has a value strictly less than Node.val, and any descendant
+   * of Node.right has a value strictly greater than Node.val.
+   *
+   * A preorder traversal of a binary tree displays the value of the node first,
+   * then traverses Node.left, then traverses Node.right.
+   *
+   * Input: preorder = [8,5,1,7,10,12]
+   * Output: [8,5,10,1,7,null,12]
+   *
+   * Input: preorder = [1,3]
+   * Output: [1,null,3]
+   *       6a
+   *      /   \
+   *    4b     c8
+   *    / \   / \
+   *  1d  5e f7  g10
+   *    \       / \
+   *    2t     i9   h11
+   *      \
+   *      3k
+   * [6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11]
+   *
+   * observation:
+   * - input always starts with the root with its subtree, with left range
+   *   from next -> val before a larger one, with rest being right subtree
+   * - straight forward for recursion
+   */
+  static int get_first_pos_larger(const vector<int> & input,
+                                  int start_pos_to_cmp, int end_pos) {
+    int curr_pos = start_pos_to_cmp + 1;
+    for (; curr_pos <= end_pos; curr_pos++) {
+      if (input[curr_pos] > input[start_pos_to_cmp]) { return curr_pos; }
+    }
+    return curr_pos;
+  }
+
+  static bool is_range_valid(const vector<int> & input,
+                             int start_pos, int end_pos) {
+    return (
+      start_pos <= end_pos &&
+      start_pos >= 0 && start_pos < input.size() &&
+      end_pos >= 0 && end_pos < input.size()
+    );
+  }
+
+  void gen_bst_from_preorder_recur(binary_tree_node * curr_root,
+                                   const vector<int> & input,
+                                   int left_start_pos,
+                                   int left_end_pos,
+                                   int right_start_pos,
+                                   int right_end_pos) {
+    // stitch the left subtree
+    if (is_range_valid(input, left_start_pos, left_end_pos)) {
+      binary_tree_node * left_root = new binary_tree_node(input[left_start_pos]);
+      int size = left_end_pos - left_start_pos + 1;
+      if (size > 1) {
+        int pos_larger = get_first_pos_larger(input, left_start_pos, left_end_pos);
+        gen_bst_from_preorder_recur(
+          left_root, input, left_start_pos + 1, pos_larger - 1, pos_larger, left_end_pos
+        );
+      }
+      curr_root->left_ptr = left_root;
+    }
+
+    // stitch the right subtree
+    if (is_range_valid(input, right_start_pos, right_end_pos)) {
+      binary_tree_node * right_root = new binary_tree_node(input[right_start_pos]);
+      int size = right_end_pos - right_start_pos + 1;
+      if (size > 1) {
+        int pos_larger = get_first_pos_larger(input, right_start_pos, right_end_pos);
+        gen_bst_from_preorder_recur(
+          right_root, input, right_start_pos + 1, pos_larger - 1, pos_larger, right_end_pos
+        );
+      }
+      curr_root->right_ptr = right_root;
+    }
+  }
+
+  static binary_tree_node * gen_bst_from_preorder(const vector<int> & input) {
+    binary_tree_node * root = NULL;
+    if (true == input.empty()) { return root; }
+
+    root = new binary_tree_node(input.front());
+    int start_pos_larger = get_first_pos_larger(input, 0, input.size() - 1);
+    gen_bst_from_preorder_recur(
+      root, input, 1, start_pos_larger - 1, start_pos_larger, input.size() - 1
+    );
+    return root;
+  }
+
+  static vector<int> traverse_vlr(binary_tree_node * root) {
+    vector<int> output;
+    if (NULL == root) { return output; }
+
+    vector<binary_tree_node *> buffer;
+    buffer.push_back(root);
+
+    while (false == buffer.empty()) {
+      binary_tree_node * curr_ptr = buffer.back();
+      buffer.pop_back();
+      if (NULL == curr_ptr) { continue; }
+      output.push_back(curr_ptr->value);
+      buffer.push_back(curr_ptr->right_ptr);
+      buffer.push_back(curr_ptr->left_ptr);
+    }
+
+    return output;
+  }
+
+  static void test_gen_bst_from_preorder() {
+    cout << "==>> test_gen_bst_from_preorder" << endl;
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node x(99);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(&a))), {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11});
+    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(NULL))), {});
+    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(&x))), {99});
+
+    vector<vector<int>> test_cases = {
+      {8,5,1,7,10,12}, {1,3}, {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}, {}, {99}
+    };
+    for (auto & test_case : test_cases) {
+      check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(test_case)), test_case);
+    }
+
+    cout << "<<== test_gen_bst_from_preorder" << endl;
+  }
+
+  /**
+   * construct-binary-tree-from-inorder-and-postorder-traversal
+   *
+   * Given two integer arrays inorder and postorder where inorder is the inorder
+   * traversal of a binary tree and postorder is the postorder traversal of the
+   * same tree, construct and return the binary tree.
+   *
+   * Input: inorder = [9,3,15,20,7], postorder = [9,15,7,20,3]
+   * Output: [3,9,20,null,null,15,7]
+   *
+   * Input: inorder = [-1], postorder = [-1]
+   * Output: [-1]
+   */
+
   /**
    * Convert a Binary Tree to a Circular Doubly Link List
    * Given a Binary Tree, convert it to a Circular Doubly Linked List(In-Place)
@@ -562,7 +731,7 @@ namespace tree_util {
    *  2   3k
    *  1(4) - 2(2.5) - 2.5(1) - 3(2) - 4(6) - 5(4)
    * in-order traversal => give us the order of the list, but its parent is not its next-ptr/prev.
-   *                    => we can return the 
+   *                    => we can return the
    * - each internal node, prev-ptr -> the right-most node from its left-subtree
    *                       next-ptr -> the left-most node from its right-subtree
    * - post-order, for each subtree, return pair of (left most (min) & right most (max) ptr)
@@ -1145,7 +1314,7 @@ namespace tree_util {
    *   should work. You just need to ensure that a binary tree can be
    *   serialized to a string and this string can be deserialized to the
    *   original tree structure.
-   * Example: 
+   * Example:
    * - You may serialize the following tree:
    *     1
    *    / \
@@ -1817,6 +1986,7 @@ int main(void) {
 
   tree_util::test_lvr_bst_traversal_non_recur();
   tree_util::test_bst_traversal_in_column_order();
+  tree_util::test_gen_bst_from_preorder();
 
   return 0;
 }
