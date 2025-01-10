@@ -2,6 +2,7 @@
 #include <utility>
 #include <vector>
 #include <deque>
+#include <map>
 #include <cmath>
 #include <cassert>
 #include <climits>
@@ -212,15 +213,112 @@ namespace tree_util {
    * [ (1, -2, 2, 0) (4, -1, 1, 0) (2, -1, 3, 1) (6, 0, 0, 0) (5, 0, 2, 1)
    *   (7, 0, 2, 0) (3, 0, 4, 1) (8, 1, 1, 1) (9, 1, 3, 0) (10, 2, 2, 1)
    *   (11, 3, 3, 1) ]
-  class binary_tree_node {
-  public:
-    binary_tree_node(int val) {
-      value = val; column_id = 0; level_id = 0;
-      is_visited = false; is_right_child = false;
-      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
-    }
-  }
+   * class binary_tree_node {
+   * public:
+   *   binary_tree_node(int val) {
+   *     value = val; column_id = 0; level_id = 0;
+   *     is_visited = false; is_right_child = false;
+   *     left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+   *   }
+   * }
    */
+
+  class bst_node_key {
+  public:
+    friend bool operator< (const bst_node_key & l_node_key, const bst_node_key & r_node_key) {
+      if (l_node_key._column_id == r_node_key._column_id) {
+        if (l_node_key._level_id == r_node_key._level_id) {
+          return (true == l_node_key._is_right_child);
+        } else {
+          return (l_node_key._level_id < r_node_key._level_id);
+        }
+      } else {
+        return (l_node_key._column_id < r_node_key._column_id);
+      }
+    }
+
+    bst_node_key(int column_id, int level_id, bool is_right) {
+      _column_id = column_id;
+      _level_id = level_id;
+      _is_right_child = is_right;
+    }
+    virtual ~bst_node_key() {}
+
+    int _column_id;
+    int _level_id;
+    bool _is_right_child;
+  };
+
+  static vector<int> bst_traversal_in_column_order(binary_tree_node * root) {
+    vector<int> output;
+
+    if (NULL == root) { return output; }
+
+    // 1st we traverse the tree to get the insight needed for sorting,
+    // column-id, level-id, is-right child ?
+    deque<pair<bst_node_key, binary_tree_node *>> visit_buffer;
+    map<bst_node_key, binary_tree_node *> sorted_map;
+    visit_buffer.push_back({bst_node_key(0, 0, false), root});
+
+    while (false == visit_buffer.empty()) {
+      pair<bst_node_key, binary_tree_node *> curr_pair = visit_buffer.front();
+      sorted_map.insert(curr_pair);
+
+      bst_node_key curr_node_key = curr_pair.first;
+      binary_tree_node * curr_node_ptr = curr_pair.second;
+      visit_buffer.pop_front();
+
+      if (NULL != curr_node_ptr->left_ptr) {
+        visit_buffer.push_back({
+          bst_node_key(curr_node_key._column_id - 1, curr_node_key._level_id + 1, false),
+          curr_node_ptr->left_ptr
+        });
+      }
+
+      if (NULL != curr_node_ptr->right_ptr) {
+        visit_buffer.push_back({
+          bst_node_key(curr_node_key._column_id + 1, curr_node_key._level_id + 1, true),
+          curr_node_ptr->right_ptr
+        });
+      }
+    }
+
+    // 2nd we traverse the multi-key asc-sorted map and return values
+    for (auto itr = sorted_map.begin(); itr != sorted_map.end(); itr++) {
+      output.push_back(itr->second->value);
+    }
+
+    return output;
+  }
+
+  static void test_bst_traversal_in_column_order() {
+    cout << "==>> test_bst_traversal_in_column_order" << endl;
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node x(99);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    check_all_elem_same<int>(bst_traversal_in_column_order(&a), {1, 4, 2, 6, 5, 7, 3, 8, 9, 10, 11});
+    check_all_elem_same<int>(bst_traversal_in_column_order(NULL), {});
+    check_all_elem_same<int>(bst_traversal_in_column_order(&x), {99});
+    cout << "<<== test_bst_traversal_in_column_order" << endl;
+  }
+
   static vector<binary_tree_node> bst_in_column_order(binary_tree_node * root){
     vector<binary_tree_node> tree_node_arr;
     unordered_map<int, vector<binary_tree_node *>> column_id_to_node_ptr_arr;
@@ -1718,6 +1816,7 @@ int main(void) {
   test_find_closest_k_values();
 
   tree_util::test_lvr_bst_traversal_non_recur();
+  tree_util::test_bst_traversal_in_column_order();
 
   return 0;
 }
