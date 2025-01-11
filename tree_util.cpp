@@ -972,6 +972,95 @@ namespace tree_util {
    *                       next-ptr -> the left-most node from its right-subtree
    * - post-order, for each subtree, return pair of (left most (min) & right most (max) ptr)
    */
+  static pair<binary_tree_node *, binary_tree_node *> convert_bst_to_dll_recur(binary_tree_node * curr_ptr) {
+
+    pair<binary_tree_node *, binary_tree_node *> l_min_max_pair = {NULL, NULL},
+                                                 r_min_max_pair = {NULL, NULL};
+
+    if (NULL == curr_ptr) { return {NULL, NULL}; }
+
+    l_min_max_pair = convert_bst_to_dll_recur(curr_ptr->left_ptr);
+    r_min_max_pair = convert_bst_to_dll_recur(curr_ptr->right_ptr);
+
+    if (curr_ptr != l_min_max_pair.second && NULL != l_min_max_pair.second) {
+      curr_ptr->prev_ptr = l_min_max_pair.second;
+      l_min_max_pair.second->next_ptr = curr_ptr;
+      cout << "link " << curr_ptr->value << " : " << l_min_max_pair.second->value << endl;
+    }
+    if (curr_ptr != r_min_max_pair.first && NULL != r_min_max_pair.first) {
+      curr_ptr->next_ptr = r_min_max_pair.first;
+      r_min_max_pair.first->prev_ptr = curr_ptr;
+      cout << "link " << curr_ptr->value << " : " << r_min_max_pair.first->value << endl;
+    }
+
+    return {
+      (NULL != l_min_max_pair.first) ? l_min_max_pair.first: curr_ptr,
+      (NULL != r_min_max_pair.second) ? r_min_max_pair.second : curr_ptr
+    };
+  }
+
+  static binary_tree_node * convert_bst_to_dll(binary_tree_node * root) {
+    if (NULL == root) { return root; }
+    pair<binary_tree_node *, binary_tree_node *> min_max_pair = convert_bst_to_dll_recur(root);
+    min_max_pair.first->prev_ptr = min_max_pair.second;
+    min_max_pair.second->next_ptr = min_max_pair.first;
+    cout << "link " << min_max_pair.first->value << " : " << min_max_pair.second->value << endl;
+    return min_max_pair.first;
+  }
+
+  static vector<int> traverse_bst_as_dll(binary_tree_node * head_ptr) {
+    vector<int> output;
+    if (NULL == head_ptr) { return output; }
+    binary_tree_node * curr_ptr = head_ptr;
+    do {
+      output.push_back(curr_ptr->value);
+      curr_ptr = curr_ptr->next_ptr;
+    } while (curr_ptr != head_ptr && curr_ptr != NULL);
+    return output;
+  }
+
+  static void test_convert_bst_to_dll() {
+    cout << "==>> test_convert_bst_to_dll" << endl;
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}},
+      {{4, 6}, {6, 4}},
+      {{6, 8}, {6, 8}},
+      {{1, 2, 3}, {1, 2, 3}},
+      {{}, {}},
+      {{1}, {1}},
+    };
+    vector<vector<int>> exp_output = {
+      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+      {4, 6},
+      {6, 8},
+      {1, 2, 3},
+      {},
+      {1},
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      check_all_elem_same<int>(
+        traverse_bst_as_dll(
+          convert_bst_to_dll(
+            gen_bt_from_inpre_order(test_cases[i].first, test_cases[i].second)
+          )
+        ),
+        exp_output[i]
+      );
+    }
+    cout << "<<== test_convert_bst_to_dll" << endl;
+  }
+
   static pair<binary_tree_node *, binary_tree_node *> inorder_linked_list_from_bst_recur(binary_tree_node * curr_ptr)
   {
     if (NULL == curr_ptr) { return pair<binary_tree_node *, binary_tree_node *>(NULL, NULL); }
@@ -2225,6 +2314,7 @@ int main(void) {
   tree_util::test_gen_bst_from_preorder();
   tree_util::test_gen_bt_from_inpost_order();
   tree_util::test_gen_bt_from_inpre_order();
+  tree_util::test_convert_bst_to_dll();
 
   return 0;
 }
