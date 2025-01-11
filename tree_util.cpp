@@ -677,15 +677,26 @@ namespace tree_util {
      *      \
      *      3k
      */
-    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(&a))), {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11});
-    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(NULL))), {});
-    check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(traverse_vlr(&x))), {99});
+    check_all_elem_same<int>(
+      traverse_vlr(
+        gen_bst_from_preorder(traverse_vlr(&a))
+      ),
+      {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}
+    );
+    check_all_elem_same<int>(
+      traverse_vlr(gen_bst_from_preorder(traverse_vlr(NULL))), {}
+    );
+    check_all_elem_same<int>(
+      traverse_vlr(gen_bst_from_preorder(traverse_vlr(&x))), {99}
+    );
 
     vector<vector<int>> test_cases = {
       {8,5,1,7,10,12}, {1,3}, {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}, {}, {99}
     };
     for (auto & test_case : test_cases) {
-      check_all_elem_same<int>(traverse_vlr(gen_bst_from_preorder(test_case)), test_case);
+      check_all_elem_same<int>(
+        traverse_vlr(gen_bst_from_preorder(test_case)), test_case
+      );
     }
 
     cout << "<<== test_gen_bst_from_preorder" << endl;
@@ -703,7 +714,118 @@ namespace tree_util {
    *
    * Input: inorder = [-1], postorder = [-1]
    * Output: [-1]
+   *
+   *       6a
+   *      /   \
+   *    4b     c8
+   *    / \   / \
+   *  1d  5e f7  g10
+   *    \       / \
+   *    2t     i9   h11
+   *      \
+   *      3k
+   *           v    root
+   *  < left-tree >  v  < right-tree >
+   * [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+   *
+   * [3, 2, 1, 5, 4, 7, 9, 11, 10, 8, 6]
+   *  < left-tree >  < right-tree >   ^
+   *              ^                 root
+   *     v
+   * [4, 6]
+   * [4, 6]
+   *     ^
+   *  v
+   * [6, 8]
+   * [8, 6]
+   *     ^
+   *  v
+   * [1, 2, 3]
+   * [3, 2, 1]
+   *        ^
    */
+  static binary_tree_node * gen_bt_from_inpost_order_recur(
+    const vector<int> & inorder, const vector<int> & postorder,
+    int in_start_pos, int in_end_pos,
+    int post_start_pos, int post_end_pos) {
+
+    print_all_elem<int>({in_start_pos, in_end_pos, post_start_pos, post_end_pos});
+    assert(post_end_pos - post_start_pos == in_end_pos - in_start_pos);
+
+    if (in_start_pos > in_end_pos || post_start_pos > post_end_pos) { return NULL; }
+
+    int in_pivot_pos = in_start_pos;
+    int in_pivot_val = postorder[post_end_pos];
+    for (; inorder[in_pivot_pos] != in_pivot_val; in_pivot_pos++) {}
+
+    binary_tree_node * curr_ptr = new binary_tree_node(in_pivot_val);
+
+    curr_ptr->left_ptr = gen_bt_from_inpost_order_recur(
+      inorder, postorder, in_start_pos, in_pivot_pos - 1,
+      post_start_pos, post_start_pos + in_pivot_pos - in_start_pos - 1
+    );
+
+    curr_ptr->right_ptr = gen_bt_from_inpost_order_recur(
+      inorder, postorder, in_pivot_pos + 1, in_end_pos,
+      post_start_pos + in_pivot_pos - in_start_pos, post_end_pos - 1
+    );
+
+    return curr_ptr;
+  }
+
+  static binary_tree_node * gen_bt_from_inpost_order(const vector<int> & inorder,
+                                                     const vector<int> & postorder) {
+    binary_tree_node * root_ptr = NULL;
+    if (inorder.empty() || postorder.empty() ||
+        inorder.size() != postorder.size()) {
+      return root_ptr;
+    }
+    print_all_elem_vec<int>({inorder, postorder});
+    root_ptr = gen_bt_from_inpost_order_recur(
+      inorder, postorder, 0, inorder.size() - 1, 0, inorder.size() - 1
+    );
+    return root_ptr;
+  }
+
+  static void test_gen_bt_from_inpost_order() {
+    cout << "==>> test_gen_bt_from_inpost_order" << endl;
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{3, 2, 1, 5, 4, 7, 9, 11, 10, 8, 6}},
+      {{4, 6}, {4, 6}},
+      {{6, 8}, {8, 6}},
+      {{1, 2, 3}, {3, 2, 1}},
+      {{}, {}},
+      {{1}, {1}},
+    };
+    vector<vector<int>> exp_output = {
+      {6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11},
+      {6, 4},
+      {6, 8},
+      {1, 2, 3},
+      {},
+      {1},
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      check_all_elem_same<int>(
+        traverse_vlr(
+          gen_bt_from_inpost_order(test_cases[i].first, test_cases[i].second)
+        ),
+        exp_output[i]
+      );
+    }
+    cout << "<<== test_gen_bt_from_inpost_order" << endl;
+  }
 
   /**
    * Convert a Binary Tree to a Circular Doubly Link List
@@ -712,14 +834,14 @@ namespace tree_util {
    *   pointers respectively in converted Circular Linked List.
    * - The order of nodes in List must be same as Inorder of given Binary Tree.
    * - The first node of Inorder traversal must be head node of Circular List.
-  class binary_tree_node {
-  public:
-    binary_tree_node(int val) {
-      value = val; column_id = 0; level_id = 0;
-      is_visited = false; is_right_child = false;
-      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
-    }
-  }
+   * class binary_tree_node {
+   * public:
+   *   binary_tree_node(int val) {
+   *     value = val; column_id = 0; level_id = 0;
+   *     is_visited = false; is_right_child = false;
+   *     left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+   *   }
+   * }
    *       6a
    *      /   \
    *    4b     c8
@@ -1987,6 +2109,7 @@ int main(void) {
   tree_util::test_lvr_bst_traversal_non_recur();
   tree_util::test_bst_traversal_in_column_order();
   tree_util::test_gen_bst_from_preorder();
+  tree_util::test_gen_bt_from_inpost_order();
 
   return 0;
 }
