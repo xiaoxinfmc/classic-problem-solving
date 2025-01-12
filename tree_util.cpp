@@ -1121,16 +1121,103 @@ namespace tree_util {
    * Observation:
    * - DFS for 2 nodes then merge paths from 2, lca will be 1st node diverted
    * - Post-order?
-  class binary_tree_node {
-  public:
-    binary_tree_node(int val) {
-      value = val; column_id = 0; level_id = 0;
-      is_visited = false; is_right_child = false;
-      left_ptr = NULL; right_ptr = NULL; sibling = NULL;
-      prev_ptr = NULL; next_ptr = NULL;
-    }
-  };
+   * class binary_tree_node {
+   * public:
+   *   binary_tree_node(int val) {
+   *     value = val; column_id = 0; level_id = 0;
+   *     is_visited = false; is_right_child = false;
+   *     left_ptr = NULL; right_ptr = NULL; sibling = NULL;
+   *     prev_ptr = NULL; next_ptr = NULL;
+   *   }
+   * };
    */
+
+  static binary_tree_node * get_lca_from_bt(binary_tree_node * root_ptr,
+                                            binary_tree_node * left_ptr,
+                                            binary_tree_node * right_ptr) {
+    if (NULL == root_ptr || NULL == left_ptr || NULL == right_ptr) { return NULL; }
+    typedef pair<binary_tree_node *, int> nodeptr_level_pair;
+    vector<nodeptr_level_pair> rmq_buffer, visit_buffer;
+    int left_index = -1, right_index = -1;
+
+    visit_buffer.push_back({root_ptr, 0});
+    while (false == visit_buffer.empty()) {
+
+      binary_tree_node * curr_ptr = visit_buffer.back().first->left_ptr;
+      int curr_level = visit_buffer.back().second + 1;
+      for (; curr_ptr != NULL && false == curr_ptr->is_visited;
+             curr_ptr = curr_ptr->left_ptr) {
+        cout << "==>> push-buf " << curr_ptr->value << " : " << curr_level << endl;
+        visit_buffer.push_back({curr_ptr, curr_level});
+        curr_level++;
+      }
+
+      curr_ptr = visit_buffer.back().first;
+      curr_level = visit_buffer.back().second;
+      cout << "==>> push-rmq " << curr_ptr->value << " : " << curr_level << endl;
+      rmq_buffer.push_back({curr_ptr, curr_level});
+      if (curr_ptr == left_ptr) { left_index = rmq_buffer.size() - 1; }
+      if (curr_ptr == right_ptr) { right_index = rmq_buffer.size() - 1; }
+      curr_ptr->is_visited = true;
+      visit_buffer.pop_back();
+
+      if (NULL != curr_ptr->right_ptr) {
+        cout << "==>> push-buf " << curr_ptr->right_ptr->value << " : " << curr_level + 1 << endl;
+        visit_buffer.push_back({curr_ptr->right_ptr, curr_level + 1});
+      }
+    }
+
+    for (auto & pair : rmq_buffer) { pair.first->is_visited = false; }
+
+    nodeptr_level_pair min_ptr_level_pair = rmq_buffer[left_index];
+    for (int id = left_index; id <= right_index; id++) {
+      if (rmq_buffer[id].second < min_ptr_level_pair.second) {
+        min_ptr_level_pair = rmq_buffer[id];
+      }
+    }
+
+    return min_ptr_level_pair.first;
+  }
+
+  static void test_get_lca_from_bt() {
+    cout << "==>> test_get_lca_from_bt" << endl;
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);  binary_tree_node x(99);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    /**
+     *       6a
+     *      /   \
+     *    4b     c8
+     *    / \   / \
+     *  1d  5e f7  g10
+     *    \       / \
+     *    2t     i9   h11
+     *      \
+     *      3k
+     */
+    vector<vector<binary_tree_node *>> test_cases = {
+      { &a, &k, &h, &a },
+      { &a, &k, &e, &b },
+      { &a, &k, &k, &k },
+      { &a, &d, &b, &b },
+      { &a, &f, &h, &c },
+      { &x, &x, &x, &x },
+      { NULL, NULL, NULL, NULL },
+    };
+    for (auto & test_case : test_cases) {
+      print_all_elem<int>(traverse_vlr(test_case[0]));
+      assert(test_case[3] == get_lca_from_bt(test_case[0], test_case[1], test_case[2]));
+    }
+
+    cout << "<<== test_get_lca_from_bt" << endl;
+  }
+
   static void _fast_lca(binary_tree_node * root_ptr,
                         binary_tree_node * left_ptr,
                         binary_tree_node * right_ptr,
@@ -2315,6 +2402,7 @@ int main(void) {
   tree_util::test_gen_bt_from_inpost_order();
   tree_util::test_gen_bt_from_inpre_order();
   tree_util::test_convert_bst_to_dll();
+  tree_util::test_get_lca_from_bt();
 
   return 0;
 }
