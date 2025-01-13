@@ -1368,7 +1368,72 @@ namespace tree_util {
    * - After, we'll add all possible dp[j] * dp[k] (with j < i, k < i) to our
    *   answer dp[i]. In our Java implementation, we carefully used long so avoid
    *   overflow issues.
+   *
+   * observation:
+   * - for a given set of int, 1st sorted them in asc order
+   * - let cnt(i) denote # of bt that use s[i] as its root with subtree based from
+   * - s{0..i - 1}, then cnt(i) = {
+   *     // this parts is from any (m, n) that fits m x n == i, this can be pre-cal
+   *     // such that we can reduce it from o(n^2) -> o(n)
+   *     for n in {0..i - 2} {
+   *       for m in {n + 1, i - 1} {
+   *         if i == n x m then cnt(i) += cnt(n) * cnt(m) * 2
+   *       }
+   *     }
+   *   }
+   * - O(n) -> n^2, S(n) -> n
    */
+  static int calc_total_bts(const vector<int> & values) {
+    long total_bt_cnt = 0;
+    if (true == values.empty()) { return total_bt_cnt; }
+
+    vector<int> sorted_input(values.begin(), values.end());
+    sort(sorted_input.begin(), sorted_input.end());
+
+    vector<vector<long>> multiple_lookup(
+      values.size(), vector<long>(values.size(), 0)
+    );
+    unordered_map<int, vector<pair<int, int>>> multiple_pairs_map;
+    for (int i = 0; i < sorted_input.size(); i++) {
+      for (int j = i; j < sorted_input.size(); j++) {
+        int target = sorted_input[i] * sorted_input[j];
+        if (multiple_pairs_map.end() == multiple_pairs_map.find(target)) {
+          multiple_pairs_map[target] = {};
+        }
+        multiple_pairs_map[target].push_back({i, j});
+        if (i != j) { multiple_pairs_map[target].push_back({j, i}); }
+      }
+    }
+
+    vector<long> sum_lookup(values.size(), 1);
+    for (int i = 1; i < sum_lookup.size(); i++) {
+      if (multiple_pairs_map.end() != multiple_pairs_map.find(sorted_input[i])) {
+        for (auto & pair : multiple_pairs_map[sorted_input[i]]) {
+          sum_lookup[i] += sum_lookup[pair.first] * sum_lookup[pair.second];
+        }
+      }
+    }
+
+    print_all_elem<long>(sum_lookup);
+
+    for (auto & val : sum_lookup) { total_bt_cnt += val; }
+
+    return total_bt_cnt % (10^9 + 7);
+  }
+
+  static void test_calc_total_bts() {
+    cout << "==>> test_calc_total_bts" << endl;
+    vector<pair<vector<int>, int>> test_cases = {
+      { {}, 0 },
+      { {2, 4}, 3 },
+      { {2, 4, 5, 10}, 7 },
+    };
+    for (auto & test_case : test_cases) {
+      assert(test_case.second == calc_total_bts(test_case.first));
+    }
+    cout << "<<== test_calc_total_bts" << endl;
+  }
+
   static int count_diff_bts(vector<int> values) {
     long mod_base = 10^9 + 7;
     long total_bt_cnt = 0;
@@ -2403,6 +2468,7 @@ int main(void) {
   tree_util::test_gen_bt_from_inpre_order();
   tree_util::test_convert_bst_to_dll();
   tree_util::test_get_lca_from_bt();
+  tree_util::test_calc_total_bts();
 
   return 0;
 }
