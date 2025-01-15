@@ -1477,6 +1477,122 @@ namespace tree_util {
    *  5  15      28          41
    * The correct solution should print 30, 20, 10, 5, 15, 28, 35, 41, 50, 40.
    */
+  static vector<int> outline_binary_tree(binary_tree_node * root) {
+    vector<int> outline;
+    vector<binary_tree_node *> visit_buffer;
+
+    if (NULL == root) {
+      return outline;
+    }
+
+    outline.push_back(root->value);
+    binary_tree_node * curr_ptr = root->left_ptr;
+    while (NULL != curr_ptr) {
+      if (NULL != curr_ptr->left_ptr) {
+        outline.push_back(curr_ptr->value);
+        curr_ptr = curr_ptr->left_ptr;
+      } else if (NULL != curr_ptr->right_ptr) {
+        outline.push_back(curr_ptr->value);
+        curr_ptr = curr_ptr->right_ptr;
+      } else {
+        curr_ptr = NULL;
+      }
+    }
+
+    visit_buffer.push_back(root);
+    while (false == visit_buffer.empty()) {
+      curr_ptr = visit_buffer.back();
+      curr_ptr = curr_ptr->left_ptr;
+      while (curr_ptr != NULL && false == curr_ptr->is_visited) {
+        visit_buffer.push_back(curr_ptr);
+        curr_ptr = curr_ptr->left_ptr;
+      }
+
+      curr_ptr = visit_buffer.back();
+
+      if (true == curr_ptr->is_visited) {
+        visit_buffer.pop_back();
+        continue;
+      }
+
+      curr_ptr->is_visited = true;
+      visit_buffer.pop_back();
+      if (NULL != curr_ptr->right_ptr) {
+        visit_buffer.push_back(curr_ptr->right_ptr);
+      }
+
+      if (NULL == curr_ptr->left_ptr &&
+          NULL == curr_ptr->right_ptr && root != curr_ptr) {
+        outline.push_back(curr_ptr->value);
+      }
+    }
+
+    vector<int> right_edge;
+    curr_ptr = root->right_ptr;
+    while (NULL != curr_ptr) {
+      if (NULL != curr_ptr->right_ptr) {
+        right_edge.push_back(curr_ptr->value);
+        curr_ptr = curr_ptr->right_ptr;
+      } else if (NULL != curr_ptr->left_ptr) {
+        right_edge.push_back(curr_ptr->value);
+        curr_ptr = curr_ptr->left_ptr;
+      } else {
+        curr_ptr = NULL;
+      }
+    }
+    for (auto itr = right_edge.rbegin(); itr != right_edge.rend(); itr++) {
+      outline.push_back(*itr);
+    }
+
+    return outline;
+  }
+
+  static void test_outline_binary_tree() {
+    cout << "==>> test_outline_binary_tree" << endl;
+
+    /**
+     *      6a
+     *     /   \
+     *   4b     c8
+     *   / \   / \
+     * 1d  5e f7  g10
+     *   \       / \
+     *   2t     i9   h11
+     *     \
+     *     3k
+     *    /
+     *   x
+     *  / \
+     * z   y
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}},
+      {{4, 6}, {6, 4}},
+      {{6, 8}, {6, 8}},
+      {{1, 2, 3}, {1, 2, 3}},
+      {{}, {}},
+      {{1}, {1}},
+    };
+    vector<vector<int>> exp_output = {
+      {6, 4, 1, 2, 3, 5, 7, 9, 11, 10, 8},
+      {6, 4},
+      {6, 8},
+      {1, 3, 2},
+      {},
+      {1},
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      check_all_elem_same<int>(
+        outline_binary_tree(
+          gen_bt_from_inpre_order(test_cases[i].first, test_cases[i].second)
+        ),
+        exp_output[i]
+      );
+    }
+
+    cout << "<<== test_outline_binary_tree" << endl;
+  }
+
   static vector<int> boundary_traverse_bt(binary_tree_node * root_ptr) {
     vector<int> boundary;
     if (NULL == root_ptr) { return boundary; }
@@ -1556,6 +1672,77 @@ namespace tree_util {
    *              is 5 but its right child's value is 4.
    * return: <min-node-for-curr-subtree, max-node-for-curr-subtree>
    */
+
+  static pair<binary_tree_node *, binary_tree_node *> is_valid_bst_recur(
+    binary_tree_node * root, bool & is_bst_valid) {
+
+    pair<binary_tree_node *, binary_tree_node *> l_min_max_pair({NULL, NULL}),
+                                                 r_min_max_pair({NULL, NULL}),
+                                                 min_max_pair({NULL, NULL});
+
+    if (NULL == root) { return min_max_pair; }
+
+    min_max_pair = {root, root};
+
+    if (NULL != root->left_ptr) {
+      l_min_max_pair = is_valid_bst_recur(root->left_ptr, is_bst_valid);
+      is_bst_valid = is_bst_valid && (l_min_max_pair.second->value < root->value);
+      min_max_pair.first = l_min_max_pair.second;
+    }
+
+    if (NULL != root->right_ptr) {
+      r_min_max_pair = is_valid_bst_recur(root->right_ptr, is_bst_valid);
+      is_bst_valid = is_bst_valid && (r_min_max_pair.first->value > root->value);
+      min_max_pair.second = r_min_max_pair.first;
+    }
+
+    return min_max_pair;
+  }
+
+  static bool is_valid_bst(binary_tree_node * root) {
+    bool is_bst_valid = true;
+    is_valid_bst_recur(root, is_bst_valid);
+    return is_bst_valid;
+  }
+
+  static void test_is_valid_bst() {
+    cout << "==>> test_is_valid_bst" << endl;
+    /**
+     *      6a
+     *     /   \
+     *   4b     c8
+     *   / \   / \
+     * 1d  5e f7  g10
+     *   \       / \
+     *   2t     i9   h11
+     *     \
+     *     3k
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}},
+      {{4, 6}, {6, 4}},
+      {{6, 8}, {6, 8}},
+      {{1, 2, 3}, {1, 2, 3}},
+      {{}, {}},
+      {{1}, {1}},
+      {{1, 5, 3, 4, 6},{5, 1, 4, 3, 6}},
+    };
+    vector<bool> exp_output = {
+      true, true, true, true, true, true, false,
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      assert(
+        is_valid_bst(
+          gen_bt_from_inpre_order(test_cases[i].first, test_cases[i].second)
+        ) == exp_output[i]
+      );
+    }
+
+    cout << "<<== test_is_valid_bst" << endl;
+  }
+
+
+
   static pair<binary_tree_node *, binary_tree_node *> is_bst_valid_recur(
     binary_tree_node * root_ptr, bool * is_bst_valid_ptr)
   {
@@ -1632,6 +1819,7 @@ namespace tree_util {
     bool is_curr_bst_valid;
     int area;
   };
+
   /**
    * Largest Subtree Which is a Binary Search Tree (BST)
    * - Given a binary tree, find the largest subtree which is a Binary Search
@@ -1721,6 +1909,72 @@ namespace tree_util {
    *   real max path sum for entire path of left-child-sum + keynode->val + right-child-sum
    * - T(n) ~ O(n), S(n) -> O(n)
    */
+
+  static int calc_max_path_sum_recur(binary_tree_node * root, int & max_path_sum) {
+    if (NULL == root) { return 0; }
+    int left_max_path_sum = calc_max_path_sum_recur(root->left_ptr, max_path_sum);
+    int right_max_path_sum = calc_max_path_sum_recur(root->right_ptr, max_path_sum);
+    int curr_max_path_sum = max(
+      root->value,
+      max(root->value + left_max_path_sum, root->value + right_max_path_sum)
+    );
+    max_path_sum = max(
+      max_path_sum,
+      max(curr_max_path_sum, root->value + left_max_path_sum + right_max_path_sum)
+    );
+    cout << "==>> root " << root->value << " curr_max_sum " << curr_max_path_sum << " max_path_sum " << max_path_sum << endl;
+    return curr_max_path_sum;
+  }
+
+  static int calc_max_path_sum(binary_tree_node * root) {
+    int max_path_sum = INT_MIN;
+    calc_max_path_sum_recur(root, max_path_sum);
+    cout << "==>> calc_max_path_sum: " << max_path_sum << endl;
+    return max_path_sum;
+  }
+
+  static void test_calc_max_path_sum() {
+    cout << "==>> test_calc_max_path_sum" << endl;
+    /**
+     *      6a
+     *     /   \
+     *   4b     c8
+     *   / \   / \
+     * 1d  5e f7  g10
+     *   \       / \
+     *   2t     i9   h11
+     *     \
+     *     3k
+     *    -10
+     *    / \
+     *   9  20
+     *     /  \
+     *    15   7
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}},
+      {{4, 6}, {6, 4}},
+      {{6, 8}, {6, 8}},
+      {{1, 2, 3}, {1, 2, 3}},
+      {{}, {}},
+      {{1}, {1}},
+      {{1, 5, 3, 4, 6},{5, 1, 4, 3, 6}},
+      {{9, -10, 15, 20, 7}, {-10, 9, 20, 15, 7}},
+    };
+    vector<int> exp_output = {
+      45, 10, 14, 6, INT_MIN, 1, 16, 42,
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      assert(
+        calc_max_path_sum(
+          gen_bt_from_inpre_order(test_cases[i].first, test_cases[i].second)
+        ) == exp_output[i]
+        // get_max_path_sum(gen_bt_from_inpre_order(test_cases[i].first, test_cases[i].second)) == exp_output[i]
+      );
+    }
+    cout << "<<== test_calc_max_path_sum" << endl;
+  }
+
   static int treverse_and_pre_calc_path_sum(binary_tree_node * root_ptr, int & max_path_sum) {
     if (NULL == root_ptr) { return 0; }
     int left_path_sum = treverse_and_pre_calc_path_sum(root_ptr->left_ptr, max_path_sum);
@@ -1810,6 +2064,152 @@ namespace tree_util {
    * - for deserialize, tokenization could be important, after that, we just
    *   do a scan & append the child.
    */
+
+  const static string BT_CODEC_DELIM = ":";
+  const static string BT_CODEC_NULL = "$";
+  class bt_codec {
+  public:
+    static string serialize_bt(binary_tree_node * root) {
+      string output;
+      if (NULL == root) { return output; }
+
+      vector<binary_tree_node *> visit_buf;
+      visit_buf.push_back(root);
+      while (!visit_buf.empty()) {
+        binary_tree_node * curr_ptr = visit_buf.back();
+        visit_buf.pop_back();
+        output.append(
+          (NULL == curr_ptr) ? BT_CODEC_NULL : std::to_string(curr_ptr->value)
+        );
+        output.append(BT_CODEC_DELIM);
+        cout << "==>> serde " << output << endl;
+        if (NULL == curr_ptr) { continue; }
+        visit_buf.push_back(curr_ptr->right_ptr);
+        visit_buf.push_back(curr_ptr->left_ptr);
+      }
+      return output;
+    }
+
+    static binary_tree_node * deserialize_bt(const string & bt_ser_str) {
+      cout << "==>> deserialize_bt: " << bt_ser_str << endl;
+      binary_tree_node * root = NULL;
+      if (bt_ser_str.empty()) { return root; }
+
+      string curr_token = "";
+      int start_pos = 0, end_pos = 0;
+      vector<binary_tree_node *> construct_buf;
+      binary_tree_node * dummy = new binary_tree_node(0);
+      do {
+        curr_token = "";
+        for (end_pos = start_pos; bt_ser_str[end_pos] != BT_CODEC_DELIM[0] &&
+                                  end_pos < bt_ser_str.size(); end_pos++) {
+          curr_token.push_back(bt_ser_str[end_pos]);
+        }
+        start_pos = end_pos + 1;
+
+        binary_tree_node * curr_ptr = (
+          (curr_token == BT_CODEC_NULL) ? dummy : new binary_tree_node(std::stoi(curr_token))
+        );
+
+        if (construct_buf.empty()) {
+          construct_buf.push_back(curr_ptr);
+          root = curr_ptr;
+        } else {
+          if (construct_buf.back()->left_ptr == NULL) {
+            construct_buf.back()->left_ptr = curr_ptr;
+          } else {
+            construct_buf.back()->right_ptr = curr_ptr;
+          }
+          if (curr_ptr != dummy) {
+            construct_buf.push_back(curr_ptr);
+          }
+        }
+
+        cout << "==>> deserialize_bt size " << bt_ser_str.size() << " start_pos " << start_pos << " curr token " << curr_token << " val " << curr_ptr->value << " [ ";
+        for (auto ptr : construct_buf){ cout << ptr->value << " "; } cout << "]" << endl;
+
+        if ((construct_buf.back() == root) ||
+            (construct_buf.back()->right_ptr == dummy &&
+             construct_buf.back()->left_ptr == dummy)) {
+          while (!construct_buf.empty() &&
+                 construct_buf.back()->right_ptr != NULL &&
+                 construct_buf.back()->left_ptr != NULL) {
+            construct_buf.back()->right_ptr = (
+              (construct_buf.back()->right_ptr == dummy) ? NULL : construct_buf.back()->right_ptr
+            );
+            construct_buf.back()->left_ptr = (
+              (construct_buf.back()->left_ptr == dummy) ? NULL : construct_buf.back()->left_ptr
+            );
+            cout << "==>> deserialize_bt pop " << construct_buf.back()->value << endl;
+            construct_buf.pop_back();
+          }
+        }
+      } while(!construct_buf.empty() && start_pos < bt_ser_str.size());
+
+      return root;
+    }
+  };
+
+  static void test_bt_codec() {
+    cout << "==>> test_bt_codec" << endl;
+    /**
+     *      6a
+     *     /   \
+     *   4b     c8
+     *   / \   / \
+     * 1d  5e f7  g10
+     *   \       / \
+     *   2t     i9   h11
+     *     \
+     *     3k
+     *    -10
+     *    / \
+     *   9  20
+     *     /  \
+     *    15   7
+     *     5
+     *    / \
+     *   1   4
+     *      / \
+     *     3   6
+     */
+    vector<pair<vector<int>, vector<int>>> test_cases = {
+      {{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},{6, 4, 1, 2, 3, 5, 8, 7, 10, 9, 11}},
+      {{4, 6}, {6, 4}},
+      {{6, 8}, {6, 8}},
+      {{1, 2, 3}, {1, 2, 3}},
+      {{}, {}},
+      {{1}, {1}},
+      {{1, 5, 3, 4, 6},{5, 1, 4, 3, 6}},
+      {{9, -10, 15, 20, 7}, {-10, 9, 20, 15, 7}},
+    };
+    vector<string> exp_output = {
+      "6:4:1:$:2:$:3:$:$:5:$:$:8:7:$:$:10:9:$:$:11:$:$:",
+      "6:4:$:$:$:",
+      "6:$:8:$:$:",
+      "1:$:2:$:3:$:$:",
+      "",
+      "1:$:$:",
+      "5:1:$:$:4:3:$:$:6:$:$:",
+      "-10:9:$:$:20:15:$:$:7:$:$:",
+    };
+    for (int i = 0; i < test_cases.size(); i++) {
+      assert(
+        exp_output[i] ==
+        bt_codec::serialize_bt(
+          bt_codec::deserialize_bt(
+            bt_codec::serialize_bt(
+              gen_bt_from_inpre_order(
+                test_cases[i].first, test_cases[i].second
+              )
+            )
+          )
+        )
+      );
+    }
+    cout << "<<== test_bt_codec" << endl;
+  }
+
   const static string TREE_START_CHAR = "[";
   const static string TREE_END_CHAR = "]";
   const static string TREE_DELIM = ",";
@@ -1971,6 +2371,69 @@ namespace tree_util {
    * Intuition:
    * - treverse tree in bfs manner, link all nodes within the same level
    */
+  static void connect_bt_siblings(binary_tree_node * root) {
+    if (NULL == root) { return; }
+
+    deque<pair<binary_tree_node *, int>> visit_fifo;
+    visit_fifo.push_back({root, 0});
+    while (!visit_fifo.empty()) {
+      binary_tree_node * curr_ptr = visit_fifo.front().first;
+      int curr_level = visit_fifo.front().second;
+      visit_fifo.pop_front();
+
+      if (!visit_fifo.empty() && visit_fifo.front().second == curr_level) {
+        cout << "connect " << curr_ptr->value << " " << visit_fifo.front().first->value << endl;
+        curr_ptr->next_ptr = visit_fifo.front().first;
+      }
+
+      if (NULL != curr_ptr->left_ptr) {
+        visit_fifo.push_back({curr_ptr->left_ptr, curr_level + 1});
+      }
+      if (NULL != curr_ptr->right_ptr) {
+        visit_fifo.push_back({curr_ptr->right_ptr, curr_level + 1});
+      }
+    }
+  }
+
+  static void test_connect_bt_siblings() {
+    cout << "==>> test_connect_bt_siblings" << endl;
+    /**
+     *      6a
+     *     /   \
+     *   4b     c8
+     *   / \   / \
+     * 1d  5e f7  g10
+     *   \       / \
+     *   2t     i9   h11
+     *     \
+     *     3k
+     */
+    binary_tree_node a(6);  binary_tree_node b(4);  binary_tree_node c(8);
+    binary_tree_node d(1);  binary_tree_node e(5);  binary_tree_node f(7);
+    binary_tree_node g(10); binary_tree_node h(11); binary_tree_node i(9);
+    binary_tree_node t(2);  binary_tree_node k(3);
+
+    a.left_ptr = &b;  a.right_ptr = &c; b.left_ptr = &d; b.right_ptr = &e;
+    d.right_ptr = &t; t.right_ptr = &k; c.left_ptr = &f; c.right_ptr = &g;
+    g.left_ptr = &i;  g.right_ptr = &h;
+
+    connect_bt_siblings(&a);
+
+    assert(a.next_ptr == NULL);
+    assert(c.next_ptr == NULL);
+    assert(g.next_ptr == NULL);
+    assert(h.next_ptr == NULL);
+    assert(k.next_ptr == NULL);
+    assert(b.next_ptr == &c);
+    assert(d.next_ptr == &e);
+    assert(e.next_ptr == &f);
+    assert(f.next_ptr == &g);
+    assert(t.next_ptr == &i);
+    assert(i.next_ptr == &h);
+
+    cout << "<<== test_connect_bt_siblings" << endl;
+  }
+
   static void connect_siblings_in_tree(binary_tree_node * root) {
     if (NULL == root) { return; }
     deque<pair<binary_tree_node *, int>> visit_buffer = {
@@ -2469,6 +2932,11 @@ int main(void) {
   tree_util::test_convert_bst_to_dll();
   tree_util::test_get_lca_from_bt();
   tree_util::test_calc_total_bts();
+  tree_util::test_outline_binary_tree();
+  tree_util::test_is_valid_bst();
+  tree_util::test_calc_max_path_sum();
+  tree_util::test_bt_codec();
+  tree_util::test_connect_bt_siblings();
 
   return 0;
 }
